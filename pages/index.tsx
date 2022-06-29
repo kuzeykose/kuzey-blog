@@ -3,7 +3,6 @@ import Head from "next/head";
 import Link from "next/link";
 import Image from "next/image";
 import styles from "../styles/Home.module.css";
-import RoundedText from "../components/RoundedText";
 
 export interface Link {
   href: string;
