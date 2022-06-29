@@ -10,7 +10,7 @@ const BlogPost = ({ blog }: any) => {
 };
 
 BlogPost.getInitialProps = async (ctx: any) => {
-  const res = await fetch(`https://kuzey-blog-3cgg9kcg1-kosekuzey.vercel.app/api/blog/${ctx.query.blogId}`);
+  const res = await fetch(`https://kuzey-blog.vercel.app/api/blog/${ctx.query.blogId}`);
   const json = await res.json();
   return json;
 };
