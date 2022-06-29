@@ -10,7 +10,7 @@ const Blog = ({ posts }: any) => {
       }}
     >
       {posts.map((blog: any) => (
-        <Link href={blog.slug}>
+        <Link key={blog.slug} href={blog.slug}>
           <div
             key={blog.slug}
             style={{
@@ -31,8 +31,8 @@ const Blog = ({ posts }: any) => {
   );
 };
 
-export async function getStaticProps() {
-  const res = await fetch('http://localhost:3000/api/blogs')
+Blog.getInitialProps = async (ctx: any) => {
+  const res = await fetch('https://kuzey-blog-3cgg9kcg1-kosekuzey.vercel.app/api/blogs')
   const posts = await res.json()
 
   return {

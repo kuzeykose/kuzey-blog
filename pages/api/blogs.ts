@@ -10,11 +10,10 @@ type Data = {
   allwriten?: string
 }
 
-const posts = getPosts()
-
 export default function handler(
   req: NextApiRequest,
   res: NextApiResponse<Data[]>
 ) {
+  const posts = getPosts()
   res.status(200).json(posts)
 }

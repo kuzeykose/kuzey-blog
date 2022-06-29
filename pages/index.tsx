@@ -45,7 +45,7 @@ const Home: NextPage = () => {
             {links.map(({ key, href, label }) => (
               <li key={key} style={{ margin: 2 }}>
                 {label === "YouTube" ? (
-                  <a href={href} target="_blank">
+                  <a href={href} target="_blank" rel="noreferrer">
                     <button>{label}</button>
                   </a>
                 ) : (
