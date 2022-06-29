@@ -1,8 +1,6 @@
 import Link from "next/link";
 
 const Blog = ({ posts }: any) => {
-  console.log(posts);
-
   return (
     <div
       style={{
@@ -33,11 +31,15 @@ const Blog = ({ posts }: any) => {
   );
 };
 
-Blog.getInitialProps = async () => {
+export async function getStaticProps() {
   const res = await fetch('https://kuzey-blog.vercel.app/api/blogs')
   const posts = await res.json()
 
-  return { posts }
+  return {
+    props: {
+      posts,
+    },
+  }
 }
 
 export default Blog;
