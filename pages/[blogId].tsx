@@ -1,13 +1,9 @@
 const BlogPost = (props: any) => {
-  console.log(props.blog);
-
-  const { title, allwriten, date } = props.blog
-
   return (
     <>
-      <div>{title}</div>
-      <article>{allwriten}</article>
-      <div>{date}</div>
+      <div>{props.blog.title}</div>
+      <article>{props.blog.allwriten}</article>
+      <div>{props.blog.date}</div>
     </>
   )
 };
@@ -30,7 +26,7 @@ export async function getStaticPaths() {
 
   return {
     paths: blogs.map((item: any) => { return { params: { blogId: item.slug } } }),
-    fallback: true // false or 'blocking'
+    fallback: false
   };
 }
 
