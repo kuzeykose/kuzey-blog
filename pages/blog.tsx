@@ -32,7 +32,7 @@ const Blog = ({ posts }: any) => {
 };
 
 Blog.getInitialProps = async (ctx: any) => {
-  const res = await fetch('https://kuzey-blog-3cgg9kcg1-kosekuzey.vercel.app/api/blogs')
+  const res = await fetch('https://kuzey-blog.vercel.app/api/blogs')
   const posts = await res.json()
 
   return {
