@@ -11,8 +11,12 @@ type Blog = {
 };
 
 async function getBlogs() {
-  const blogs = await fetch('https://kuzey-blog.vercel.app/api/blog');
-  return blogs.json();
+  try {
+    const blogs = await fetch('https://kuzey-blog.vercel.app/api/blog');
+    return blogs.json();
+  } catch (error) {
+    console.log(error);
+  }
 }
 
 export default async function Blog() {
