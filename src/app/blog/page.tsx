@@ -10,16 +10,16 @@ type Blog = {
   lang?: string;
 };
 
-// async function getBlogs() {
-//   const blogs = await fetch('https://kuzey-blog.vercel.app/api/blog');
-//   return blogs.json();
-// }
+async function getBlogs() {
+  const blogs = await fetch('https://kuzey-blog.vercel.app/api/blog');
+  return blogs.json();
+}
 
 export default async function Blog() {
-  // const blogs = await getBlogs();
+  const blogs = await getBlogs();
   return (
     <main>
-      {/* <div className="flex flex-col items-center gap-6 my-12">
+      <div className="flex flex-col items-center gap-6 my-12">
         {blogs.map((blog: Blog) => (
           <Link href={`/blog/${blog.slug}`} key={blog.slug}>
             <BlogCard
@@ -30,7 +30,7 @@ export default async function Blog() {
             />
           </Link>
         ))}
-      </div> */}
+      </div>
     </main>
   );
 }
