@@ -10,10 +10,10 @@ export const metadata = {
 const inter = Inter({ subsets: ['latin'] });
 
 const pages = [
-  { name: 'Home', path: '/' },
-  { name: 'About', path: '/about' },
-  { name: 'Blog', path: '/blog' },
-  { name: 'Youtube', path: 'https://www.youtube.com/kuzeykose' },
+  { name: 'Home', path: '/', key: 'home_/' },
+  { name: 'About', path: '/about', key: 'about_/about' },
+  { name: 'Blog', path: '/blog', key: 'blog_/blog' },
+  { name: 'Youtube', path: 'https://www.youtube.com/kuzeykose', key: 'youtube_/youtube' },
 ];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -23,7 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="mx-auto max-w-2xl lg:max-w-6xl p-6">
           <nav className="flex gap-6 mx-auto border rounded-xl px-2 py-1 bg-zinc-200 max-w-fit p">
             {pages.map((page) => (
-              <Link href={page.path} className="cursor-pointer px-2 py-1 rounded-lg hover:bg-zinc-300">
+              <Link href={page.path} className="cursor-pointer px-2 py-1 rounded-lg hover:bg-zinc-300" key={page.key}>
                 {page.name}
               </Link>
             ))}

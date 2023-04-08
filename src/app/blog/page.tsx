@@ -21,7 +21,7 @@ export default async function Blog() {
     <main>
       <div className="flex flex-col items-center gap-6 my-12">
         {blogs.map((blog: Blog) => (
-          <Link href={`/blog/${blog.slug}`}>
+          <Link href={`/blog/${blog.slug}`} key={blog.slug}>
             <BlogCard
               image={`https://storage.googleapis.com/my-blog-d3a4b.appspot.com/images/${blog.image}`}
               date={blog.date}
