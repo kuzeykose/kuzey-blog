@@ -1,7 +1,7 @@
 import ReactMarkdown from 'react-markdown';
 
 async function getBlog(slug: string) {
-  const blog = await fetch(`http://localhost:3000/api/blog/${slug}`);
+  const blog = await fetch(`http://kuzey-blog.vercel.app/api/blog/${slug}`);
   return blog.json();
 }
 
