@@ -16,7 +16,6 @@ async function getLatestVideo() {
 
 export default async function About() {
   const latestBlog = await getLatestVideo();
-  console.log(latestBlog);
 
   return (
     <section className="mt-32 flex flex-col items-center lg:block">
@@ -34,7 +33,12 @@ export default async function About() {
         <h2 className="font-semibold text-6xl">Latest Videos</h2>
         <div className="flex gap-12">
           {latestBlog.data.items.map((item: any) => (
-            <iframe width="1280" height="300" src={`https://www.youtube.com/embed/${item.id.videoId}`}></iframe>
+            <iframe
+              key={item.id.videoId}
+              width="1280"
+              height="300"
+              src={`https://www.youtube.com/embed/${item.id.videoId}`}
+            ></iframe>
           ))}
         </div>
       </div>
