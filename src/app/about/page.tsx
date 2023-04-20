@@ -2,16 +2,20 @@ import { youtubeConfig } from '@/youtube-config';
 import axios from 'axios';
 
 async function getLatestVideo() {
-  const videos = await axios.get('https://www.googleapis.com/youtube/v3/search', {
-    params: {
-      channelId: 'UCDMddhql2pRQ48EQW2q1HVQ',
-      maxResults: 2,
-      order: 'date',
-      type: 'videos',
-      key: youtubeConfig.key,
-    },
-  });
-  return videos;
+  try {
+    const videos = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+      params: {
+        channelId: 'UCDMddhql2pRQ48EQW2q1HVQ',
+        maxResults: 2,
+        order: 'date',
+        type: 'videos',
+        key: youtubeConfig.key,
+      },
+    });
+    return videos;
+  } catch (error) {
+    return { data: { items: [] } };
+  }
 }
 
 export default async function About() {
@@ -32,7 +36,7 @@ export default async function About() {
       <div>
         <h2 className="font-semibold text-6xl">Latest Videos</h2>
         <div className="flex gap-12">
-          {latestBlog.data.items.map((item: any) => (
+          {latestBlog?.data?.items?.map((item: any) => (
             <iframe
               key={item.id.videoId}
               width="1280"
