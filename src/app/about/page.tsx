@@ -1,49 +1,56 @@
+import SocialMedia from '@/components/SocialMedia';
 import { youtubeConfig } from '@/youtube-config';
 import axios from 'axios';
 
-async function getLatestVideo() {
-  try {
-    const videos = await axios.get('https://www.googleapis.com/youtube/v3/search', {
-      params: {
-        channelId: 'UCDMddhql2pRQ48EQW2q1HVQ',
-        maxResults: 2,
-        order: 'date',
-        type: 'videos',
-        key: youtubeConfig.key,
-      },
-    });
-    return videos;
-  } catch (error) {
-    return { data: { items: [] } };
-  }
-}
+// async function getLatestVideo() {
+//   try {
+//     const videos = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+//       params: {
+//         channelId: 'UCDMddhql2pRQ48EQW2q1HVQ',
+//         maxResults: 1,
+//         order: 'date',
+//         type: 'videos',
+//         key: youtubeConfig.key,
+//       },
+//     });
+//     return videos;
+//   } catch (error) {
+//     return { data: { items: [] } };
+//   }
+// }
 
 export default async function About() {
-  const latestBlog = await getLatestVideo();
+  // const latestBlog = await getLatestVideo();
 
   return (
-    <section className="mt-32 flex flex-col items-center lg:block">
-      <div className="flex flex-col items-center gap-6">
-        <h1 className="text-6xl font-bold">Hello 👋🏼 I am Kuzey</h1>
-        <p>
-          Believe nothing, no matter where you read it, or who said it, no matter if I have said it, unless it agrees
-          with your own reason and your own common sense. - Buddha
-        </p>
-      </div>
-      <div>
-        <hr className="my-12" />
-      </div>
-      <div>
-        <h2 className="font-semibold text-6xl">Latest Videos</h2>
-        <div className="flex gap-12">
-          {latestBlog?.data?.items?.map((item: any) => (
-            <iframe
-              key={item.id.videoId}
-              width="1280"
-              height="300"
-              src={`https://www.youtube.com/embed/${item.id.videoId}`}
-            ></iframe>
-          ))}
+    <section className="flex flex-col items-center lg:block mt-20">
+      <div className="flex justify-center">
+        <div className="space-y-24">
+          <div className="w-[350px] md:w-[550px] space-y-4">
+            <h1 className="text-4xl font-bold">Hello 👋🏼</h1>
+            <p className="text-lg">
+              My name is Kuzey. I am a software engineer. <br /> I live in New York City.
+            </p>
+            <p className="text-lg">
+              Some of my interests are creating content on YouTube, crossfit, design, and building things.
+            </p>
+            <p className="text-lg">
+              At live streams, software engineering, coding, and computer science are the main targets. If you are
+              interested in my life, you can see my videos.
+            </p>
+          </div>
+
+          <SocialMedia />
+          {/* <div className="space-y-4">
+            <h2 className="font-bold text-4xl">Lates video!</h2>
+            {latestBlog?.data?.items?.map((item: any) => (
+              <iframe
+                key={item.id.videoId}
+                width="auto"
+                src={`https://www.youtube.com/embed/${item.id.videoId}`}
+              ></iframe>
+            ))}
+          </div> */}
         </div>
       </div>
     </section>
