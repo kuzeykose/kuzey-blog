@@ -15,10 +15,6 @@ const SocialMedia = () => {
         <LinkedinIcon />
       </a>
 
-      <a href="https://www.instagram.com/kose.kuzey" target="_blank">
-        <InstagramIcon />
-      </a>
-
       <a href="https://www.youtube.com/kuzeykose" target="_blank">
         <YouTubeIcon />
       </a>
