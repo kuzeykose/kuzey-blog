@@ -11,7 +11,7 @@ const links = {
     name: "twitch",
     icon: <TwitchLogoIcon color="#6441A5" size={26} />,
   },
-  "https://www.youtube.com/@kuzeykose": {
+  "https://www.youtube.com/kuzeykose": {
     name: "youtube",
     icon: <YoutubeLogoIcon color="#FF0000" size={26} />,
   },
