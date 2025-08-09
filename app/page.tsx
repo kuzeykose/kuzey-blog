@@ -1,21 +1,21 @@
-import { BlogPosts } from 'app/components/posts'
-
 export default function Page() {
-  return (
-    <section>
-      <h1 className="mb-8 text-2xl font-semibold tracking-tighter">
-        Kuzey Kose
-      </h1>
-      <p className="mb-4">
-        I am software engineer with a passion for building scalable systems, intuitive user interfaces, and open-source tools.
-        I enjoy working at the intersection of frontend and backend technologies, with a strong focus on developer experience, performance, and maintainability.
-      </p>
-      <p className="mb-4">
-        Outside of work, I also enjoy live streaming my builds on YouTube and Twitch, contributing to open-source, and sharing what I learn with the community.
-      </p>
-      <div className="my-8">
-        {/* <BlogPosts /> */}
-      </div>
-    </section>
-  )
+    return (
+        <section>
+            <p className="mb-4">
+                I am Kuzey Kose, a software engineer based in New York.
+            </p>
+
+            <p className="mb-4">
+                I like building things — especially scalable systems, user-friendly
+                interface. I enjoy working multi-tennacy systems, web development and compilers.
+            </p>
+
+            <p className="mb-4">
+                This is my space to share what I&apos;m working on,
+                or thinking through. It&apos;s my way of seeing and shaping. 
+            </p>
+
+            <p>You can find me on <a href="https://github.com/kuzeykose" className="underline">GitHub</a> and <a href="https://x.com/kuzeyks" className="underline">X</a></p>
+        </section>
+    );
 }
