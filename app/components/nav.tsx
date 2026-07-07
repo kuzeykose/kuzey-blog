@@ -7,8 +7,8 @@ const navItems = {
   "/": {
     name: "home",
   },
-  "/blog": {
-    name: "blog",
+  "/projects": {
+    name: "projects",
   },
 };
 
@@ -32,7 +32,8 @@ export function Navbar() {
                 <Link
                   key={path}
                   href={path}
-                  className={`transition-all hover:text-neutral-800 dark:hover:text-neutral-200 flex align-middle relative py-1 px-2 m-1 ${
+                  aria-current={isActive ? "page" : undefined}
+                  className={`transition-all hover:text-neutral-800 dark:hover:text-neutral-200 flex align-middle relative py-1 px-2 m-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 ${
                     isActive
                       ? "underline underline-offset-4 decoration-orange-600"
                       : ""
