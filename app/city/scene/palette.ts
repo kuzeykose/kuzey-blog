@@ -1,0 +1,56 @@
+// Storybook palette: muted, warm, a little vintage.
+export const C = {
+  sky: '#9fcbe3',
+  skyDeep: '#6fa8cf',
+  skyNight: '#1d2b4f',
+  skyNightDeep: '#0f1733',
+  ray: '#e9f4f7',
+  cloud: '#fffaf0',
+  sun: '#f6d77c',
+
+  limestone: '#e6d8bb',
+  limestoneDark: '#c9b791',
+  steel: '#b9c0c4',
+  steelDark: '#8d979e',
+  deco: '#d8cdb5',
+  haze: '#a9b8cf',
+  hazeDark: '#8b9bb8',
+  hazeLight: '#c5d1e2',
+
+  brick: '#b8573e',
+  brickDark: '#94442f',
+  terracotta: '#cf7d55',
+  ochre: '#d9a650',
+  sand: '#e4c690',
+  brown: '#8b5a42',
+  brownstone: '#9a6249',
+  cream: '#efe2c4',
+  slate: '#6c7f99',
+  navy: '#2f4566',
+  teal: '#4f8a8b',
+
+  copper: '#7fb7a2',
+  copperDark: '#5a9581',
+  copperLight: '#a9d3c1',
+
+  taxi: '#f3c331',
+  taxiDark: '#d49b1c',
+  red: '#d24a3a',
+  redDark: '#a83a2e',
+  green: '#7aa769',
+  greenDark: '#557f4b',
+  leaf: '#8dbb6c',
+
+  water: '#9cc2cf',
+  waterDeep: '#7eaebf',
+  land: '#ece0c6',
+  road: '#d6cbb5',
+  asphalt: '#7d7a80',
+
+  skin: '#f0c7a2',
+  skinDark: '#b98262',
+  hair: '#3b2a24',
+
+  window: '#3e4c66',
+  windowLight: '#5d6e8d',
+}
