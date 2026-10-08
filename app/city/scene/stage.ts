@@ -234,12 +234,13 @@ export class CityStage {
 
     const byId = new Map<string, Piece>()
     let done = 0
-    for (const def of PIECES) {
+    const defs = PIECES.filter((d) => !d.hidden)
+    for (const def of defs) {
       const piece = this.buildPiece(def, aniso, def.parent ? byId.get(def.parent) ?? null : null)
       byId.set(def.id, piece)
       this.pieces.push(piece)
       done++
-      this.events.onProgress?.(done / (PIECES.length + 1))
+      this.events.onProgress?.(done / (defs.length + 1))
       await nextFrame()
       if (this.disposed) return
     }

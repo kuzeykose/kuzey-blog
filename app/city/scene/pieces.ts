@@ -50,6 +50,8 @@ export type PieceDef = {
   poke?: Poke
   // For 'run': the two x positions it dashes between (the first is home).
   run?: [number, number]
+  // Left out of the scene (kept here so it's easy to bring back).
+  hidden?: boolean
   // A warm point light at this art position after dark.
   lamp?: [number, number]
 }
@@ -428,6 +430,7 @@ export const PIECES: PieceDef[] = [
   },
   {
     id: 'pizza',
+    hidden: true,
     label: 'A dollar slice',
     art: pizzaSlice,
     w: 0.7,
@@ -441,6 +444,7 @@ export const PIECES: PieceDef[] = [
   },
   {
     id: 'bagel',
+    hidden: true,
     label: 'Everything bagel',
     art: bagel,
     w: 0.75,
@@ -454,6 +458,7 @@ export const PIECES: PieceDef[] = [
   },
   {
     id: 'rat',
+    hidden: true,
     label: 'Pizza rat',
     art: pizzaRat,
     w: 1.1,
