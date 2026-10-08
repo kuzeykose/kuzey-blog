@@ -504,7 +504,7 @@ export function readerAndKid(s: Sketch) {
 
 export function dogWalker(s: Sketch) {
   const H = 1.22
-  const x = 0.5
+  const x = 1.15
   // Umbrella.
   const ux = x + H * 0.2
   const uy = H * 1.12
@@ -522,27 +522,27 @@ export function dogWalker(s: Sketch) {
     },
     pts(ux - 0.42, uy, ux + 0.42, uy + 0.25)
   )
-  // Dachshund on a leash.
-  const dx = 1.32
+  // Dachshund trotting ahead on its leash, facing left.
+  const dx = 0.42
+  const X = (a: number) => dx - a
   const dog = s.custom(
     (p) => {
-      p.moveTo(dx - 0.2, 0.12)
-      p.quadraticCurveTo(dx - 0.22, 0.22, dx - 0.12, 0.23)
-      p.lineTo(dx + 0.12, 0.23)
-      p.quadraticCurveTo(dx + 0.16, 0.3, dx + 0.22, 0.29)
-      p.quadraticCurveTo(dx + 0.29, 0.27, dx + 0.26, 0.2)
-      p.lineTo(dx + 0.17, 0.15)
-      p.lineTo(dx + 0.15, 0.04)
-      p.lineTo(dx + 0.11, 0.04)
-      p.lineTo(dx + 0.1, 0.12)
-      p.lineTo(dx - 0.12, 0.12)
-      p.lineTo(dx - 0.13, 0.04)
-      p.lineTo(dx - 0.17, 0.04)
+      p.moveTo(X(-0.2), 0.12)
+      p.quadraticCurveTo(X(-0.22), 0.22, X(-0.12), 0.23)
+      p.lineTo(X(0.12), 0.23)
+      p.quadraticCurveTo(X(0.16), 0.3, X(0.22), 0.29)
+      p.quadraticCurveTo(X(0.29), 0.27, X(0.26), 0.2)
+      p.lineTo(X(0.17), 0.15)
+      p.lineTo(X(0.15), 0.04)
+      p.lineTo(X(0.11), 0.04)
+      p.lineTo(X(0.1), 0.12)
+      p.lineTo(X(-0.12), 0.12)
+      p.lineTo(X(-0.13), 0.04)
+      p.lineTo(X(-0.17), 0.04)
       p.closePath()
     },
-    pts(dx - 0.22, 0.04, dx + 0.29, 0.3)
+    pts(X(0.29), 0.04, X(-0.22), 0.3)
   )
-  s.strip([[x - H * 0.2, H * 0.42], [dx - 0.3, 0.32], [dx + 0.12, 0.22]], 0.007, 0.03)
   s.strip([[ux, H * 0.72], [ux, uy + 0.2]], 0.014, 0.04)
   paint(s, [
     ...person(s, x, 0, H, { coat: '#b9b0d6', hold: 'umbrella', skirt: true, hair: '#2d2420', scarf: '#ffffff' }),
@@ -562,12 +562,22 @@ export function dogWalker(s: Sketch) {
       color: '#9a5b37',
       ink: 0.012,
       detail: () => {
-        s.fill(s.ellipse(dx + 0.22, 0.26, 0.012, 0.012), INK)
-        s.fill(s.ellipse(dx + 0.15, 0.22, 0.04, 0.05, 0.4), shade('#9a5b37', -0.3))
-        s.fill(s.rect(dx + 0.07, 0.2, 0.05, 0.03, 0), C.red)
+        s.fill(s.ellipse(X(0.22), 0.26, 0.012, 0.012), INK)
+        s.fill(s.ellipse(X(0.15), 0.22, 0.04, 0.05, -0.4), shade('#9a5b37', -0.3))
+        s.fill(s.rect(X(0.12), 0.2, 0.05, 0.03, 0), C.red)
       },
     },
   ])
+  // Leash from her free hand to the collar, drawn on top.
+  s.strip(
+    [
+      [x - H * 0.2, H * 0.42],
+      [(x - H * 0.2 + X(0.1)) / 2, 0.3],
+      [X(0.1), 0.22],
+    ],
+    0.012,
+    0.03
+  )
 }
 
 // ---------------------------------------------------------------------------
