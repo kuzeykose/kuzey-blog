@@ -29,6 +29,10 @@ type Half = {
 
 type Paper = { front: THREE.Material; back: THREE.Material }
 
+// A loose petal, in its piece's anchor space. `landed` is the age it
+// settled on the page at (0 while still falling).
+type Petal = { pos: THREE.Vector3; vel: THREE.Vector3; rot: THREE.Euler; spin: THREE.Vector3; age: number; landed: number; phase: number }
+
 type Piece = {
   def: PieceDef
   paper: Paper
@@ -50,6 +54,7 @@ type Piece = {
   run: { s: number; target: number; dir: number; wait: number; cum: number[]; len: number } | null
   // Pieces that turn about a point (the Wonder Wheel).
   spin: { angle: number; vel: number } | null
+  petals: { mesh: THREE.InstancedMesh; items: Petal[] } | null
 }
 
 const OPEN_TIME = 4.4
@@ -95,6 +100,8 @@ const easeOutBack = (t: number) => {
   return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2)
 }
 const smooth = (t: number) => t * t * (3 - 2 * t)
+const PETALS = 48
+const dummy = new THREE.Object3D()
 const nextFrame = () => new Promise<void>((r) => setTimeout(r, 0))
 
 export class CityStage {
@@ -112,6 +119,7 @@ export class CityStage {
   private leafCurl: PageCurl | null = null
   private pieces: Piece[] = []
   private pickables: THREE.Object3D[] = []
+  private petalKit: { geo: THREE.BufferGeometry; mat: THREE.Material } | null = null
   private platform: { groups: THREE.Group[]; rise: number; start: number; eps: number; top: number } | null = null
   // Which spread is showing (target) and how far the turn between them is.
   private page = 0
@@ -352,6 +360,7 @@ export class CityStage {
       parent,
       run: def.run ? runState(def.run) : null,
       spin: def.spin ? { angle: 0, vel: def.spin.idle } : null,
+      petals: null,
     }
 
     for (const seg of segs) {
@@ -406,6 +415,24 @@ export class CityStage {
       light.position.set((def.lamp[0] - def.w / 2) * k, (def.lamp[1] - 0.05) * k, 0.25)
       piece.halves[0].bob.add(light)
       piece.light = light
+    }
+    if (def.petals) {
+      if (!this.petalKit) {
+        this.petalKit = {
+          geo: new THREE.CircleGeometry(0.075, 7),
+          mat: new THREE.MeshStandardMaterial({ roughness: 0.8, side: THREE.DoubleSide }),
+        }
+        this.disposables.push(this.petalKit.geo, this.petalKit.mat)
+      }
+      // Under the anchor, so they fall free of the paper's wobble.
+      const mesh = new THREE.InstancedMesh(this.petalKit.geo, this.petalKit.mat, PETALS)
+      const tones = ['#ef8fb0', '#fde6ee', '#f6b3c9'].map((c) => new THREE.Color(c))
+      for (let i = 0; i < PETALS; i++) mesh.setColorAt(i, tones[i % tones.length])
+      mesh.count = 0
+      mesh.frustumCulled = false
+      mesh.visible = false
+      piece.halves[0].anchor.add(mesh)
+      piece.petals = { mesh, items: [] }
     }
     return piece
   }
@@ -640,6 +667,7 @@ export class CityStage {
 
   private poke(p: Piece) {
     const kind = p.def.poke ?? 'tilt'
+    if (p.petals) this.shed(p)
     if (p.spin) {
       p.spin.vel += 2.4
     } else if (p.run) {
@@ -654,6 +682,68 @@ export class CityStage {
       const q = this.pieces.find((o) => o.def.id === p.def.startles)
       if (q?.run && q.run.s === 0) q.run.target = q.run.len
     }
+  }
+
+  // Shake a flurry of petals loose from the piece's blossoms.
+  private shed(p: Piece) {
+    const k = p.def.scale ?? 1
+    const circles = p.def.petals!
+    const items = p.petals!.items
+    items.length = 0
+    for (let i = 0; i < PETALS; i++) {
+      const [cx, cy, r] = circles[i % circles.length]
+      const a = Math.random() * Math.PI * 2
+      const d = Math.sqrt(Math.random()) * r
+      items.push({
+        pos: new THREE.Vector3((cx + Math.cos(a) * d - p.def.w / 2) * k, (cy + Math.sin(a) * d) * k, 0.04 + Math.random() * 0.1),
+        vel: new THREE.Vector3(-0.15 + Math.random() * 0.45, Math.random() * 0.3, 0.25 + Math.random() * 0.4),
+        rot: new THREE.Euler(Math.random() * 6, Math.random() * 6, Math.random() * 6),
+        spin: new THREE.Vector3(2 + Math.random() * 4, 1 + Math.random() * 3, Math.random() * 2),
+        // Staggered, so they let go a few at a time.
+        age: -Math.random() * 0.8,
+        landed: 0,
+        phase: Math.random() * Math.PI * 2,
+      })
+    }
+  }
+
+  private flutter(p: Piece, dt: number, live: boolean) {
+    const { mesh, items } = p.petals!
+    if (!live) items.length = 0
+    let busy = false
+    // Each petal keeps its own instance (and so its colour); ones not yet
+    // released or already gone are drawn at zero size.
+    items.forEach((it, i) => {
+      it.age += dt
+      if (it.age >= 0 && !it.landed) {
+        // Falling slowly, drifting with the breeze and tumbling.
+        it.vel.y = Math.max(-0.3, it.vel.y - 0.8 * dt)
+        it.vel.z *= 1 - 0.3 * dt
+        it.pos.x += (it.vel.x + Math.sin(it.age * 3.1 + it.phase) * 0.22) * dt
+        it.pos.y += it.vel.y * dt
+        it.pos.z += it.vel.z * dt
+        it.rot.x += it.spin.x * dt
+        it.rot.y += it.spin.y * dt
+        it.rot.z += it.spin.z * dt
+        if (it.pos.y <= 0.006) {
+          it.pos.y = 0.006
+          it.landed = it.age
+          it.rot.set(-Math.PI / 2, 0, it.phase)
+        }
+      }
+      // Settled ones linger on the page, then fade away.
+      const size = it.age < 0 ? 0 : it.landed ? clamp01(1 - (it.age - it.landed - 2) / 0.6) : 1
+      if (it.age < 0 || size > 0) busy = true
+      dummy.position.copy(it.pos)
+      dummy.rotation.copy(it.rot)
+      dummy.scale.set(size, 0.62 * size, size)
+      dummy.updateMatrix()
+      mesh.setMatrixAt(i, dummy.matrix)
+    })
+    if (!busy) items.length = 0
+    mesh.count = items.length
+    mesh.visible = items.length > 0
+    mesh.instanceMatrix.needsUpdate = true
   }
 
   // ---------------------------------------------------------------- frame
@@ -808,6 +898,7 @@ export class CityStage {
         for (const h of p.halves) h.bob.rotation.z = p.spin.angle
       }
       if (p.run) this.scurry(p, dt, time)
+      if (p.petals) this.flutter(p, dt, visible && p.rise > 0.98 && this.openTarget === 1)
     }
 
     // Each spread puts on its little show once it has fully risen.

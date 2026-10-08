@@ -1074,3 +1074,318 @@ export function cyclist(s: Sketch) {
     { shape: beanie, color: '#e2a03c', ink: 0.01 },
   ])
 }
+
+// ---------------------------------------------------------------------------
+// Barclays Center: bands of rusted weathering steel swooping down over the
+// plaza, the oculus canopy with its LED marquee, and the subway entrance with
+// its planted roof.
+
+export function barclaysCenter(s: Sketch) {
+  const W = s.w
+  const H = s.h
+  const rust = ['#9c4a2b', '#b45c33', '#8a4127', '#a85230']
+  const mid = W * 0.5
+  const body = s.custom(
+    (p) => {
+      p.moveTo(0.08, 0)
+      p.lineTo(0.08, 1.0)
+      p.quadraticCurveTo(0.1, 1.42, 0.6, 1.48)
+      p.quadraticCurveTo(W * 0.55, 1.56, W - 0.6, H - 0.06)
+      p.quadraticCurveTo(W - 0.1, H - 0.02, W - 0.08, 1.35)
+      p.lineTo(W - 0.08, 0)
+      p.closePath()
+    },
+    pts(0.08, 0, W - 0.08, H)
+  )
+  // Each steel band rises gently to the right and dips over the entrance.
+  const band = (i: number, x: number) =>
+    0.36 + i * 0.165 + 0.1 * (x / W) - 0.2 * Math.exp(-(((x - mid) / 0.85) ** 2)) * (1 - i / 9)
+  const curve = (i: number, dy = 0) => {
+    const line: Pt[] = []
+    for (let x = 0; x <= W + 0.001; x += 0.05) line.push([x, band(i, x) + dy])
+    return line
+  }
+  const stroke = (c: CanvasRenderingContext2D, line: Pt[]) => {
+    c.beginPath()
+    line.forEach(([x, y], k) => (k ? c.lineTo(x, y) : c.moveTo(x, y)))
+    c.stroke()
+  }
+  // The oculus canopy, seen from a little above.
+  const cy = 0.86
+  const rx = W * 0.43
+  const ry = 0.19
+  const t = 0.13
+  const canopy = s.ellipse(mid, cy, rx, ry)
+  const rim = s.custom(
+    (p) => {
+      p.ellipse(mid, cy, rx, ry, 0, Math.PI, Math.PI * 2, false)
+      p.lineTo(mid + rx, cy - t)
+      p.ellipse(mid, cy - t, rx, ry, 0, Math.PI * 2, Math.PI, true)
+      p.closePath()
+    },
+    pts(mid - rx, cy - ry - t, mid + rx, cy)
+  )
+  const oculus = s.ellipse(mid + 0.08, cy + 0.01, 0.42, 0.075)
+  const lobby = s.rect(0.75, 0, W - 1.5, cy - ry - t, 0.002)
+  const kiosk = s.poly(pts(0.18, 0, 1.0, 0, 1.0, 0.3, 0.18, 0.13), 0.002)
+  const c = s.ctx
+  paint(s, [
+    {
+      shape: body,
+      color: '#3b3338',
+      ink: 0.026,
+      detail: () => {
+        c.save()
+        c.clip(body.path)
+        for (let i = 0; i < 9; i++) {
+          c.strokeStyle = rust[i % rust.length]
+          c.lineWidth = 0.105
+          stroke(c, curve(i))
+          c.strokeStyle = 'rgba(255,214,170,0.35)'
+          c.lineWidth = 0.015
+          stroke(c, curve(i, 0.04))
+        }
+        // Seams between the steel panels.
+        c.strokeStyle = rgba(INK, 0.25)
+        c.lineWidth = 0.008
+        for (let x = 0.1; x < W; x += 0.055) stroke(c, [[x, 0], [x + 0.02, H]])
+        c.restore()
+        // Glass between the bands glows at night.
+        const g = s.glowCtx
+        if (g) {
+          g.save()
+          g.clip(body.path)
+          g.strokeStyle = 'rgba(255,196,120,0.4)'
+          g.lineWidth = 0.028
+          for (let i = 0; i < 9; i++) stroke(g, curve(i, 0.083))
+          g.restore()
+        }
+        s.hatch(s.rect(W - 0.45, 0, 0.45, H, 0), { angle: 1.25, gap: 0.04, alpha: 0.25 })
+      },
+    },
+    {
+      shape: lobby,
+      color: '#a9c3c9',
+      ink: 0.016,
+      detail: () => {
+        s.glow(lobby, '#c99a5c')
+        for (let x = 0.85; x < W - 0.75; x += 0.14) {
+          s.line([[x, 0], [x, cy - ry - t]], 0.01, rgba(INK, 0.45), 0)
+          s.glow(s.rect(x - 0.008, 0, 0.016, cy - ry - t, 0), '#000')
+        }
+        // A few fans heading in.
+        for (const x of [1.25, 1.6, 2.05, 2.3]) {
+          s.fill(s.rect(x - 0.035, 0, 0.07, 0.2, 0), shade(C.navy, s.r(-0.1, 0.2)))
+          s.fill(s.ellipse(x, 0.25, 0.038, 0.042), C.skin)
+        }
+      },
+    },
+    {
+      shape: canopy,
+      color: '#7a4430',
+      ink: 0.02,
+      hatch: { angle: 0.15, gap: 0.035, alpha: 0.25 },
+    },
+    {
+      shape: oculus,
+      color: '#d6e4e8',
+      ink: 0.014,
+      detail: () => s.glow(oculus, '#ffe6b8'),
+    },
+    {
+      shape: rim,
+      color: '#221e24',
+      ink: 0.018,
+      flat: true,
+      detail: () =>
+        s.text('BARCLAYS CENTER', mid, cy - ry - t + 0.035, 0.085, {
+          color: '#f4f6fb',
+          font: 'Helvetica, Arial, sans-serif',
+          spacing: 3,
+          glow: '#e8f2ff',
+        }),
+    },
+    {
+      // Atlantic Av–Barclays Ctr: a glass box under a sloping lawn.
+      shape: kiosk,
+      color: '#c9d9dc',
+      ink: 0.016,
+      detail: () => {
+        s.glow(kiosk, '#b88f58')
+        s.fill(s.rect(0.3, 0.05, 0.58, 0.08, 0), INK)
+        const lines = ['#ee352e', '#ee352e', '#00933c', '#00933c', '#ff6319', '#ff6319', '#fccc0a', '#fccc0a', '#fccc0a']
+        lines.forEach((col, i) => s.fill(s.ellipse(0.35 + i * 0.062, 0.09, 0.024, 0.024), col))
+      },
+    },
+  ])
+  s.strip([[0.14, 0.12], [1.04, 0.31]], 0.06, 0.03, '#7aa769')
+}
+
+// ---------------------------------------------------------------------------
+// Brooklyn Botanic Garden: cherry blossoms, the vermilion torii standing in
+// the Japanese Hill-and-Pond Garden, and the Palm House behind.
+
+const BLOSSOM = '#f3b3c7'
+const BLOSSOM_SHADOW = 'rgba(185,70,115,0.5)'
+
+function cherryTree(s: Sketch, x: number, base: number, top: number, r: number, color = BLOSSOM) {
+  const trunk = s.poly(pts(x - 0.07, base, x + 0.07, base, x + 0.04, top, x - 0.04, top), 0.003)
+  s.border([trunk], 0.05)
+  s.wash(trunk, '#5a3d33')
+  s.ink(trunk, 0.014)
+  s.strip([[x, top - 0.12], [x - r * 0.8, top + r * 0.3]], 0.03, 0.035, '#5a3d33')
+  s.strip([[x, top - 0.2], [x + r * 0.8, top + r * 0.25]], 0.03, 0.035, '#5a3d33')
+  const circles: [number, number, number][] = [
+    [x, top + r * 0.5, r],
+    [x - r * 0.95, top + r * 0.95, r * 0.78],
+    [x + r * 0.95, top + r * 1.0, r * 0.82],
+    [x - r * 0.5, top + r * 1.8, r * 0.88],
+    [x + r * 0.55, top + r * 1.95, r * 0.82],
+    [x, top + r * 2.6, r * 0.68],
+  ]
+  blobs(s, circles, color, BLOSSOM_SHADOW, 0.022)
+  // Clusters of blossom, darker pink and near-white.
+  const c = s.ctx
+  c.save()
+  for (const [cx, cy, cr] of circles) {
+    for (let i = 0; i < 14; i++) {
+      const a = s.r(0, Math.PI * 2)
+      const d = Math.sqrt(s.rnd()) * cr * 0.85
+      c.fillStyle = s.rnd() < 0.5 ? '#e48aa9' : '#fff1f5'
+      c.beginPath()
+      c.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d, s.r(0.018, 0.034), 0, Math.PI * 2)
+      c.fill()
+    }
+  }
+  c.restore()
+}
+
+// The garden's blossom canopies, where its petals fall from.
+export const GARDEN_BLOSSOMS: [number, number, number][] = [
+  [1.62, 1.45, 0.45],
+  [1.62, 1.8, 0.25],
+  [2.58, 1.12, 0.25],
+]
+
+export function botanicGarden(s: Sketch) {
+  const W = s.w
+  const bank = 0.42
+  const lawn = s.custom(
+    (p) => {
+      p.moveTo(0, 0)
+      p.lineTo(W, 0)
+      p.lineTo(W, bank + 0.02)
+      p.quadraticCurveTo(W * 0.5, bank + 0.08, 0, bank)
+      p.closePath()
+    },
+    pts(0, 0, W, bank + 0.08)
+  )
+  const pond = s.custom(
+    (p) => {
+      p.moveTo(0.95, 0)
+      p.lineTo(W - 0.04, 0)
+      p.lineTo(W - 0.04, 0.26)
+      p.quadraticCurveTo(W * 0.7, 0.38, 1.1, 0.33)
+      p.quadraticCurveTo(0.9, 0.3, 0.95, 0)
+      p.closePath()
+    },
+    pts(0.9, 0, W - 0.04, 0.36)
+  )
+  // The Palm House: white frame, green glass, a domed centre bay.
+  const house = s.rect(0.3, bank, 1.2, 0.5, 0.003)
+  const bay = s.custom(
+    (p) => {
+      p.moveTo(0.7, bank + 0.5)
+      p.lineTo(0.7, bank + 0.66)
+      p.arc(0.9, bank + 0.66, 0.2, Math.PI, 0, true)
+      p.lineTo(1.1, bank + 0.5)
+      p.closePath()
+    },
+    pts(0.7, bank + 0.5, 1.1, bank + 0.86)
+  )
+  const glassDetail = (shape: { minX: number; maxX: number; minY: number; maxY: number }) => {
+    s.glow(s.rect(shape.minX, shape.minY, shape.maxX - shape.minX, shape.maxY - shape.minY, 0), '#c9a463')
+    for (let x = shape.minX + 0.08; x < shape.maxX - 0.02; x += 0.09) {
+      s.line([[x, shape.minY], [x, shape.maxY]], 0.012, '#fbfaf6', 0)
+      s.glow(s.rect(x - 0.01, shape.minY, 0.02, shape.maxY - shape.minY, 0), '#000')
+    }
+  }
+  paint(s, [
+    { shape: lawn, color: '#9cbf6a', ink: 0.02 },
+    {
+      shape: house,
+      color: '#cfe3df',
+      ink: 0.018,
+      detail: () => {
+        glassDetail(house)
+        s.line([[0.3, bank + 0.26], [1.5, bank + 0.26]], 0.014, '#fbfaf6', 0)
+        s.fill(s.rect(0.27, bank + 0.47, 1.26, 0.05, 0), '#f4f1ea')
+      },
+    },
+    { shape: bay, color: '#cfe3df', ink: 0.016, detail: () => glassDetail(bay) },
+  ])
+  cherryTree(s, 2.58, bank + 0.02, 0.84, 0.2, '#f7c6d5')
+  cherryTree(s, 1.62, bank - 0.04, 0.95, 0.34)
+
+  // The pond, with lily pads and fallen petals.
+  s.border([pond], 0.03)
+  s.wash(pond, '#7fb3c2', { blooms: 6 })
+  s.ink(pond, 0.016)
+  for (let i = 0; i < 6; i++) {
+    const y = s.r(0.04, 0.26)
+    const x = s.r(1.05, W - 0.3)
+    s.line([[x, y], [x + s.r(0.12, 0.22), y]], 0.01, 'rgba(255,255,255,0.7)', 0)
+  }
+  for (const [x, y] of [[1.25, 0.12], [2.6, 0.2], [1.45, 0.24]]) s.fill(s.ellipse(x, y, 0.07, 0.025), '#5f9a55')
+  for (let i = 0; i < 16; i++) s.fill(s.ellipse(s.r(1.05, W - 0.12), s.r(0.03, 0.28), 0.014, 0.01), '#f2a5bd')
+
+  // The torii, standing in the water.
+  const tc = 2.08
+  const half = 0.24
+  const red = '#d9452b'
+  const pillars = [-1, 1].map((k) => {
+    const x = tc + k * half
+    return s.poly(pts(x - 0.035, 0.1, x + 0.035, 0.1, x + 0.028, 0.98, x - 0.028, 0.98), 0.002)
+  })
+  const nuki = s.rect(tc - half - 0.1, 0.76, half * 2 + 0.2, 0.05, 0.002)
+  const strut = s.rect(tc - 0.025, 0.81, 0.05, 0.13, 0)
+  const lintel = s.rect(tc - half - 0.13, 0.94, half * 2 + 0.26, 0.06, 0.002)
+  const cap = s.custom(
+    (p) => {
+      const l = tc - half - 0.2
+      const r = tc + half + 0.2
+      p.moveTo(l, 1.07)
+      p.quadraticCurveTo(tc, 0.98, r, 1.07)
+      p.lineTo(r - 0.01, 1.12)
+      p.quadraticCurveTo(tc, 1.05, l + 0.01, 1.12)
+      p.closePath()
+    },
+    pts(tc - half - 0.2, 0.99, tc + half + 0.2, 1.12)
+  )
+  // Reflections first, under the posts.
+  for (const k of [-1, 1]) s.fill(s.rect(tc + k * half - 0.03, 0.0, 0.06, 0.1, 0), rgba(red, 0.35))
+  paint(
+    s,
+    [
+      ...pillars.map((shape) => ({ shape, color: red, ink: 0.012 })),
+      { shape: nuki, color: red, ink: 0.012 },
+      { shape: strut, color: red, ink: 0.01 },
+      { shape: lintel, color: red, ink: 0.012 },
+      { shape: cap, color: '#2a2733', ink: 0.012 },
+    ],
+    0.04
+  )
+
+  // A stone lantern on the bank.
+  const stone = '#aaa59a'
+  const lantern = [
+    s.rect(0.12, 0.12, 0.16, 0.04, 0.002),
+    s.rect(0.17, 0.16, 0.06, 0.13, 0.002),
+    s.rect(0.13, 0.29, 0.14, 0.1, 0.002),
+    s.poly(pts(0.07, 0.39, 0.33, 0.39, 0.2, 0.48), 0.002),
+  ]
+  paint(s, lantern.map((shape) => ({ shape, color: stone, ink: 0.01 })), 0.04)
+  const flame = s.rect(0.17, 0.31, 0.06, 0.06, 0)
+  s.fill(flame, '#ffe7a8')
+  s.glow(flame, '#ffd27a')
+}

@@ -62,6 +62,8 @@ export type PieceDef = {
   // A point light at this art position after dark (warm unless coloured).
   lamp?: [number, number]
   lampColor?: string
+  // Poking it shakes petals loose from these art circles (x, y, radius).
+  petals?: [number, number, number][]
 }
 
 // Where the ring-toss bagel rests on the Chrysler's crown.

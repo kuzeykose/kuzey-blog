@@ -495,8 +495,14 @@ export function manhattanSpread() {
 export function brooklynSpread() {
   const m = new MapSheet(77)
   const { c } = m
-  const manhattanShore = m.shore(-7.3, 0.15, 11)
-  const shore = m.shore(-4.5, 0.3, 12)
+  // Manhattan ends at the Battery; Brooklyn's shore swings west past Red
+  // Hook, leaving room for Downtown and Atlantic Avenue.
+  const ease = (a: number, b: number, v: number) => {
+    const t = Math.min(1, Math.max(0, (v - a) / (b - a)))
+    return t * t * (3 - 2 * t)
+  }
+  const manhattanShore = m.shore(-7.3, 0.15, 11).map(([x, z]) => [x - 1.8 * ease(-1.2, 0.4, z), z] as [number, number])
+  const shore = m.shore(-4.5, 0.3, 12).map(([x, z]) => [x - 2.9 * ease(-1.6, 1.0, z), z] as [number, number])
   const beach = m.coast(2.75, 0.18, 13)
   const surf = beach.map(([x, z]) => [x, z + 0.75] as [number, number])
   const farLeft: Line = [[X0 - 1, Z0 - 1], [X0 - 1, Z1 + 1]]
@@ -643,7 +649,7 @@ export function brooklynSpread() {
   }
 
   m.ink([manhattanShore, shore, beach])
-  m.piers(shore, -1, Z0 + 0.6, 2.2, 0.85)
+  m.piers(shore, -1, Z0 + 0.6, -0.8, 0.85)
   // Manhattan's waterfront across the river.
   c.save()
   c.clip(between(farLeft, manhattanShore))
@@ -656,17 +662,17 @@ export function brooklynSpread() {
   c.restore()
 
   m.boat(-5.9, -3.1, 0.55, '#2f4566', '#f6f0e2', 1.6)
-  m.boat(-6.3, 0.9, 0.85, '#ee7d33', '#fff4df', -1.5)
+  m.boat(-7.85, 2.5, 0.75, '#ee7d33', '#fff4df', -1.5)
   m.boat(-2.5, 4.7, 0.6, '#f6f0e2', '#9c6b48', 0.15)
   m.boat(4.8, 4.9, 0.5, C.red, '#f6f0e2', 3.0)
   m.dotted(() => {
-    c.moveTo(-6.3, 1.6)
-    c.quadraticCurveTo(-5.6, -1.2, -6.0, -3.6)
+    c.moveTo(-7.85, 1.8)
+    c.quadraticCurveTo(-6.6, -1.0, -6.0, -3.6)
   })
   m.compass(6.6, 4.45)
 
-  m.label('EAST  RIVER', -5.95, -1.0, 0.28, -Math.PI / 2, { color: rgba('#2f5468', 0.8) })
-  m.label('MANHATTAN', -7.75, 0.2, 0.18, -Math.PI / 2)
+  m.label('EAST  RIVER', -5.95, -2.3, 0.28, -Math.PI / 2, { color: rgba('#2f5468', 0.8) })
+  m.label('MANHATTAN', -7.75, -2.6, 0.18, -Math.PI / 2)
   m.label('B R O O K L Y N', 0.6, -0.4, 0.26, -0.3, { spacing: 10 })
   m.label('Prospect Park', 4.35, -1.45, 0.14, -0.1, { italic: true, spacing: 2 })
   m.label('DUMBO', -3.6, -4.3, 0.13, 0, { spacing: 6 })

@@ -120,7 +120,9 @@ export class PageCurl {
   attach(root: THREE.Object3D) {
     root.traverse((o) => {
       const mesh = o as THREE.Mesh
-      if (!mesh.isMesh) return
+      // The curl replaces the chunk that applies instance matrices; loose
+      // bits like petals are hidden while a page turns anyway.
+      if (!mesh.isMesh || (mesh as THREE.InstancedMesh).isInstancedMesh) return
       const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
       if (mats.some((m) => this.copies.has(m))) return
       mesh.material = Array.isArray(mesh.material)
