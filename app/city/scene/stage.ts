@@ -4,6 +4,7 @@ import { Cutout, Sketch } from './sketch'
 import { PIECES, PLATFORM, PieceDef } from './pieces'
 import { buildBook, Book } from './book'
 import { canvasTexture, paperMaterials, shared } from './materials'
+import { PageCurl } from './bend'
 import { curb, roadTop, sidewalk, tableTop } from './art-book'
 
 export type StageEvents = {
@@ -44,7 +45,11 @@ type Piece = {
 
 const OPEN_TIME = 4.4
 const CLOSE_TIME = 2.8
-const RISE_SPAN = 0.2
+// Share of the open/close timeline spent turning the page; the pop-ups
+// rise after it lands.
+const TURN = 0.4
+const RISE_SPAN = 0.18
+const riseStart = (order: number) => TURN + 0.02 + order * 0.4
 
 const DAY = {
   bg: new THREE.Color('#ece3d2'),
@@ -88,6 +93,7 @@ export class CityStage {
   private raf = 0
   private disposed = false
   private book: Book | null = null
+  private curl: PageCurl | null = null
   private pieces: Piece[] = []
   private pickables: THREE.Object3D[] = []
   private platform: { groups: THREE.Group[]; rise: number; start: number; eps: number; top: number } | null = null
@@ -101,6 +107,8 @@ export class CityStage {
   // how far the cover is lifted by the pointer while it waits.
   private closedNow = 1
   private fromClosed = 1
+  private curlNow = 0
+  private fromCurl = 0
   private hoverCover = false
   private hoverLift = 0
   // When the book has just finished opening, a little show starts after
@@ -231,6 +239,8 @@ export class CityStage {
     })
     this.scene.add(this.book.root)
     this.book.setAngle(1)
+    this.curl = new PageCurl(this.book.flapLength)
+    this.curl.attach(this.book.flap)
     // Show the closed book straight away; the pop-ups are cut behind it.
     this.update(0)
     this.loop()
@@ -249,6 +259,8 @@ export class CityStage {
       if (this.disposed) return
     }
     this.buildPlatform(aniso)
+    // Everything now glued to the left page curls with it.
+    this.curl.attach(this.book.flap)
     this.events.onProgress?.(1)
     this.renderer.compile(this.scene, this.camera)
     this.ready = true
@@ -311,7 +323,7 @@ export class CityStage {
       })
     }
 
-    const start = 0.34 + def.order * 0.46
+    const start = riseStart(def.order)
     const piece: Piece = {
       def,
       cut,
@@ -329,7 +341,13 @@ export class CityStage {
     }
 
     for (const seg of segs) {
-      const geo = new THREE.PlaneGeometry(seg.x1 - seg.x0, H)
+      // Divided finely enough to follow the page as it curls.
+      const geo = new THREE.PlaneGeometry(
+        seg.x1 - seg.x0,
+        H,
+        Math.max(1, Math.ceil((seg.x1 - seg.x0) / 0.4)),
+        Math.max(1, Math.ceil(H / 0.4))
+      )
       const uv = geo.attributes.uv as THREE.BufferAttribute
       const u0 = (seg.x0 - left) / W
       const u1 = (seg.x1 - left) / W
@@ -413,7 +431,7 @@ export class CityStage {
     this.platform = {
       groups,
       rise: 0,
-      start: 0.34 + PLATFORM.order * 0.46,
+      start: riseStart(PLATFORM.order),
       eps: 0.003 + (1 - PLATFORM.order) * 0.04,
       top: PLATFORM.tiers.length * PLATFORM.step,
     }
@@ -429,21 +447,21 @@ export class CityStage {
     }
     if (this.openTarget === (open ? 1 : 0)) return
     this.openTarget = open ? 1 : 0
-    if (open && this.openT === 0) this.fromClosed = this.closedNow
-    if (this.reduced) this.settle()
-    else this.glideTo(open ? this.homeShot() : this.closedShot())
+    if (open && this.openT === 0) {
+      this.fromClosed = this.closedNow
+      this.fromCurl = this.curlNow
+    }
+    // The page turn plays even with reduced motion: it's the one thing the
+    // visitor asked for by clicking. Ambient motion is what gets dropped.
+    this.glideTo(open ? this.homeShot() : this.closedShot())
     this.events.onOpenChange?.(open)
   }
 
   setNight(night: boolean) {
     this.nightTarget = night ? 1 : 0
-    if (this.reduced) {
-      this.nightT = this.nightTarget
-      this.applyNight()
-    }
   }
 
-  // Skip any running transition (used by tests and reduced motion).
+  // Skip any running transition (handy from the dev console).
   settle() {
     this.openT = this.openTarget
     this.nightT = this.nightTarget
@@ -603,28 +621,35 @@ export class CityStage {
     const t = this.openT
     const time = this.timer.getElapsed()
     let closed: number
+    let curl: number
+    const p = clamp01(t / TURN)
     if (t === 0 && !opening) {
-      // Waiting to be opened: the cover peeks up every few seconds and lifts
-      // further while the pointer is over it.
-      this.hoverLift += ((this.hoverCover ? 1 : 0) - this.hoverLift) * Math.min(1, dt * 8)
-      const pulse = this.reduced ? 0 : Math.pow(Math.max(0, Math.sin(time * 1.5)), 6)
-      closed = 1 - 0.022 * pulse - 0.05 * this.hoverLift
+      // Waiting to be opened: the cover's free edge lifts and settles like
+      // a page corner in a draught, and lifts further under the pointer.
+      this.hoverLift += ((this.hoverCover ? 1 : 0) - this.hoverLift) * Math.min(1, dt * 6)
+      const breath = this.reduced ? 0 : 0.5 - 0.5 * Math.cos(time * 1.3)
+      closed = 1
+      curl = 0.08 * breath + 0.22 * this.hoverLift
     } else if (opening) {
-      // Swing over, then land with two small bounces.
-      const u = clamp01(t / 0.46)
-      if (u < 0.84) {
-        closed = this.fromClosed * (1 - easeInOut(u / 0.84))
-      } else {
-        const v = clamp01((u - 0.84) / 0.16)
-        closed = 0.03 * Math.abs(Math.sin(2 * Math.PI * v)) * Math.pow(1 - v, 1.5)
-      }
+      // Turn the page: the free edge leads, curling over, and the page
+      // flattens as it lands.
+      closed = this.fromClosed * (1 - easeInOut(p))
+      curl = Math.max(this.fromCurl * (1 - p) ** 2, 1.5 * Math.sin(Math.PI * p) * (1 - p) ** 0.6)
+      // Never curl past the table.
+      curl = Math.min(curl, 0.9 * Math.PI * closed)
     } else {
-      closed = 1 - easeInOut(clamp01(t / 0.42))
+      // Closing: the free edge leads the other way.
+      closed = 1 - easeInOut(p)
+      const q = 1 - p
+      curl = -1.3 * Math.sin(Math.PI * q) * (1 - q) ** 0.6
+      curl = Math.max(curl, -0.9 * Math.PI * (1 - closed))
     }
     this.closedNow = closed
-    // The cloth cover flexes while it is moving and lies flat at either end.
-    const moving = t > 0 && t < 0.46
-    this.book?.setAngle(closed, moving ? 0.17 * Math.pow(Math.sin(Math.PI * closed), 1.2) : 0)
+    this.curlNow = curl
+    if (this.book) {
+      this.book.setAngle(closed)
+      this.curl?.update(this.book.flap, curl)
+    }
 
     const riseOf = (start: number) => {
       const k = clamp01((t - start) / RISE_SPAN)
@@ -786,6 +811,7 @@ export class CityStage {
     el.removeEventListener('pointerleave', this.onPointerLeave)
     this.controls.dispose()
     this.timer.dispose()
+    this.curl?.dispose()
     this.book?.dispose()
     this.disposables.forEach((d) => d.dispose())
     this.renderer.dispose()
@@ -804,25 +830,38 @@ function prism(
   sideMat: THREE.Material,
   topKind: 'road' | 'walk'
 ) {
-  const contour = poly.map(([x, z]) => new THREE.Vector2(x, z))
-  const tris = THREE.ShapeUtils.triangulateShape(contour, [])
+  // The top is cut into narrow strips across x so it can curl with the
+  // page while the book turns.
   const pos: number[] = []
   const uv: number[] = []
-  poly.forEach(([x, z]) => {
-    pos.push(x, h, z)
-    if (topKind === 'road') uv.push((x + 1.6) / 3.2, 1 - (z + 0.7) / 2.4)
-    else uv.push(x, -z)
-  })
   const index: number[] = []
-  tris.forEach(([a, b, c]) => {
-    // Make every triangle face up.
-    const ax = poly[a]
-    const bx = poly[b]
-    const cx = poly[c]
-    const cross = (bx[0] - ax[0]) * (cx[1] - ax[1]) - (bx[1] - ax[1]) * (cx[0] - ax[0])
-    if (cross < 0) index.push(a, b, c)
-    else index.push(a, c, b)
-  })
+  const xs = poly.map((q) => q[0])
+  const minX = Math.min(...xs)
+  const maxX = Math.max(...xs)
+  const strips = Math.max(1, Math.ceil((maxX - minX) / CURL_STEP))
+  for (let i = 0; i < strips; i++) {
+    const part = clipX(poly, minX + ((maxX - minX) * i) / strips, minX + ((maxX - minX) * (i + 1)) / strips)
+    if (part.length < 3) continue
+    const base = pos.length / 3
+    part.forEach(([x, z]) => {
+      pos.push(x, h, z)
+      if (topKind === 'road') uv.push((x + 1.6) / 3.2, 1 - (z + 0.7) / 2.4)
+      else uv.push(x, -z)
+    })
+    const tris = THREE.ShapeUtils.triangulateShape(
+      part.map(([x, z]) => new THREE.Vector2(x, z)),
+      []
+    )
+    tris.forEach(([a, b, c]) => {
+      // Make every triangle face up.
+      const pa = part[a]
+      const pb = part[b]
+      const pc = part[c]
+      const cross = (pb[0] - pa[0]) * (pc[1] - pa[1]) - (pb[1] - pa[1]) * (pc[0] - pa[0])
+      if (cross < 0) index.push(base + a, base + b, base + c)
+      else index.push(base + a, base + c, base + b)
+    })
+  }
   const topGeo = new THREE.BufferGeometry()
   topGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
   topGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2))
@@ -864,19 +903,29 @@ function prism(
     const l = Math.hypot(nx, nz)
     nx /= l
     nz /= l
-    const quad: [number, number, number, number][] = [
-      [p0[0], 0, p0[1], u0],
-      [p1[0], 0, p1[1], u1],
-      [p1[0], h, p1[1], u1],
-      [p0[0], 0, p0[1], u0],
-      [p1[0], h, p1[1], u1],
-      [p0[0], h, p0[1], u0],
-    ]
-    quad.forEach(([x, y, z, u]) => {
-      wp.push(x, y, z)
-      wn.push(nx, 0, nz)
-      wu.push(u, y / step)
-    })
+    const n = Math.max(1, Math.ceil(len / CURL_STEP))
+    for (let k = 0; k < n; k++) {
+      const at = (f: number): [number, number, number] => [
+        p0[0] + (p1[0] - p0[0]) * f,
+        p0[1] + (p1[1] - p0[1]) * f,
+        u0 + (u1 - u0) * f,
+      ]
+      const [ax, az, au] = at(k / n)
+      const [bx, bz, bu] = at((k + 1) / n)
+      const quad: [number, number, number, number][] = [
+        [ax, 0, az, au],
+        [bx, 0, bz, bu],
+        [bx, h, bz, bu],
+        [ax, 0, az, au],
+        [bx, h, bz, bu],
+        [ax, h, az, au],
+      ]
+      quad.forEach(([x, y, z, u]) => {
+        wp.push(x, y, z)
+        wn.push(nx, 0, nz)
+        wu.push(u, y / step)
+      })
+    }
     run += len
   }
   const wallGeo = new THREE.BufferGeometry()
@@ -901,4 +950,27 @@ function runState(run: NonNullable<PieceDef['run']>) {
     cum.push(cum[i - 1] + Math.hypot(bx - ax, bz - az))
   }
   return { s: 0, target: 0, dir: run.face, wait: 0, cum, len: cum[cum.length - 1] }
+}
+
+// Platform geometry is cut into pieces no wider than this so it can curl.
+const CURL_STEP = 0.3
+
+// Clip a convex polygon (x, z) to the band x0 <= x <= x1.
+function clipX(poly: [number, number][], x0: number, x1: number) {
+  const clip = (pts: [number, number][], inside: (p: [number, number]) => boolean, edge: number) => {
+    const out: [number, number][] = []
+    pts.forEach((a, i) => {
+      const b = pts[(i + 1) % pts.length]
+      const ia = inside(a)
+      const ib = inside(b)
+      if (ia) out.push(a)
+      if (ia !== ib) {
+        const t = (edge - a[0]) / (b[0] - a[0])
+        out.push([edge, a[1] + (b[1] - a[1]) * t])
+      }
+    })
+    return out
+  }
+  const left = clip(poly, (p) => p[0] >= x0 - 1e-9, x0)
+  return left.length ? clip(left, (p) => p[0] <= x1 + 1e-9, x1) : left
 }

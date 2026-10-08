@@ -15,9 +15,12 @@ export type Book = {
   // on the page surface and x = 0 on the gutter.
   left: THREE.Group
   right: THREE.Group
-  // closed: 0 = flat open, 1 = shut. bend: how far the front cover flexes
-  // outwards (radians at its outer edge) while it swings.
-  setAngle: (closed: number, bend?: number) => void
+  // The hinge of the turning half (everything under it can curl).
+  flap: THREE.Group
+  // Distance from the spine to the free edge of the front cover.
+  flapLength: number
+  // closed: 0 = flat open, 1 = shut.
+  setAngle: (closed: number) => void
   dispose: () => void
 }
 
@@ -55,66 +58,32 @@ export function buildBook(maxAnisotropy: number): Book {
 
   const coverW = PAGE_W + OVER
   const coverGeo = new THREE.BoxGeometry(coverW, COVER_T, PAGE_D + OVER * 2)
-  // The front cover gets its own finely divided copy so it can flex.
-  const frontGeo = new THREE.BoxGeometry(coverW, COVER_T, PAGE_D + OVER * 2, 32, 1, 1)
   const blockGeo = new THREE.BoxGeometry(PAGE_W, BLOCK_T, PAGE_D)
-  disposables.push(coverGeo, frontGeo, blockGeo)
+  // The turning half is finely divided across its width so it can curl.
+  const frontGeo = new THREE.BoxGeometry(coverW, COVER_T, PAGE_D + OVER * 2, 40, 1, 1)
+  const flapBlockGeo = new THREE.BoxGeometry(PAGE_W, BLOCK_T, PAGE_D, 40, 1, 1)
+  disposables.push(coverGeo, frontGeo, blockGeo, flapBlockGeo)
 
   const half = (
     side: -1 | 1,
     pivot: THREE.Group,
     geo: THREE.BufferGeometry,
+    block: THREE.BufferGeometry,
     art: THREE.Material,
     outside: THREE.Material
   ) => {
     const cover = new THREE.Mesh(geo, [clothMat, clothMat, clothMat, outside, clothMat, clothMat])
     cover.position.set((side * (PAGE_W + OVER)) / 2, -PAGE_Y + COVER_T / 2, 0)
-    const block = new THREE.Mesh(blockGeo, [edgeMat, edgeMat, art, edgeMat, edgeMat, edgeMat])
-    block.position.set((side * PAGE_W) / 2, -BLOCK_T / 2, 0)
-    for (const m of [cover, block]) {
+    const pages = new THREE.Mesh(block, [edgeMat, edgeMat, art, edgeMat, edgeMat, edgeMat])
+    pages.position.set((side * PAGE_W) / 2, -BLOCK_T / 2, 0)
+    for (const m of [cover, pages]) {
       m.castShadow = true
       m.receiveShadow = true
     }
-    pivot.add(cover, block)
+    pivot.add(cover, pages)
   }
-  half(-1, leftPivot, frontGeo, leftArt, coverMat)
-  half(1, rightPivot, coverGeo, rightArt, clothMat)
-
-  // Flex the front cover away from the pages: each point turns a little
-  // further the farther it is from the spine (growing with the square of
-  // the distance), so the board curves like cloth over card.
-  const frontPos = frontGeo.attributes.position as THREE.BufferAttribute
-  const rest = (frontPos.array as Float32Array).slice()
-  const STEPS = 64
-  const curveX = new Float32Array(STEPS + 1)
-  const curveY = new Float32Array(STEPS + 1)
-  let bent = 0
-  const bendCover = (beta: number) => {
-    if (Math.abs(beta - bent) < 1e-4) return
-    bent = beta
-    const ds = coverW / STEPS
-    for (let i = 1; i <= STEPS; i++) {
-      const u = ((i - 0.5) / STEPS) * coverW
-      const psi = beta * (u / coverW) ** 2
-      curveX[i] = curveX[i - 1] - Math.cos(psi) * ds
-      curveY[i] = curveY[i - 1] - Math.sin(psi) * ds
-    }
-    for (let v = 0; v < frontPos.count; v++) {
-      // Distance from the spine, and offset across the board's thickness.
-      const s = Math.min(coverW, Math.max(0, coverW / 2 - rest[v * 3]))
-      const d = rest[v * 3 + 1]
-      const f = (s / coverW) * STEPS
-      const i0 = Math.min(STEPS - 1, Math.floor(f))
-      const k = f - i0
-      const cx = curveX[i0] + (curveX[i0 + 1] - curveX[i0]) * k
-      const cy = curveY[i0] + (curveY[i0 + 1] - curveY[i0]) * k
-      const psi = beta * (s / coverW) ** 2
-      frontPos.setXY(v, cx - Math.sin(psi) * d + coverW / 2, cy + Math.cos(psi) * d)
-    }
-    frontPos.needsUpdate = true
-    frontGeo.computeVertexNormals()
-    frontGeo.computeBoundingSphere()
-  }
+  half(-1, leftPivot, frontGeo, flapBlockGeo, leftArt, coverMat)
+  half(1, rightPivot, coverGeo, blockGeo, rightArt, clothMat)
 
   // Rounded spine. It bisects the angle between the covers, so it tucks under
   // the gutter when the book is open and wraps the page edges when closed.
@@ -141,12 +110,11 @@ export function buildBook(maxAnisotropy: number): Book {
   leftPivot.add(left)
   rightPivot.add(right)
 
-  const setAngle = (closed: number, bend = 0) => {
+  const setAngle = (closed: number) => {
     const t = closed * Math.PI
     leftPivot.rotation.z = -t
     spine.rotation.z = -t / 2
     spine.visible = closed > 0.02
-    bendCover(bend)
   }
   setAngle(0)
 
@@ -154,6 +122,8 @@ export function buildBook(maxAnisotropy: number): Book {
     root,
     left,
     right,
+    flap: leftPivot,
+    flapLength: coverW,
     setAngle,
     dispose: () => disposables.forEach((d) => d.dispose()),
   }
