@@ -4,7 +4,7 @@ import { Part, paint, pts } from './art-common'
 
 // Outline a group of overlapping blobs: a thick ink stroke underneath, the
 // fill on top, so only the outer contour stays inked.
-function blobs(s: Sketch, circles: [number, number, number][], color: string, shadow: string, inkW = 0.03) {
+export function blobs(s: Sketch, circles: [number, number, number][], color: string, shadow: string, inkW = 0.03) {
   const c = s.ctx
   const path = new Path2D()
   circles.forEach(([x, y, r]) => {

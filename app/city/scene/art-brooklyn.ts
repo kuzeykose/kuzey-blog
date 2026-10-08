@@ -1,7 +1,7 @@
 import { INK, Pt, Sketch, rgba, shade } from './sketch'
 import { C } from './palette'
 import { Part, paint, pts, waterTower } from './art-common'
-import { person } from './art-street'
+import { blobs, person } from './art-street'
 
 // Art for the Brooklyn spread.
 
@@ -742,5 +742,335 @@ export function seagull(s: Sketch) {
       },
     },
     { shape: wing, color: '#9aa3ad', ink: 0.01 },
+  ])
+}
+
+// ---------------------------------------------------------------------------
+// Prospect Park: the Soldiers' and Sailors' Arch at Grand Army Plaza, with a
+// chariot group on top. The archway itself is cut out of the paper.
+
+export function grandArmyArch(s: Sketch) {
+  const W = s.w
+  const stone = '#ddd0b4'
+  const bodyTop = s.h - 0.85
+  const body = s.rect(0, 0, W, bodyTop, 0.004)
+  const attic = s.rect(0.12, bodyTop - 0.5, W - 0.24, 0.5, 0.003)
+  const opening = s.custom(
+    (p) => {
+      const w = W * 0.36
+      const x0 = (W - w) / 2
+      p.moveTo(x0, 0)
+      p.lineTo(x0, bodyTop * 0.48)
+      p.arc(W / 2, bodyTop * 0.48, w / 2, Math.PI, 0, true)
+      p.lineTo(x0 + w, 0)
+      p.closePath()
+    },
+    pts((W - W * 0.36) / 2, 0, (W + W * 0.36) / 2, bodyTop * 0.48 + W * 0.18)
+  )
+  // The quadriga: a chariot, four horses rearing, a figure with a flag.
+  const bronze = '#5f8f7a'
+  const base = s.rect(W / 2 - 0.55, bodyTop, 1.1, 0.12, 0.002)
+  const horses = s.custom(
+    (p) => {
+      const y = bodyTop + 0.12
+      p.moveTo(W / 2 - 0.5, y)
+      p.lineTo(W / 2 + 0.5, y)
+      p.lineTo(W / 2 + 0.48, y + 0.18)
+      p.quadraticCurveTo(W / 2 + 0.5, y + 0.36, W / 2 + 0.42, y + 0.42)
+      p.lineTo(W / 2 + 0.34, y + 0.32)
+      p.lineTo(W / 2 + 0.18, y + 0.3)
+      p.lineTo(W / 2 - 0.18, y + 0.3)
+      p.lineTo(W / 2 - 0.34, y + 0.32)
+      p.lineTo(W / 2 - 0.42, y + 0.42)
+      p.quadraticCurveTo(W / 2 - 0.5, y + 0.36, W / 2 - 0.48, y + 0.18)
+      p.closePath()
+    },
+    pts(W / 2 - 0.5, bodyTop, W / 2 + 0.5, bodyTop + 0.55)
+  )
+  const rider = s.poly(pts(W / 2 - 0.08, bodyTop + 0.3, W / 2 + 0.08, bodyTop + 0.3, W / 2 + 0.05, bodyTop + 0.62, W / 2 - 0.05, bodyTop + 0.62), 0)
+  s.strip([[W / 2 + 0.07, bodyTop + 0.5], [W / 2 + 0.14, bodyTop + 0.84]], 0.012, 0.025)
+  const flag = s.poly(pts(W / 2 + 0.14, bodyTop + 0.84, W / 2 + 0.36, bodyTop + 0.78, W / 2 + 0.13, bodyTop + 0.7), 0)
+  paint(s, [
+    {
+      shape: body,
+      color: stone,
+      ink: 0.028,
+      detail: () => {
+        // Paired columns either side of the arch, and rusticated courses.
+        for (const x of [0.22, 0.46, W - 0.54, W - 0.3]) {
+          s.fill(s.rect(x, 0.35, 0.1, bodyTop - 0.95, 0), shade(stone, -0.08))
+          s.line([[x, 0.35], [x, bodyTop - 0.6]], 0.01, rgba(INK, 0.5), 0)
+          s.line([[x + 0.1, 0.35], [x + 0.1, bodyTop - 0.6]], 0.01, rgba(INK, 0.5), 0)
+        }
+        for (let y = 0.12; y < 0.35; y += 0.11) s.line([[0, y], [W, y]], 0.008, rgba(INK, 0.4), 0)
+        // Relief panels and the keystone.
+        for (const x of [0.62, W - 0.86]) s.fill(s.rect(x, bodyTop * 0.55, 0.24, 0.5, 0), rgba(bronze, 0.7))
+        s.fill(s.poly(pts(W / 2 - 0.08, bodyTop * 0.48 + W * 0.18 + 0.02, W / 2 + 0.08, bodyTop * 0.48 + W * 0.18 + 0.02, W / 2 + 0.05, bodyTop * 0.48 + W * 0.18 - 0.14, W / 2 - 0.05, bodyTop * 0.48 + W * 0.18 - 0.14), 0), shade(stone, -0.15))
+        s.hatch(s.rect(W - 0.3, 0, 0.3, bodyTop, 0), { angle: 1.25, gap: 0.04, alpha: 0.3 })
+      },
+    },
+    {
+      shape: attic,
+      color: shade(stone, 0.05),
+      ink: 0.02,
+      detail: () => s.text('TO THE DEFENDERS OF THE UNION', W / 2, bodyTop - 0.3, 0.075, { color: rgba(INK, 0.7), spacing: 3 }),
+    },
+    { shape: base, color: shade(stone, -0.1), ink: 0.014 },
+    { shape: horses, color: bronze, ink: 0.016, hatch: { angle: 0.6, gap: 0.03, alpha: 0.3 } },
+    { shape: rider, color: bronze, ink: 0.012 },
+    { shape: flag, color: bronze, ink: 0.01 },
+  ])
+  // Cut the archway out, then ink its edge.
+  const c = s.ctx
+  c.save()
+  c.globalCompositeOperation = 'destination-out'
+  c.fill(opening.path)
+  c.restore()
+  s.ink(opening, 0.024)
+  s.glow(s.rect(0.2, bodyTop - 0.5, W - 0.4, 0.06, 0), '#ffe2a3')
+}
+
+// A big round park tree in late-afternoon light.
+export function parkTree(s: Sketch, leaf: string, shadow: string) {
+  const W = s.w
+  const trunk = s.poly(pts(W / 2 - 0.09, 0, W / 2 + 0.09, 0, W / 2 + 0.06, 0.9, W / 2 - 0.06, 0.9), 0.003)
+  s.border([trunk], 0.06)
+  s.wash(trunk, '#6e4f3a')
+  s.ink(trunk, 0.016)
+  s.strip([[W / 2, 0.75], [W / 2 - 0.3, 1.1]], 0.04, 0.04, '#6e4f3a')
+  s.strip([[W / 2, 0.65], [W / 2 + 0.32, 1.0]], 0.04, 0.04, '#6e4f3a')
+  const r = W / 2 - 0.1
+  blobs(
+    s,
+    [
+      [W / 2, 1.2, r * 0.62],
+      [W / 2 - r * 0.5, 1.4, r * 0.55],
+      [W / 2 + r * 0.5, 1.42, r * 0.56],
+      [W / 2 - r * 0.2, 1.8, r * 0.6],
+      [W / 2 + r * 0.3, 1.85, r * 0.55],
+      [W / 2, 2.15, r * 0.45],
+    ],
+    leaf,
+    shadow
+  )
+  const c = s.ctx
+  c.save()
+  for (let i = 0; i < 30; i++) {
+    c.strokeStyle = rgba(INK, 0.35)
+    c.lineWidth = 0.012
+    c.beginPath()
+    c.arc(s.r(0.25, W - 0.25), s.r(1.0, 2.3), 0.05, 0.2, 2.6)
+    c.stroke()
+  }
+  c.restore()
+}
+
+// ---------------------------------------------------------------------------
+// A soft-serve ice cream truck with a giant cone on the roof.
+
+export function iceCreamTruck(s: Sketch) {
+  const W = s.w
+  const body = s.custom(
+    (p) => {
+      p.moveTo(0.05, 0.2)
+      p.lineTo(W - 0.05, 0.2)
+      p.lineTo(W - 0.05, 0.62)
+      p.quadraticCurveTo(W - 0.06, 0.78, W - 0.28, 0.82)
+      p.lineTo(W - 0.48, 1.02)
+      p.lineTo(0.12, 1.02)
+      p.quadraticCurveTo(0.05, 1.0, 0.05, 0.9)
+      p.closePath()
+    },
+    pts(0.05, 0.2, W - 0.05, 1.02)
+  )
+  const window_ = s.rect(0.32, 0.5, 0.86, 0.38, 0.002)
+  const cab = s.poly(pts(W - 0.46, 0.62, W - 0.12, 0.62, W - 0.32, 0.92, W - 0.46, 0.92), 0)
+  const wheels = [0.42, W - 0.48].map((x) => s.ellipse(x, 0.18, 0.16, 0.16))
+  const coneBody = s.poly(pts(0.72, 1.12, 0.94, 1.12, 0.83, 1.02), 0)
+  const scoop: [number, number, number][] = [
+    [0.83, 1.22, 0.14],
+    [0.83, 1.36, 0.11],
+    [0.84, 1.47, 0.07],
+  ]
+  const tip = s.poly(pts(0.81, 1.52, 0.86, 1.52, 0.86, 1.6), 0)
+  s.strip([[0.83, 1.02], [0.83, 0.98]], 0.06, 0.04)
+  paint(s, [
+    ...wheels.map((w) => ({ shape: w, color: '#2c2a30', ink: 0.018 })),
+    {
+      shape: body,
+      color: '#f8f6ef',
+      ink: 0.026,
+      detail: () => {
+        s.fill(s.rect(0.05, 0.2, W - 0.1, 0.14, 0), '#6fb1e0')
+        s.fill(s.rect(0.05, 0.36, W - 0.1, 0.05, 0), '#f39cc0')
+        s.text('SOFT ICE CREAM', 0.75, 0.25, 0.075, { color: '#ffffff', font: 'Helvetica, Arial, sans-serif', glow: '#d8f0ff' })
+        s.hatch(s.rect(W - 0.5, 0.2, 0.45, 0.82, 0), { angle: 1.2, gap: 0.04, alpha: 0.15 })
+        wheels.forEach((_, i) => s.fill(s.ellipse(i ? W - 0.48 : 0.42, 0.2, 0.2, 0.19), shade('#f8f6ef', -0.25)))
+      },
+    },
+    {
+      shape: window_,
+      color: '#fff1c9',
+      ink: 0.016,
+      detail: () => {
+        s.glow(window_, '#ffe2a3')
+        // The server leaning out, and the menu.
+        s.fill(s.ellipse(0.98, 0.72, 0.07, 0.075), C.skin)
+        s.fill(s.rect(0.92, 0.5, 0.13, 0.16, 0), '#ffffff')
+        s.fill(s.poly(pts(0.92, 0.79, 1.04, 0.79, 0.98, 0.84), 0), '#ffffff')
+        s.text('CONES', 0.55, 0.78, 0.06, { color: C.redDark, font: 'Helvetica, Arial, sans-serif' })
+        s.text('SHAKES', 0.55, 0.69, 0.06, { color: '#3f6fb0', font: 'Helvetica, Arial, sans-serif' })
+        s.text('SUNDAES', 0.55, 0.6, 0.06, { color: C.redDark, font: 'Helvetica, Arial, sans-serif' })
+      },
+    },
+    { shape: cab, color: '#9fc9e6', ink: 0.016, detail: () => s.glow(cab, '#ffe2a3') },
+    { shape: coneBody, color: '#d9a35c', ink: 0.014, hatch: { angle: 0.8, gap: 0.02, alpha: 0.4 } },
+  ])
+  // Soft-serve swirl on the cone, then wheel hubs.
+  blobs(s, scoop, '#fffaf0', 'rgba(230,170,190,0.5)', 0.016)
+  s.border([tip], 0.03)
+  s.fill(tip, '#fffaf0')
+  s.ink(tip, 0.012)
+  s.glow(s.ellipse(0.83, 1.3, 0.15, 0.2), '#fff4e0')
+  wheels.forEach((_, i) => {
+    const hub = s.ellipse(i ? W - 0.48 : 0.42, 0.18, 0.07, 0.07)
+    s.fill(hub, '#d9dde0')
+    s.ink(hub, 0.01)
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Williamsburg: a giant Greek-style deli coffee cup, steaming.
+
+export function coffeeCup(s: Sketch) {
+  const W = s.w
+  const top = 1.25
+  const cup = s.poly(pts(0.28, 0, W - 0.28, 0, W - 0.1, top, 0.1, top), 0.003)
+  const lid = s.custom(
+    (p) => {
+      p.moveTo(0.04, top - 0.02)
+      p.lineTo(W - 0.04, top - 0.02)
+      p.lineTo(W - 0.08, top + 0.1)
+      p.lineTo(0.08, top + 0.1)
+      p.closePath()
+    },
+    pts(0.04, top - 0.02, W - 0.04, top + 0.1)
+  )
+  const blue = '#1f5aa6'
+  const meander = (y: number, h: number) => {
+    // A white Greek key band across the cup.
+    const xAt = (yy: number) => 0.28 - ((0.28 - 0.1) * yy) / top
+    s.fill(s.poly(pts(xAt(y), y, W - xAt(y), y, W - xAt(y + h), y + h, xAt(y + h), y + h), 0), '#f6f2e6')
+    const c = s.ctx
+    c.save()
+    c.strokeStyle = blue
+    c.lineWidth = 0.018
+    const step = 0.12
+    for (let x = xAt(y) + 0.02; x < W - xAt(y) - step; x += step) {
+      c.beginPath()
+      c.moveTo(x, y + 0.02)
+      c.lineTo(x, y + h - 0.025)
+      c.lineTo(x + step * 0.7, y + h - 0.025)
+      c.lineTo(x + step * 0.7, y + h * 0.45)
+      c.lineTo(x + step * 0.35, y + h * 0.45)
+      c.stroke()
+    }
+    c.restore()
+  }
+  paint(s, [
+    {
+      shape: cup,
+      color: blue,
+      ink: 0.026,
+      detail: () => {
+        meander(0.06, 0.16)
+        meander(top - 0.26, 0.16)
+        s.text('WE ARE HAPPY', W / 2, 0.76, 0.12, { color: '#f6f2e6', spacing: 4 })
+        s.text('TO SERVE YOU', W / 2, 0.58, 0.12, { color: '#f6f2e6', spacing: 4 })
+        // Little amphorae either side.
+        for (const x of [0.32, W - 0.32]) {
+          const amph = s.custom(
+            (p) => {
+              p.moveTo(x - 0.03, 0.32)
+              p.quadraticCurveTo(x - 0.09, 0.42, x - 0.035, 0.5)
+              p.lineTo(x - 0.025, 0.56)
+              p.lineTo(x + 0.025, 0.56)
+              p.lineTo(x + 0.035, 0.5)
+              p.quadraticCurveTo(x + 0.09, 0.42, x + 0.03, 0.32)
+              p.closePath()
+            },
+            pts(x - 0.09, 0.32, x + 0.09, 0.56)
+          )
+          s.fill(amph, '#f6f2e6')
+        }
+        s.fill(s.poly(pts(W - 0.32, 0.05, W - 0.18, 0.05, W - 0.1, top - 0.02, W - 0.22, top - 0.02), 0), 'rgba(255,255,255,0.12)')
+        s.hatch(s.rect(0.1, 0, 0.22, top, 0), { angle: 1.3, gap: 0.035, alpha: 0.25 })
+      },
+    },
+    { shape: lid, color: '#f4f1ea', ink: 0.018 },
+  ])
+  blobs(
+    s,
+    [
+      [W / 2 - 0.05, top + 0.25, 0.13],
+      [W / 2 + 0.08, top + 0.42, 0.15],
+      [W / 2 - 0.06, top + 0.6, 0.12],
+      [W / 2 + 0.04, top + 0.74, 0.08],
+    ],
+    '#fbfaf6',
+    'rgba(120,130,150,0.35)',
+    0.014
+  )
+}
+
+// A Williamsburg cyclist on a fixie: beanie, beard, tote bag.
+export function cyclist(s: Sketch) {
+  const wheelR = 0.26
+  const back: Pt = [0.32, wheelR + 0.02]
+  const front: Pt = [1.22, wheelR + 0.02]
+  const ring = (c: Pt) => {
+    const path: Pt[] = []
+    for (let k = 0; k <= 36; k++) path.push([c[0] + Math.cos((k / 36) * Math.PI * 2) * wheelR, c[1] + Math.sin((k / 36) * Math.PI * 2) * wheelR])
+    s.strip(path, 0.035, 0.035, '#2c2a30')
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI
+      s.line([[c[0] - Math.cos(a) * wheelR, c[1] - Math.sin(a) * wheelR], [c[0] + Math.cos(a) * wheelR, c[1] + Math.sin(a) * wheelR]], 0.005, rgba(INK, 0.6), 0)
+    }
+  }
+  ring(back)
+  ring(front)
+  const crank: Pt = [0.72, 0.3]
+  const seat: Pt = [0.62, 0.7]
+  const bars: Pt = [1.1, 0.78]
+  const frameColor = '#e05a6f'
+  s.strip([back, crank, [1.02, 0.66], front], 0.03, 0.03, frameColor)
+  s.strip([back, seat, crank], 0.03, 0.03, frameColor)
+  s.strip([seat, [1.02, 0.66], bars], 0.03, 0.03, frameColor)
+  s.strip([[0.54, 0.72], [0.72, 0.72]], 0.04, 0.03)
+  // Rider leaning into the handlebars.
+  const torso = s.poly(pts(0.58, 0.74, 0.74, 0.74, 0.98, 1.16, 0.84, 1.24), 0.002)
+  const thigh = s.poly(pts(0.62, 0.72, 0.72, 0.78, 0.86, 0.56, 0.78, 0.5), 0.001)
+  const shin = s.poly(pts(0.8, 0.54, 0.86, 0.56, 0.8, 0.3, 0.74, 0.3), 0.001)
+  const arm = s.poly(pts(0.9, 1.16, 0.96, 1.12, 1.12, 0.82, 1.08, 0.78), 0.001)
+  const head = s.ellipse(1.0, 1.36, 0.1, 0.11)
+  const beanie = s.custom((p) => p.arc(1.0, 1.4, 0.105, 0, Math.PI, false), pts(0.9, 1.4, 1.1, 1.52))
+  const beard = s.custom(
+    (p) => {
+      p.moveTo(0.94, 1.32)
+      p.quadraticCurveTo(1.0, 1.18, 1.1, 1.3)
+      p.closePath()
+    },
+    pts(0.94, 1.2, 1.1, 1.32)
+  )
+  const tote = s.rect(0.52, 0.86, 0.2, 0.24, 0.002)
+  paint(s, [
+    { shape: shin, color: '#2f4566', ink: 0.01 },
+    { shape: thigh, color: '#2f4566', ink: 0.01 },
+    { shape: tote, color: '#efe2c4', ink: 0.01, detail: () => s.text('NY', 0.62, 0.94, 0.07, { color: INK, font: 'Helvetica, Arial, sans-serif' }) },
+    { shape: torso, color: '#c9764a', ink: 0.012, hatch: { angle: 0.6, gap: 0.03, alpha: 0.2 } },
+    { shape: arm, color: shade('#c9764a', -0.1), ink: 0.01 },
+    { shape: head, color: C.skin, ink: 0.012, detail: () => s.fill(s.ellipse(1.04, 1.37, 0.01, 0.012), INK) },
+    { shape: beard, color: '#5b3a24', ink: 0.008 },
+    { shape: beanie, color: '#e2a03c', ink: 0.01 },
   ])
 }
