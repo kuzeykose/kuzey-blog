@@ -849,3 +849,79 @@ export function pizzaRat(s: Sketch) {
     s.line([[0.8, 0.18], [0.8 + dx, 0.18 + dy]], 0.004, rgba(INK, 0.7), 0)
   }
 }
+
+// A classic subway entrance: green globe lamps, an iron railing around the
+// stairs going down, and the black sign with coloured line bullets.
+export function subwayEntrance(s: Sketch) {
+  const W = s.w
+  const iron = '#2f4a3c'
+  const posts = [0.14, W - 0.14]
+  const globeY = s.h - 0.13
+  const globes = posts.map((x) => s.ellipse(x, globeY, 0.1, 0.1))
+  const collars = posts.map((x) => s.rect(x - 0.045, globeY - 0.14, 0.09, 0.05, 0))
+  const postShapes = posts.map((x) => s.rect(x - 0.025, 0, 0.05, globeY - 0.1, 0))
+  const well = s.poly(pts(0.2, 0, W - 0.2, 0, W - 0.24, 0.46, 0.24, 0.46), 0.002)
+  const sign = s.rect(0.24, 0.6, W - 0.48, 0.3, 0.003)
+
+  paint(s, [
+    {
+      shape: well,
+      color: '#3a3640',
+      ink: 0.016,
+      detail: () => {
+        // Steps dropping away below street level.
+        for (let k = 0; k < 7; k++) {
+          const y = 0.46 * (1 - Math.pow(1 - (k + 1) / 8, 1.6))
+          s.line([[0.24, y], [W - 0.24, y]], 0.01, rgba('#cfc6b4', 0.6), 0)
+        }
+        s.glow(s.rect(0.3, 0.02, W - 0.6, 0.2, 0), '#4a3a20')
+      },
+    },
+    ...postShapes.map((p) => ({ shape: p, color: iron, ink: 0.01 })),
+    {
+      shape: sign,
+      color: '#1f1e24',
+      ink: 0.016,
+      detail: () => {
+        s.text('SUBWAY', W / 2, 0.77, 0.12, {
+          color: '#f6f2e6',
+          glow: '#ffffff',
+          font: 'Helvetica, Arial, sans-serif',
+          spacing: 6,
+        })
+        const bullets: [string, string, string][] = [
+          ['1', '#ee352e', '#ffffff'],
+          ['4', '#00933c', '#ffffff'],
+          ['A', '#0039a6', '#ffffff'],
+          ['N', '#fccc0a', '#1f1e24'],
+        ]
+        bullets.forEach(([t, bg, fg], i) => {
+          const x = W / 2 + (i - 1.5) * 0.13
+          const dot = s.ellipse(x, 0.665, 0.047, 0.047)
+          s.fill(dot, bg)
+          s.glow(dot, bg)
+          s.text(t, x, 0.648, 0.058, { color: fg, font: 'Helvetica, Arial, sans-serif' })
+        })
+      },
+    },
+    ...collars.map((c) => ({ shape: c, color: iron, ink: 0.01 })),
+    ...globes.map((g, i) => ({
+      shape: g,
+      color: '#5daf6a',
+      ink: 0.014,
+      detail: () => s.fill(s.ellipse(posts[i] - 0.035, globeY + 0.035, 0.03, 0.022, -0.5), 'rgba(255,255,255,0.6)'),
+    })),
+  ])
+  // Iron railing in front of the stairwell, cut as thin strips.
+  s.strip([[0.14, 0.5], [W - 0.14, 0.5]], 0.03, 0.03, iron)
+  s.strip([[0.14, 0.06], [W - 0.14, 0.06]], 0.02, 0.03, iron)
+  for (let x = 0.22; x < W - 0.18; x += 0.08) s.strip([[x, 0.03], [x, 0.5]], 0.012, 0.025, iron)
+  // Little brackets holding the sign to the posts.
+  for (const [a, b] of [
+    [0.14, 0.24],
+    [W - 0.24, W - 0.14],
+  ]) {
+    s.strip([[a, 0.75], [b, 0.75]], 0.016, 0.03, iron)
+  }
+  globes.forEach((g) => s.glow(g, '#8dff9f'))
+}

@@ -15,6 +15,7 @@ import {
   steamStack,
   streetLamp,
   streetTree,
+  subwayEntrance,
   taxi,
 } from './art-street'
 
@@ -52,8 +53,11 @@ export type PieceDef = {
   run?: { path: [number, number][]; face: 1 | -1 }
   // Poking this piece also sends these runners off.
   startles?: string
-  // A warm point light at this art position after dark.
+  // Poke it by itself once the book has finished opening.
+  pokeOnOpen?: boolean
+  // A point light at this art position after dark (warm unless coloured).
   lamp?: [number, number]
+  lampColor?: string
 }
 
 // Where the ring-toss bagel rests on the Chrysler's crown.
@@ -288,6 +292,21 @@ export const PIECES: PieceDef[] = [
     poke: 'tilt',
   },
   {
+    id: 'subway',
+    label: 'Subway',
+    art: subwayEntrance,
+    w: 1.7,
+    h: 1.42,
+    x: -4.1,
+    z: 0.1,
+    order: 0.58,
+    seed: 1201,
+    glow: true,
+    poke: 'tilt',
+    lamp: [0.14, 1.29],
+    lampColor: '#9dffb0',
+  },
+  {
     id: 'tree-left',
     label: 'Street tree',
     art: streetTree,
@@ -398,6 +417,7 @@ export const PIECES: PieceDef[] = [
     glow: true,
     poke: 'drive',
     startles: 'rat',
+    pokeOnOpen: true,
   },
   {
     // Easter egg: hides behind the cab with only its tail showing; poke it

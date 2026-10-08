@@ -103,6 +103,10 @@ export class CityStage {
   private fromClosed = 1
   private hoverCover = false
   private hoverLift = 0
+  // When the book has just finished opening, a little show starts after
+  // a beat (the cab honks, the rat bolts).
+  private wasOpen = false
+  private showAt = 0
   private nightT = 0
   private nightTarget = 0
   private reduced: boolean
@@ -356,7 +360,7 @@ export class CityStage {
     }
 
     if (def.lamp) {
-      const light = new THREE.PointLight('#ffc874', 0, 5, 1.6)
+      const light = new THREE.PointLight(def.lampColor ?? '#ffc874', 0, 5, 1.6)
       light.position.set((def.lamp[0] - def.w / 2) * k, (def.lamp[1] - 0.05) * k, 0.25)
       piece.halves[0].bob.add(light)
       piece.light = light
@@ -674,6 +678,14 @@ export class CityStage {
       }
       if (p.light) p.light.intensity = shared.uNight.value * 2.4 * clamp01(p.rise)
       if (p.run) this.scurry(p, dt, time)
+    }
+
+    const isOpen = this.openTarget === 1 && this.openT === 1
+    if (isOpen && !this.wasOpen && !this.reduced) this.showAt = time + 0.6
+    this.wasOpen = isOpen
+    if (this.showAt && time >= this.showAt) {
+      this.showAt = 0
+      if (isOpen) this.pieces.filter((p) => p.def.pokeOnOpen).forEach((p) => this.poke(p))
     }
 
     // Camera glides (opening, closing, reset).
