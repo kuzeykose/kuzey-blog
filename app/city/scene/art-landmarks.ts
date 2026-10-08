@@ -645,3 +645,81 @@ export function brooklynBridge(s: Sketch) {
     s.ink(flag, 0.008)
   })
 }
+
+// ---------------------------------------------------------------------------
+// One World Trade Center: a glass obelisk of tall triangular facets with a
+// slender spire.
+
+export function oneWorldTrade(s: Sketch) {
+  const W = s.w
+  const mid = W / 2
+  const baseY = 0.95
+  const topY = 5.85
+  const b0 = 0.2
+  const b1 = W - 0.2
+  const t0 = mid - 0.33
+  const t1 = mid + 0.33
+  const glass = '#a8bfd3'
+
+  const podium = s.rect(b0 + 0.02, 0, b1 - b0 - 0.04, baseY, 0.003)
+  const tower = s.poly(pts(b0, baseY, b1, baseY, t1, topY, t0, topY), 0.003)
+  const centre = s.poly(pts(b0, baseY, b1, baseY, mid, topY), 0)
+  const leftFacet = s.poly(pts(b0, baseY, mid, topY, t0, topY), 0)
+  const rightFacet = s.poly(pts(b1, baseY, t1, topY, mid, topY), 0)
+  const parapet = s.rect(t0 - 0.02, topY, t1 - t0 + 0.04, 0.12, 0.002)
+  const ring = s.rect(mid - 0.12, topY + 0.12, 0.24, 0.16, 0.002)
+  const mast = s.poly(pts(mid - 0.03, topY + 0.28, mid + 0.03, topY + 0.28, mid + 0.012, s.h - 0.02, mid - 0.012, s.h - 0.02), 0)
+
+  const floors = (sh: Shape, tone: string) => {
+    const c = s.ctx
+    c.save()
+    c.clip(sh.path)
+    for (let y = baseY + 0.12; y < topY; y += 0.11) {
+      s.line([[0, y], [W, y]], 0.006, rgba(tone, 0.55), 0)
+      if (s.rnd() < 0.35) s.glow(s.rect(b0, y - 0.09, b1 - b0, 0.07, 0), s.pick(['#ffe2a3', '#fff1cf', '#cfe3ff']))
+    }
+    c.restore()
+  }
+
+  paint(s, [
+    {
+      shape: podium,
+      color: '#c9d3dc',
+      ink: 0.022,
+      detail: () => {
+        for (let x = b0 + 0.08; x < b1 - 0.04; x += 0.07) s.line([[x, 0.02], [x, baseY - 0.04]], 0.008, rgba(INK, 0.45), 0)
+        s.fill(s.rect(mid - 0.18, 0, 0.36, 0.3, 0), C.window)
+        s.glow(s.rect(mid - 0.18, 0, 0.36, 0.3, 0), '#ffe2a3')
+      },
+    },
+    {
+      shape: tower,
+      color: glass,
+      ink: 0.026,
+      detail: () => {
+        s.wash(leftFacet, shade(glass, 0.05), { edge: 0.1 })
+        s.wash(centre, shade(glass, 0.2), { edge: 0.1 })
+        s.wash(rightFacet, shade(glass, -0.2), { edge: 0.1 })
+        // Sky caught in the glass.
+        s.fill(s.poly(pts(mid - 0.12, baseY + 0.4, mid + 0.02, baseY + 0.4, mid - 0.02, topY - 1.2), 0), 'rgba(255,255,255,0.35)')
+        floors(tower, '#4f6a86')
+        s.hatch(rightFacet, { angle: 1.3, gap: 0.04, alpha: 0.25 })
+        s.line([[b0, baseY], [mid, topY]], 0.014)
+        s.line([[b1, baseY], [mid, topY]], 0.014)
+      },
+    },
+    { shape: parapet, color: '#d7dee4', ink: 0.016 },
+    { shape: ring, color: '#c0c8ce', ink: 0.014, detail: () => s.line([[mid - 0.12, topY + 0.2], [mid + 0.12, topY + 0.2]], 0.006) },
+    {
+      shape: mast,
+      color: '#e7ecef',
+      ink: 0.01,
+      detail: () => {
+        for (let y = topY + 0.5; y < s.h - 0.2; y += 0.28) s.line([[mid - 0.035, y], [mid + 0.035, y]], 0.008)
+      },
+    },
+  ])
+  // The beacon at the very top.
+  s.glow(s.ellipse(mid, s.h - 0.06, 0.05, 0.05), '#ffffff')
+  s.glow(parapet, '#d8e8ff')
+}

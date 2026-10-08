@@ -31,7 +31,7 @@ export default function PopupCity() {
   const [open, setOpen] = useState(false)
   const [night, setNight] = useState(false)
   const [label, setLabel] = useState<string | null>(null)
-  const [hint, setHint] = useState(true)
+  const [hint, setHint] = useState(false)
   const host = useRef<HTMLDivElement>(null)
   const stage = useRef<CityStage | null>(null)
 
@@ -51,7 +51,6 @@ export default function PopupCity() {
       return
     }
     let cancelled = false
-    let openTimer: ReturnType<typeof setTimeout> | undefined
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     setNight(prefersDark)
@@ -66,10 +65,7 @@ export default function PopupCity() {
             onProgress: setProgress,
             onHover: setLabel,
             onOpenChange: setOpen,
-            onReady: () => {
-              setStatus('ready')
-              openTimer = setTimeout(() => s.setOpen(true), reducedMotion ? 0 : 700)
-            },
+            onReady: () => setStatus('ready'),
           },
         })
         stage.current = s
@@ -81,11 +77,8 @@ export default function PopupCity() {
         if (!cancelled) setStatus('error')
       })
 
-    const hideHint = setTimeout(() => setHint(false), 9000)
     return () => {
       cancelled = true
-      clearTimeout(openTimer)
-      clearTimeout(hideHint)
       stage.current?.dispose()
       stage.current = null
     }
@@ -94,6 +87,14 @@ export default function PopupCity() {
   useEffect(() => {
     stage.current?.setNight(night)
   }, [night])
+
+  // Once the book is open, show how to explore it for a little while.
+  useEffect(() => {
+    setHint(open)
+    if (!open) return
+    const t = setTimeout(() => setHint(false), 9000)
+    return () => clearTimeout(t)
+  }, [open])
 
   if (!mounted) return null
 
@@ -143,12 +144,6 @@ export default function PopupCity() {
         </div>
       </header>
 
-      {status === 'loading' && (
-        <div className={`pointer-events-none absolute inset-0 flex items-center justify-center text-sm ${muted}`}>
-          Cutting paper… {Math.round(progress * 100)}%
-        </div>
-      )}
-
       {status === 'error' && (
         <div className="absolute inset-0 flex items-center justify-center p-8 text-center">
           <p className={`max-w-sm text-sm ${muted}`}>
@@ -157,7 +152,7 @@ export default function PopupCity() {
         </div>
       )}
 
-      {status === 'ready' && (
+      {status !== 'error' && (
         <footer className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center gap-3 p-4 sm:p-6">
           <div
             aria-live="polite"
@@ -188,11 +183,15 @@ export default function PopupCity() {
               <ArrowCounterClockwise size={16} />
             </button>
           </div>
-          <p
-            className={`text-xs transition-opacity duration-700 ${muted} ${hint ? 'opacity-100' : 'opacity-0'}`}
-          >
-            Drag to look around · scroll to zoom · tap the paper
-          </p>
+          {status === 'loading' ? (
+            <p className={`text-xs ${muted}`}>Cutting paper… {Math.round(progress * 100)}%</p>
+          ) : open ? (
+            <p className={`text-xs transition-opacity duration-700 ${muted} ${hint ? 'opacity-100' : 'opacity-0'}`}>
+              Drag to look around · scroll to zoom · tap the paper
+            </p>
+          ) : (
+            <p className={`text-xs motion-safe:animate-pulse ${muted}`}>Tap the book to open it</p>
+          )}
         </footer>
       )}
     </div>,

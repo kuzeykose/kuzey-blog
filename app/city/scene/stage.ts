@@ -37,6 +37,8 @@ type Piece = {
   drive: Spring
   light: THREE.PointLight | null
   parent: Piece | null
+  // Pieces that scurry: where they are, where they're going, which way they face.
+  run: { x: number; target: number; dir: number } | null
 }
 
 const OPEN_TIME = 4.4
@@ -92,6 +94,14 @@ export class CityStage {
 
   private openT = 0
   private openTarget = 0
+  private ready = false
+  private pendingOpen = false
+  // How shut the book is right now, where an opening swing starts from, and
+  // how far the cover is lifted by the pointer while it waits.
+  private closedNow = 1
+  private fromClosed = 1
+  private hoverCover = false
+  private hoverLift = 0
   private nightT = 0
   private nightTarget = 0
   private reduced: boolean
@@ -216,6 +226,9 @@ export class CityStage {
     })
     this.scene.add(this.book.root)
     this.book.setAngle(1)
+    // Show the closed book straight away; the pop-ups are cut behind it.
+    this.update(0)
+    this.loop()
     await nextFrame()
     if (this.disposed) return
 
@@ -232,10 +245,10 @@ export class CityStage {
     }
     this.buildPlatform(aniso)
     this.events.onProgress?.(1)
-    this.update(0)
     this.renderer.compile(this.scene, this.camera)
-    this.loop()
+    this.ready = true
     this.events.onReady?.()
+    if (this.pendingOpen) this.setOpen(true)
   }
 
   private buildPiece(def: PieceDef, aniso: number, parent: Piece | null): Piece {
@@ -307,6 +320,7 @@ export class CityStage {
       drive: { x: 0, v: 0 },
       light: null,
       parent,
+      run: def.run ? { x: def.x, target: def.x, dir: 1 } : null,
     }
 
     for (const seg of segs) {
@@ -403,8 +417,14 @@ export class CityStage {
   // ---------------------------------------------------------------- control
 
   setOpen(open: boolean) {
+    if (!this.ready) {
+      // Clicked before the paper is cut: open as soon as it is.
+      this.pendingOpen = open
+      return
+    }
     if (this.openTarget === (open ? 1 : 0)) return
     this.openTarget = open ? 1 : 0
+    if (open && this.openT === 0) this.fromClosed = this.closedNow
     if (this.reduced) this.settle()
     else this.glideTo(open ? this.homeShot() : this.closedShot())
     this.events.onOpenChange?.(open)
@@ -516,6 +536,7 @@ export class CityStage {
 
   private onPointerLeave = () => {
     this.hovered = null
+    this.hoverCover = false
     this.renderer.domElement.style.cursor = ''
     this.events.onHover?.(null)
   }
@@ -539,7 +560,11 @@ export class CityStage {
 
   private poke(p: Piece) {
     const kind = p.def.poke ?? 'tilt'
-    if (kind === 'lift') p.lift.v += 2.2
+    if (p.run && p.def.run) {
+      // Dash to whichever end of the run it isn't at.
+      const [home, away] = p.def.run
+      p.run.target = Math.abs(p.run.x - home) < Math.abs(p.run.x - away) ? away : home
+    } else if (kind === 'lift') p.lift.v += 2.2
     else if (kind === 'drive') {
       p.drive.v += 3.2
       p.lift.v += 0.8
@@ -568,7 +593,30 @@ export class CityStage {
     }
     const opening = this.openTarget === 1
     const t = this.openT
-    this.book?.setAngle(1 - easeInOut(clamp01(t / 0.42)))
+    const time = this.timer.getElapsed()
+    let closed: number
+    if (t === 0 && !opening) {
+      // Waiting to be opened: the cover peeks up every few seconds and lifts
+      // further while the pointer is over it.
+      this.hoverLift += ((this.hoverCover ? 1 : 0) - this.hoverLift) * Math.min(1, dt * 8)
+      const pulse = this.reduced ? 0 : Math.pow(Math.max(0, Math.sin(time * 1.5)), 6)
+      closed = 1 - 0.022 * pulse - 0.05 * this.hoverLift
+    } else if (opening) {
+      // Swing over, then land with two small bounces.
+      const u = clamp01(t / 0.46)
+      if (u < 0.84) {
+        closed = this.fromClosed * (1 - easeInOut(u / 0.84))
+      } else {
+        const v = clamp01((u - 0.84) / 0.16)
+        closed = 0.03 * Math.abs(Math.sin(2 * Math.PI * v)) * Math.pow(1 - v, 1.5)
+      }
+    } else {
+      closed = 1 - easeInOut(clamp01(t / 0.42))
+    }
+    this.closedNow = closed
+    // The cloth cover flexes while it is moving and lies flat at either end.
+    const moving = t > 0 && t < 0.46
+    this.book?.setAngle(closed, moving ? 0.17 * Math.pow(Math.sin(Math.PI * closed), 1.2) : 0)
 
     const riseOf = (start: number) => {
       const k = clamp01((t - start) / RISE_SPAN)
@@ -595,7 +643,6 @@ export class CityStage {
       this.applyNight()
     }
 
-    const time = this.timer.getElapsed()
     for (const p of this.pieces) {
       const springs = [p.tilt, p.lift, p.drive]
       const k = [70, 26, 18]
@@ -622,6 +669,7 @@ export class CityStage {
         }
       }
       if (p.light) p.light.intensity = shared.uNight.value * 2.4 * clamp01(p.rise)
+      if (p.run) this.scurry(p, dt, time)
     }
 
     // Camera glides (opening, closing, reset).
@@ -646,10 +694,38 @@ export class CityStage {
       const hit = this.pick()
       const piece = hit && hit !== 'cover' ? hit : null
       this.renderer.domElement.style.cursor = hit ? 'pointer' : ''
-      if (piece !== this.hovered) {
+      const cover = hit === 'cover'
+      if (piece !== this.hovered || cover !== this.hoverCover) {
         this.hovered = piece
-        this.events.onHover?.(piece ? piece.def.label : null)
+        this.hoverCover = cover
+        this.events.onHover?.(piece ? piece.def.label : cover ? 'Open the book' : null)
       }
+    }
+  }
+
+  private scurry(p: Piece, dt: number, time: number) {
+    const r = p.run!
+    const home = p.def.x
+    // Head home as soon as the book starts to close; be there before the
+    // pages fold shut (it is glued to the right-hand page).
+    if (this.openTarget === 0) r.target = home
+    if (this.openT < 0.5) r.x = home
+    const dist = r.target - r.x
+    const moving = Math.abs(dist) > 1e-3
+    if (moving) {
+      const speed = this.openTarget ? 3.6 : 8
+      // Quick start, a little braking at the end.
+      const step = speed * dt * Math.min(1, 0.35 + Math.abs(dist) / 0.5)
+      r.x += Math.sign(dist) * Math.min(Math.abs(dist), step)
+      r.dir = Math.sign(dist)
+    }
+    const hop = moving ? Math.abs(Math.sin(time * 22)) : 0
+    for (const h of p.halves) {
+      h.poke.position.x = r.x - home
+      h.poke.position.y = hop * 0.07
+      h.poke.rotation.z = moving ? -r.dir * 0.08 * Math.sin(time * 22) : 0
+      // The art faces right; mirror it when running left.
+      h.poke.scale.x = r.dir
     }
   }
 

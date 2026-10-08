@@ -5,12 +5,12 @@ import { Part, awning, cornice, door, fireEscape, paint, waterTower } from './ar
 // ---------------------------------------------------------------------------
 // Far skyline: a hazy ridge of towers behind the landmarks.
 
-type Far = { x: number; w: number; h: number; top: 'flat' | 'step' | 'pyramid' | 'spire' | 'wtc' | 'slim' | 'slant' }
+type Far = { x: number; w: number; h: number; top: 'flat' | 'step' | 'pyramid' | 'spire' | 'slim' | 'slant' }
 
 const FAR: Far[] = [
   { x: 0.1, w: 0.9, h: 2.3, top: 'flat' },
   { x: 0.8, w: 0.7, h: 3.2, top: 'step' },
-  { x: 1.45, w: 1.0, h: 4.95, top: 'wtc' },
+  { x: 1.45, w: 1.0, h: 3.7, top: 'step' },
   { x: 2.35, w: 0.8, h: 2.7, top: 'flat' },
   { x: 3.0, w: 0.62, h: 3.6, top: 'pyramid' },
   { x: 3.5, w: 1.0, h: 2.9, top: 'step' },
@@ -45,13 +45,6 @@ function farOutline(b: Far): Pt[] {
         [x + w * 0.62, h - 0.55], [x + w / 2, h], [x + w * 0.38, h - 0.55], [x + w * 0.2, h - 0.55],
         [x + w * 0.2, h - 0.9], [x, h - 0.9],
       ]
-    case 'wtc': {
-      const top = h - 0.75
-      return [
-        [x, 0], [x + w, 0], [x + w, 0.5], [x + w * 0.8, top], [x + w * 0.53, top],
-        [x + w * 0.515, h], [x + w * 0.485, h], [x + w * 0.47, top], [x + w * 0.2, top], [x, 0.5],
-      ]
-    }
     case 'slant':
       return [[x, 0], [x + w, 0], [x + w, h - 0.55], [x, h]]
     default:
@@ -74,7 +67,7 @@ export function farSkyline(s: Sketch) {
       inkColor: blue,
       detail: () => {
         const cols = Math.max(2, Math.floor((b.w - 0.12) / 0.13))
-        const top = b.top === 'flat' ? b.h - 0.15 : b.h - (b.top === 'wtc' ? 0.95 : 0.65)
+        const top = b.top === 'flat' ? b.h - 0.15 : b.h - 0.65
         const rows = Math.max(1, Math.floor((top - 0.2) / 0.2))
         const gx = (b.w - 0.16 - cols * 0.06) / Math.max(1, cols - 1)
         s.windows(b.x + 0.08, 0.15, cols, rows, 0.06, 0.09, gx, 0.11, {
@@ -82,12 +75,6 @@ export function farSkyline(s: Sketch) {
           frame: false,
           lit: 0.4,
         })
-        if (b.top === 'wtc') {
-          s.line([[b.x + b.w / 2, 0.5], [b.x + b.w / 2, b.h - 0.75]], 0.012, blue)
-          s.line([[b.x, 0.5], [b.x + b.w * 0.8, b.h - 0.75]], 0.008, rgba(blue, 0.6))
-          s.line([[b.x + b.w, 0.5], [b.x + b.w * 0.2, b.h - 0.75]], 0.008, rgba(blue, 0.6))
-          s.glow(s.ellipse(b.x + b.w / 2, b.h - 0.02, 0.04, 0.04), '#ffffff')
-        }
         if (b.top === 'pyramid') {
           s.fill(
             s.poly([[b.x, b.h - 0.55], [b.x + b.w, b.h - 0.55], [b.x + b.w / 2, b.h]], 0),

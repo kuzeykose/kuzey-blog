@@ -1,4 +1,4 @@
-import { INK, PAPER, Shape, Sketch, rgba, shade } from './sketch'
+import { INK, PAPER, Pt, Shape, Sketch, rgba, shade } from './sketch'
 import { C } from './palette'
 import { Part, paint, pts } from './art-common'
 
@@ -687,4 +687,212 @@ export function cloud(s: Sketch) {
     'rgba(120,150,190,0.45)',
     0.022
   )
+}
+
+// ---------------------------------------------------------------------------
+// Street food, and the rat that comes for it.
+
+// A classic New York slice standing on its crust.
+export function pizzaSlice(s: Sketch) {
+  const W = s.w
+  const tip: Pt = [W / 2, s.h - 0.03]
+  const slice = s.custom(
+    (p) => {
+      p.moveTo(0.04, 0.16)
+      p.lineTo(tip[0], tip[1])
+      p.lineTo(W - 0.04, 0.16)
+      p.quadraticCurveTo(W / 2, -0.02, 0.04, 0.16)
+      p.closePath()
+    },
+    pts(0.04, 0, W - 0.04, s.h)
+  )
+  const crust = s.custom(
+    (p) => {
+      p.moveTo(0.0, 0.2)
+      p.quadraticCurveTo(W / 2, 0.06, W, 0.2)
+      p.lineTo(W - 0.02, 0.12)
+      p.quadraticCurveTo(W / 2, -0.06, 0.02, 0.12)
+      p.closePath()
+    },
+    pts(0, 0, W, 0.2)
+  )
+  // Cheese drips hanging off both edges.
+  const drips = [0.42, 0.62].flatMap((f) =>
+    [-1, 1].map((d) => {
+      const y = 0.16 + (tip[1] - 0.16) * (1 - f)
+      const x = W / 2 + d * (W / 2 - 0.04) * f
+      return s.custom(
+        (p) => {
+          p.moveTo(x - d * 0.02, y + 0.05)
+          p.quadraticCurveTo(x + d * 0.07, y, x + d * 0.04, y - 0.1)
+          p.arc(x + d * 0.025, y - 0.1, 0.022, 0, Math.PI, true)
+          p.closePath()
+        },
+        pts(x - 0.06, y - 0.13, x + 0.08, y + 0.05)
+      )
+    })
+  )
+  const pepperoni: [number, number, number][] = [
+    [W * 0.32, 0.36, 0.085],
+    [W * 0.68, 0.4, 0.08],
+    [W * 0.5, 0.6, 0.075],
+    [W * 0.48, 0.84, 0.055],
+  ]
+  paint(s, [
+    ...drips.map((d) => ({ shape: d, color: '#f4c552', ink: 0.01 })),
+    {
+      shape: slice,
+      color: '#f6cf62',
+      ink: 0.022,
+      detail: () => {
+        // Grease blooms and a few bubbled spots.
+        for (let i = 0; i < 9; i++) {
+          s.fill(s.ellipse(s.r(0.2, W - 0.2), s.r(0.22, 0.85), s.r(0.02, 0.05), s.r(0.015, 0.035)), '#e89b3c', 0.45)
+        }
+        pepperoni.forEach(([x, y, r]) => {
+          const pep = s.ellipse(x, y, r, r * 0.92)
+          s.fill(pep, '#c3412e')
+          s.fill(s.ellipse(x - r * 0.3, y + r * 0.3, r * 0.3, r * 0.2), 'rgba(255,255,255,0.25)')
+          for (let k = 0; k < 3; k++) s.fill(s.ellipse(x + s.r(-0.5, 0.5) * r, y + s.r(-0.5, 0.5) * r, r * 0.12, r * 0.12), '#8f2a1f')
+          s.ink(pep, 0.01)
+        })
+      },
+    },
+    {
+      shape: crust,
+      color: '#d89a52',
+      ink: 0.018,
+      detail: () => {
+        for (let x = 0.12; x < W - 0.1; x += 0.13) s.fill(s.ellipse(x, 0.1, 0.03, 0.012), 'rgba(120,60,20,0.45)')
+      },
+    },
+  ])
+}
+
+// An everything bagel standing on its edge, hole cut out of the paper.
+export function bagel(s: Sketch) {
+  const cx = s.w / 2
+  const cy = s.h / 2
+  const r = Math.min(s.w, s.h) / 2 - 0.02
+  const ring = s.ellipse(cx, cy, r, r * 0.97)
+  const hole = s.ellipse(cx, cy + 0.01, r * 0.26, r * 0.24)
+  paint(s, [
+    {
+      shape: ring,
+      color: '#cf8f48',
+      ink: 0.022,
+      detail: () => {
+        const c = s.ctx
+        // Toasty underside, glossy crown.
+        const g = c.createLinearGradient(0, cy - r, 0, cy + r)
+        g.addColorStop(0, 'rgba(110,55,15,0.45)')
+        g.addColorStop(0.5, 'rgba(0,0,0,0)')
+        g.addColorStop(1, 'rgba(255,235,190,0.35)')
+        c.save()
+        c.clip(ring.path)
+        c.fillStyle = g
+        c.fillRect(cx - r, cy - r, r * 2, r * 2)
+        c.restore()
+        s.ink(s.custom((p) => p.arc(cx, cy, r * 0.62, 0.5, 2.6, false), pts(cx - r, cy, cx + r, cy + r)), 0.02, 'rgba(255,240,210,0.6)')
+        // Everything seasoning: sesame, poppy, onion and garlic flakes.
+        for (let i = 0; i < 140; i++) {
+          const a = s.r(0, Math.PI * 2)
+          const d = Math.sqrt(s.r(0.12, 1)) * r * 0.95
+          if (d < r * 0.3) continue
+          const x = cx + Math.cos(a) * d
+          const y = cy + Math.sin(a) * d
+          const kind = s.rnd()
+          const color = kind < 0.4 ? '#fbf3dc' : kind < 0.75 ? '#26222a' : kind < 0.9 ? '#e8c27d' : '#f6e6c4'
+          s.fill(s.ellipse(x, y, s.r(0.009, 0.016), s.r(0.005, 0.009), s.r(0, Math.PI)), color)
+        }
+      },
+    },
+  ])
+  const c = s.ctx
+  c.save()
+  c.globalCompositeOperation = 'destination-out'
+  c.fill(hole.path)
+  c.restore()
+  s.ink(hole, 0.018)
+}
+
+// Pizza rat: a scruffy subway rat hauling a slice of its own.
+export function pizzaRat(s: Sketch) {
+  const fur = '#7c767c'
+  // Tail: a pink paper strip curling up behind.
+  s.strip(
+    [
+      [0.26, 0.15],
+      [0.14, 0.15],
+      [0.06, 0.22],
+      [0.05, 0.32],
+      [0.1, 0.38],
+    ],
+    0.026,
+    0.03,
+    '#d98f95'
+  )
+  const body = s.ellipse(0.42, 0.2, 0.22, 0.13, 0.05)
+  const head = s.custom(
+    (p) => {
+      p.moveTo(0.56, 0.3)
+      p.quadraticCurveTo(0.7, 0.3, 0.84, 0.18)
+      p.quadraticCurveTo(0.8, 0.12, 0.62, 0.1)
+      p.closePath()
+    },
+    pts(0.56, 0.1, 0.84, 0.3)
+  )
+  const ear = s.ellipse(0.6, 0.31, 0.05, 0.055)
+  const feet = [0.3, 0.52].map((x) => s.ellipse(x, 0.05, 0.045, 0.022))
+  const slice = s.custom(
+    (p) => {
+      p.moveTo(0.8, 0.14)
+      p.lineTo(1.04, 0.26)
+      p.quadraticCurveTo(1.09, 0.13, 1.02, 0.01)
+      p.closePath()
+    },
+    pts(0.8, 0.01, 1.09, 0.26)
+  )
+  paint(s, [
+    ...feet.map((f) => ({ shape: f, color: '#d98f95', ink: 0.008 })),
+    {
+      shape: body,
+      color: fur,
+      ink: 0.016,
+      detail: () => s.hatch(body, { angle: 0.7, gap: 0.025, alpha: 0.35 }),
+    },
+    { shape: head, color: shade(fur, 0.06), ink: 0.016 },
+    {
+      shape: ear,
+      color: fur,
+      ink: 0.012,
+      detail: () => s.fill(s.ellipse(0.6, 0.31, 0.028, 0.032), '#e3a2a8'),
+    },
+    {
+      shape: slice,
+      color: '#f6cf62',
+      ink: 0.012,
+      detail: () => {
+        s.fill(s.custom((p) => {
+          p.moveTo(1.04, 0.26)
+          p.quadraticCurveTo(1.09, 0.13, 1.02, 0.01)
+          p.lineTo(1.0, 0.04)
+          p.quadraticCurveTo(1.05, 0.14, 1.01, 0.23)
+          p.closePath()
+        }, pts(1.0, 0.01, 1.09, 0.26)), '#d89a52')
+        s.fill(s.ellipse(0.94, 0.15, 0.025, 0.025), '#c3412e')
+        s.fill(s.ellipse(0.98, 0.07, 0.02, 0.02), '#c3412e')
+      },
+    },
+  ])
+  s.fill(s.ellipse(0.72, 0.22, 0.016, 0.018), INK)
+  s.fill(s.ellipse(0.725, 0.227, 0.005, 0.005), '#ffffff')
+  s.fill(s.ellipse(0.835, 0.185, 0.014, 0.012), '#e07b86')
+  for (const [dx, dy] of [
+    [0.1, 0.05],
+    [0.11, 0.0],
+    [0.09, -0.04],
+  ]) {
+    s.line([[0.8, 0.18], [0.8 + dx, 0.18 + dy]], 0.004, rgba(INK, 0.7), 0)
+  }
 }

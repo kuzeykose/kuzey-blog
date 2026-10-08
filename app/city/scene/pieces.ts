@@ -1,14 +1,17 @@
 import { Sketch } from './sketch'
 import { C } from './palette'
-import { skyBackdrop, empireState, chrysler, liberty, brooklynBridge } from './art-landmarks'
+import { skyBackdrop, empireState, chrysler, liberty, brooklynBridge, oneWorldTrade } from './art-landmarks'
 import { LEFT_HOUSES, RIGHT_HOUSES, brownstones, farSkyline, flatiron, midriseRow, timesSquare } from './art-buildings'
 import {
+  bagel,
   blimp,
   cloud,
   commuters,
   dogWalker,
   hotAirBalloon,
   hotDogCart,
+  pizzaRat,
+  pizzaSlice,
   readerAndKid,
   steamStack,
   streetLamp,
@@ -16,7 +19,7 @@ import {
   taxi,
 } from './art-street'
 
-export type Poke = 'tilt' | 'lift' | 'drive'
+export type Poke = 'tilt' | 'lift' | 'drive' | 'run'
 
 export type PieceDef = {
   id: string
@@ -45,6 +48,8 @@ export type PieceDef = {
   mount?: 'platform'
   bob?: { amp: number; speed: number; sway?: number }
   poke?: Poke
+  // For 'run': the two x positions it dashes between (the first is home).
+  run?: [number, number]
   // A warm point light at this art position after dark.
   lamp?: [number, number]
 }
@@ -69,10 +74,10 @@ export const PIECES: PieceDef[] = [
     art: (s) => hotAirBalloon(s, [C.red, '#f6ead2']),
     w: 1.2,
     h: 1.75,
-    x: -4.75,
+    x: -5.0,
     z: 0,
     parent: 'sky',
-    offset: [-4.75, 5.15, -0.14],
+    offset: [-5.0, 5.15, -0.14],
     order: 0,
     seed: 102,
     padBottom: true,
@@ -155,6 +160,19 @@ export const PIECES: PieceDef[] = [
     order: 0.08,
     seed: 201,
     glow: true,
+  },
+  {
+    id: 'wtc',
+    label: 'One World Trade Center',
+    art: oneWorldTrade,
+    w: 1.5,
+    h: 7.35,
+    x: -3.75,
+    z: -3.7,
+    order: 0.12,
+    seed: 305,
+    glow: true,
+    poke: 'tilt',
   },
   {
     id: 'esb',
@@ -407,6 +425,46 @@ export const PIECES: PieceDef[] = [
     order: 0.88,
     seed: 1003,
     poke: 'tilt',
+  },
+  {
+    id: 'pizza',
+    label: 'A dollar slice',
+    art: pizzaSlice,
+    w: 0.7,
+    h: 0.85,
+    x: -3.0,
+    z: 4.1,
+    scale: 1.25,
+    order: 0.95,
+    seed: 1101,
+    poke: 'tilt',
+  },
+  {
+    id: 'bagel',
+    label: 'Everything bagel',
+    art: bagel,
+    w: 0.75,
+    h: 0.72,
+    x: 2.1,
+    z: 4.25,
+    scale: 1.25,
+    order: 0.95,
+    seed: 1102,
+    poke: 'tilt',
+  },
+  {
+    id: 'rat',
+    label: 'Pizza rat',
+    art: pizzaRat,
+    w: 1.1,
+    h: 0.42,
+    x: 1.45,
+    z: 4.6,
+    scale: 1.25,
+    order: 0.97,
+    seed: 1103,
+    poke: 'run',
+    run: [1.45, -2.0],
   },
 ]
 
