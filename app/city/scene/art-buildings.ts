@@ -376,6 +376,13 @@ export const RIGHT_HOUSES: House[] = [
   { w: 1.75, color: C.terracotta, floors: 4, tenement: true, shop: { text: 'COFFEE', color: C.redDark }, tower: true },
 ]
 
+// Park Slope: painted brownstones and a corner shop.
+export const BROOKLYN_HOUSES: House[] = [
+  { w: 1.6, color: '#a7b38a', floors: 3, stoop: 'right', cat: true },
+  { w: 1.75, color: C.brick, floors: 4, tenement: true, shop: { text: 'BAGELS', color: C.navy }, tower: true },
+  { w: 1.6, color: '#c98f5e', floors: 3, stoop: 'left' },
+]
+
 // ---------------------------------------------------------------------------
 // The Flatiron, seen head-on from its narrow prow with both sides receding.
 

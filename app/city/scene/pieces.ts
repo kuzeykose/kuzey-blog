@@ -19,7 +19,7 @@ import {
   taxi,
 } from './art-street'
 
-export type Poke = 'tilt' | 'lift' | 'drive' | 'run'
+export type Poke = 'tilt' | 'lift' | 'drive' | 'run' | 'spin'
 
 export type PieceDef = {
   id: string
@@ -55,6 +55,10 @@ export type PieceDef = {
   startles?: string
   // Poke it by itself once the book has finished opening.
   pokeOnOpen?: boolean
+  // For 'spin': turns about this art point, slowly (rad/s) when left alone.
+  spin?: { at: [number, number]; idle: number }
+  // Reuse another piece's art (by id) instead of painting it again.
+  sameArtAs?: string
   // A point light at this art position after dark (warm unless coloured).
   lamp?: [number, number]
   lampColor?: string

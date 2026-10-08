@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { PAGE_D, PAGE_W, cloth, coverArt, pageEdges, spread } from './art-book'
+import { PAGE_D, PAGE_W, brooklynSpread, cloth, coverArt, manhattanSpread, pageEdges } from './art-book'
 import { canvasTexture } from './materials'
 
 export const COVER_T = 0.1
@@ -8,19 +8,28 @@ export const BLOCK_T = 0.3
 export const PAGE_Y = COVER_T + BLOCK_T
 const OVER = 0.2
 const CLOTH = '#2c4a3f'
+// The loose page between the two spreads floats this far above its hinge
+// line, so it rests just above whichever page it lies on.
+const LEAF_LIFT = 0.0015
+
+// Pop-ups glued to one page of a spread live under that page's group, with
+// y = 0 on the page surface and x = 0 on the gutter.
+export type Spread = { left: THREE.Group; right: THREE.Group }
 
 export type Book = {
   root: THREE.Group
-  // Everything glued to the left / right page lives under these, with y = 0
-  // on the page surface and x = 0 on the gutter.
-  left: THREE.Group
-  right: THREE.Group
-  // The hinge of the turning half (everything under it can curl).
+  // Spread 0 (Manhattan): front cover's page + the front of the loose page.
+  // Spread 1 (Brooklyn): the back of the loose page + the back cover's page.
+  spreads: [Spread, Spread]
+  // Hinges of the two halves that turn (everything under them can curl).
   flap: THREE.Group
-  // Distance from the spine to the free edge of the front cover.
+  leaf: THREE.Group
+  // Distance from the spine to the free edge of the cover / loose page.
   flapLength: number
-  // closed: 0 = flat open, 1 = shut.
+  leafLength: number
+  // 0 = lying open on the left, 1 = lying on the right.
   setAngle: (closed: number) => void
+  setLeaf: (closed: number) => void
   dispose: () => void
 }
 
@@ -37,7 +46,8 @@ export function buildBook(maxAnisotropy: number): Book {
     return m
   }
 
-  const pages = spread()
+  const manhattan = manhattanSpread()
+  const brooklyn = brooklynSpread()
   const clothMat = std({ map: tex(cloth(CLOTH), [3, 4]), roughness: 0.85 })
   const coverTex = tex(coverArt(PAGE_W + OVER, PAGE_D + OVER * 2, CLOTH))
   // The front cover is seen upside down relative to the box UVs once the
@@ -46,8 +56,8 @@ export function buildBook(maxAnisotropy: number): Book {
   coverTex.rotation = Math.PI
   const coverMat = std({ map: coverTex, roughness: 0.75, metalness: 0.05 })
   const edgeMat = std({ map: tex(pageEdges()), roughness: 1 })
-  const leftArt = std({ map: tex(pages.left), roughness: 0.95 })
-  const rightArt = std({ map: tex(pages.right), roughness: 0.95 })
+  const leftArt = std({ map: tex(manhattan.left), roughness: 0.95 })
+  const rightArt = std({ map: tex(brooklyn.right), roughness: 0.95 })
 
   const root = new THREE.Group()
   const leftPivot = new THREE.Group()
@@ -75,7 +85,8 @@ export function buildBook(maxAnisotropy: number): Book {
     const cover = new THREE.Mesh(geo, [clothMat, clothMat, clothMat, outside, clothMat, clothMat])
     cover.position.set((side * (PAGE_W + OVER)) / 2, -PAGE_Y + COVER_T / 2, 0)
     const pages = new THREE.Mesh(block, [edgeMat, edgeMat, art, edgeMat, edgeMat, edgeMat])
-    pages.position.set((side * PAGE_W) / 2, -BLOCK_T / 2, 0)
+    // The right-hand block sits a hair lower so the loose page can lie on it.
+    pages.position.set((side * PAGE_W) / 2, -BLOCK_T / 2 - (side > 0 ? LEAF_LIFT * 2 : 0), 0)
     for (const m of [cover, pages]) {
       m.castShadow = true
       m.receiveShadow = true
@@ -104,11 +115,45 @@ export function buildBook(maxAnisotropy: number): Book {
   spine.castShadow = true
   root.add(spine)
 
+  // The loose page between the spreads: Manhattan's right page on its front
+  // (facing down its hinge's -y), Brooklyn's left page on its back (+y). It
+  // is built lying on the left; rotating it by -π lays it on the right.
+  const leafPivot = new THREE.Group()
+  leafPivot.position.y = PAGE_Y + LEAF_LIFT
+  root.add(leafPivot)
+  const face = (up: boolean, art: HTMLCanvasElement) => {
+    const g = new THREE.PlaneGeometry(PAGE_W, PAGE_D, 40, 1)
+    g.rotateX(up ? -Math.PI / 2 : Math.PI / 2)
+    g.translate(-PAGE_W / 2, LEAF_LIFT, 0)
+    const pos = g.attributes.position as THREE.BufferAttribute
+    const uv = g.attributes.uv as THREE.BufferAttribute
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i)
+      // Seen from above: on the left the back reads left to right; on the
+      // right the front does, mirrored through the hinge.
+      uv.setXY(i, up ? (x + PAGE_W) / PAGE_W : -x / PAGE_W, 0.5 - pos.getZ(i) / PAGE_D)
+    }
+    disposables.push(g)
+    const mesh = new THREE.Mesh(g, std({ map: tex(art), roughness: 0.95 }))
+    mesh.castShadow = true
+    mesh.receiveShadow = true
+    leafPivot.add(mesh)
+  }
+  face(false, manhattan.right)
+  face(true, brooklyn.left)
+
   // Pages are the children that pop-ups attach to.
-  const left = new THREE.Group()
-  const right = new THREE.Group()
-  leftPivot.add(left)
-  rightPivot.add(right)
+  const aLeft = new THREE.Group()
+  leftPivot.add(aLeft)
+  const aRight = new THREE.Group()
+  aRight.position.y = LEAF_LIFT
+  aRight.rotation.z = Math.PI
+  const bLeft = new THREE.Group()
+  bLeft.position.y = LEAF_LIFT
+  leafPivot.add(aRight, bLeft)
+  const bRight = new THREE.Group()
+  bRight.position.y = -LEAF_LIFT * 2
+  rightPivot.add(bRight)
 
   const setAngle = (closed: number) => {
     const t = closed * Math.PI
@@ -116,15 +161,24 @@ export function buildBook(maxAnisotropy: number): Book {
     spine.rotation.z = -t / 2
     spine.visible = closed > 0.02
   }
+  const setLeaf = (closed: number) => {
+    leafPivot.rotation.z = -closed * Math.PI
+  }
   setAngle(0)
+  setLeaf(1)
 
   return {
     root,
-    left,
-    right,
+    spreads: [
+      { left: aLeft, right: aRight },
+      { left: bLeft, right: bRight },
+    ],
     flap: leftPivot,
+    leaf: leafPivot,
     flapLength: coverW,
+    leafLength: PAGE_W,
     setAngle,
+    setLeaf,
     dispose: () => disposables.forEach((d) => d.dispose()),
   }
 }

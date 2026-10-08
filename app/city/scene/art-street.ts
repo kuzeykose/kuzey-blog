@@ -335,12 +335,12 @@ type PersonOpts = {
   hair?: string
   skin?: string
   hat?: 'fedora' | 'beret' | 'beanie'
-  hold?: 'briefcase' | 'coffee' | 'umbrella' | 'leash' | 'balloon' | 'paper'
+  hold?: 'briefcase' | 'coffee' | 'umbrella' | 'leash' | 'balloon' | 'paper' | 'icecream' | 'bucket'
   skirt?: boolean
   scarf?: string
 }
 
-function person(s: Sketch, x: number, y: number, H: number, o: PersonOpts): Part[] {
+export function person(s: Sketch, x: number, y: number, H: number, o: PersonOpts): Part[] {
   const skin = o.skin ?? C.skin
   const legs = o.legs ?? '#3a3a48'
   const sh = y + H * 0.78
@@ -411,7 +411,7 @@ function person(s: Sketch, x: number, y: number, H: number, o: PersonOpts): Part
   const right: [number, number] =
     hold === 'umbrella' || hold === 'balloon'
       ? [x + H * 0.2, y + H * 0.72]
-      : hold === 'coffee'
+      : hold === 'coffee' || hold === 'icecream'
         ? [x + H * 0.17, y + H * 0.58]
         : [x + H * 0.2, y + H * 0.42]
   const left: [number, number] = hold === 'paper' ? [x - H * 0.12, y + H * 0.55] : [x - H * 0.2, y + H * 0.42]
@@ -457,7 +457,14 @@ function person(s: Sketch, x: number, y: number, H: number, o: PersonOpts): Part
   }
 
   // Props.
-  if (hold === 'briefcase') {
+  if (hold === 'icecream') {
+    const cone = s.poly(pts(right[0] - H * 0.035, right[1] + H * 0.02, right[0] + H * 0.035, right[1] + H * 0.02, right[0], right[1] - H * 0.07), 0)
+    parts.push({ shape: cone, color: '#d9a35c', ink: 0.008, hatch: { angle: 0.8, gap: 0.015, alpha: 0.4 } })
+    parts.push({ shape: s.ellipse(right[0], right[1] + H * 0.045, H * 0.042, H * 0.038), color: '#f4b8c4', ink: 0.008 })
+  } else if (hold === 'bucket') {
+    const bucket = s.poly(pts(right[0] - H * 0.06, right[1] - H * 0.14, right[0] + H * 0.06, right[1] - H * 0.14, right[0] + H * 0.075, right[1] - H * 0.02, right[0] - H * 0.075, right[1] - H * 0.02), 0)
+    parts.push({ shape: bucket, color: '#4aa3d9', ink: 0.008, detail: () => s.line([[right[0] - H * 0.07, right[1] - H * 0.02], [right[0], right[1] + H * 0.03], [right[0] + H * 0.07, right[1] - H * 0.02]], 0.006) })
+  } else if (hold === 'briefcase') {
     parts.push({ shape: s.rect(right[0] - H * 0.06, right[1] - H * 0.16, H * 0.14, H * 0.12, 0.001), color: '#6b4430', ink: 0.012 })
   } else if (hold === 'coffee') {
     parts.push({ shape: s.poly(pts(right[0] - H * 0.03, right[1] - H * 0.02, right[0] + H * 0.03, right[1] - H * 0.02, right[0] + H * 0.035, right[1] + H * 0.08, right[0] - H * 0.035, right[1] + H * 0.08), 0), color: '#f4ecdc', ink: 0.008, detail: () => s.fill(s.rect(right[0] - H * 0.034, right[1] + H * 0.015, H * 0.068, H * 0.03, 0), C.brick) })

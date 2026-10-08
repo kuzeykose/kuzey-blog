@@ -27,42 +27,52 @@ function noise(ctx: CanvasRenderingContext2D, w: number, h: number, amount: numb
 }
 
 // ---------------------------------------------------------------------------
-// The printed spread: a storybook map of Manhattan between its two rivers.
-// Drawn in spread coordinates (x across, z towards the reader) and split in
-// two at the gutter.
+// The printed spreads: storybook maps drawn in spread coordinates (x across
+// the book with the gutter at 0, z towards the reader), then split in two at
+// the gutter.
 
-export function spread(ppu = 120) {
-  const W = PAGE_W * 2
-  const D = PAGE_D
-  const cv = canvas(W * ppu, D * ppu)
-  const c = cv.getContext('2d', { willReadFrequently: true })!
-  const rnd = mulberry32(42)
-  const r = (a: number, b: number) => a + (b - a) * rnd()
-  c.setTransform(ppu, 0, 0, ppu, PAGE_W * ppu, (D / 2) * ppu)
-  c.lineJoin = 'round'
-  c.lineCap = 'round'
-  const X0 = -PAGE_W
-  const X1 = PAGE_W
-  const Z0 = -D / 2
-  const Z1 = D / 2
+type Line = [number, number][]
+type LabelOpts = { italic?: boolean; color?: string; spacing?: number }
 
-  // Paper.
-  c.fillStyle = '#f5eedd'
-  c.fillRect(X0, Z0, W, D)
-  for (let i = 0; i < 40; i++) {
-    const x = r(X0, X1)
-    const z = r(Z0, Z1)
-    const rad = r(0.3, 1.4)
-    const g = c.createRadialGradient(x, z, 0, x, z, rad)
-    g.addColorStop(0, 'rgba(214,190,150,0.10)')
-    g.addColorStop(1, 'rgba(214,190,150,0)')
-    c.fillStyle = g
-    c.fillRect(x - rad, z - rad, rad * 2, rad * 2)
+const X0 = -PAGE_W
+const X1 = PAGE_W
+const Z0 = -PAGE_D / 2
+const Z1 = PAGE_D / 2
+
+class MapSheet {
+  readonly cv: HTMLCanvasElement
+  readonly c: CanvasRenderingContext2D
+  readonly rnd: () => number
+
+  constructor(seed: number, ppu = 120) {
+    this.cv = canvas(PAGE_W * 2 * ppu, PAGE_D * ppu)
+    this.c = this.cv.getContext('2d', { willReadFrequently: true })!
+    this.rnd = mulberry32(seed)
+    const c = this.c
+    c.setTransform(ppu, 0, 0, ppu, PAGE_W * ppu, (PAGE_D / 2) * ppu)
+    c.lineJoin = 'round'
+    c.lineCap = 'round'
+    // Paper with a few foxing stains.
+    c.fillStyle = '#f5eedd'
+    c.fillRect(X0, Z0, X1 - X0, Z1 - Z0)
+    for (let i = 0; i < 40; i++) this.bloom(this.r(X0, X1), this.r(Z0, Z1), this.r(0.3, 1.4), 'rgba(214,190,150,0.10)')
   }
 
-  // Shorelines.
-  const shore = (base: number, amp: number, seed: number) => {
-    const out: [number, number][] = []
+  r(a: number, b: number) {
+    return a + (b - a) * this.rnd()
+  }
+
+  bloom(x: number, z: number, rad: number, color: string) {
+    const g = this.c.createRadialGradient(x, z, 0, x, z, rad)
+    g.addColorStop(0, color)
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    this.c.fillStyle = g
+    this.c.fillRect(x - rad, z - rad, rad * 2, rad * 2)
+  }
+
+  // A wavy shoreline running front to back at x ≈ base.
+  shore(base: number, amp: number, seed: number): Line {
+    const out: Line = []
     const rr = mulberry32(seed)
     const p1 = rr() * 6
     const p2 = rr() * 6
@@ -71,83 +81,282 @@ export function spread(ppu = 120) {
     }
     return out
   }
-  const west = shore(-3.4, 0.25, 3)
-  const east = shore(3.15, 0.22, 4)
-  const brooklyn = shore(7.05, 0.18, 5)
 
-  const water = new Path2D()
-  water.moveTo(X0 - 1, Z0 - 1)
-  west.forEach(([x, z]) => water.lineTo(x, z))
-  water.lineTo(X0 - 1, Z1 + 1)
-  water.closePath()
-  water.moveTo(east[0][0], east[0][1])
-  east.forEach(([x, z]) => water.lineTo(x, z))
-  for (let i = brooklyn.length - 1; i >= 0; i--) water.lineTo(brooklyn[i][0], brooklyn[i][1])
-  water.closePath()
-
-  c.save()
-  c.clip(water)
-  c.fillStyle = C.water
-  c.fillRect(X0, Z0, W, D)
-  for (let i = 0; i < 60; i++) {
-    const x = r(X0, X1)
-    const z = r(Z0, Z1)
-    const rad = r(0.4, 1.6)
-    const g = c.createRadialGradient(x, z, 0, x, z, rad)
-    g.addColorStop(0, rgba(rnd() < 0.5 ? C.waterDeep : '#b9d6dd', 0.35))
-    g.addColorStop(1, 'rgba(0,0,0,0)')
-    c.fillStyle = g
-    c.fillRect(x - rad, z - rad, rad * 2, rad * 2)
+  // A shore running across the page at z ≈ base.
+  coast(base: number, amp: number, seed: number): Line {
+    const out: Line = []
+    const rr = mulberry32(seed)
+    const p1 = rr() * 6
+    const p2 = rr() * 6
+    for (let x = X0 - 0.2; x <= X1 + 0.2; x += 0.1) {
+      out.push([x, base + Math.sin(x * 0.4 + p1) * amp + Math.sin(x * 1.3 + p2) * amp * 0.3])
+    }
+    return out
   }
-  // Engraved ripple lines following each shore.
-  const echo = (line: [number, number][], dir: number) => {
-    for (let k = 1; k <= 4; k++) {
-      c.strokeStyle = rgba('#3d6b80', 0.35 - k * 0.06)
+
+  // Fill a region with watercolour water, engraved ripples along `shores`
+  // (each pushed out in direction [dx, dz]) and little wave ticks.
+  water(region: Path2D, shores: [Line, number, number][], color: string = C.water, deep: string = C.waterDeep) {
+    const c = this.c
+    c.save()
+    c.clip(region)
+    c.fillStyle = color
+    c.fillRect(X0, Z0, X1 - X0, Z1 - Z0)
+    for (let i = 0; i < 60; i++) {
+      this.bloom(this.r(X0, X1), this.r(Z0, Z1), this.r(0.4, 1.6), rgba(this.rnd() < 0.5 ? deep : '#b9d6dd', 0.35))
+    }
+    shores.forEach(([line, dx, dz]) => {
+      for (let k = 1; k <= 4; k++) {
+        c.strokeStyle = rgba('#3d6b80', 0.35 - k * 0.06)
+        c.lineWidth = 0.014
+        c.beginPath()
+        line.forEach(([x, z], i) => (i ? c.lineTo(x + dx * k * 0.14, z + dz * k * 0.14) : c.moveTo(x + dx * k * 0.14, z + dz * k * 0.14)))
+        c.stroke()
+      }
+    })
+    c.strokeStyle = rgba('#3d6b80', 0.5)
+    c.lineWidth = 0.016
+    for (let i = 0; i < 140; i++) {
+      const x = this.r(X0 + 0.3, X1 - 0.3)
+      const z = this.r(Z0 + 0.3, Z1 - 0.3)
+      c.beginPath()
+      c.moveTo(x - 0.12, z)
+      c.quadraticCurveTo(x - 0.06, z - 0.06, x, z)
+      c.quadraticCurveTo(x + 0.06, z + 0.06, x + 0.12, z)
+      c.stroke()
+    }
+    c.restore()
+  }
+
+  fill(region: Path2D, color: string) {
+    const c = this.c
+    c.save()
+    c.clip(region)
+    c.fillStyle = color
+    c.fillRect(X0, Z0, X1 - X0, Z1 - Z0)
+    c.restore()
+  }
+
+  // A street drawn as a pale band with inked kerbs.
+  road(draw: () => void, w: number) {
+    const c = this.c
+    c.strokeStyle = rgba(INK, 0.55)
+    c.lineWidth = w + 0.03
+    c.beginPath()
+    draw()
+    c.stroke()
+    c.strokeStyle = '#fbf6ea'
+    c.lineWidth = w
+    c.beginPath()
+    draw()
+    c.stroke()
+  }
+
+  ink(lines: Line[], width = 0.03) {
+    const c = this.c
+    c.strokeStyle = INK
+    c.lineWidth = width
+    lines.forEach((line) => {
+      c.beginPath()
+      line.forEach(([x, z], i) => (i ? c.lineTo(x, z) : c.moveTo(x, z)))
+      c.stroke()
+    })
+  }
+
+  // Piers sticking out from a shoreline into the water on side `dir`.
+  piers(line: Line, dir: number, from = Z0 + 0.6, to = Z1 - 0.3, step = 0.75) {
+    const c = this.c
+    for (let z = from; z < to; z += step) {
+      const p = line.reduce((best, q) => (Math.abs(q[1] - z) < Math.abs(best[1] - z) ? q : best))
+      c.fillStyle = '#e6d6b6'
+      c.strokeStyle = INK
       c.lineWidth = 0.014
       c.beginPath()
-      line.forEach(([x, z], i) => (i ? c.lineTo(x + dir * k * 0.14, z) : c.moveTo(x + dir * k * 0.14, z)))
+      c.rect(dir < 0 ? p[0] - 0.42 : p[0] - 0.02, z - 0.06, 0.44, 0.12)
+      c.fill()
       c.stroke()
     }
   }
-  echo(west, -1)
-  echo(east, 1)
-  echo(brooklyn, -1)
-  // Little wave ticks.
-  c.strokeStyle = rgba('#3d6b80', 0.5)
-  c.lineWidth = 0.016
-  for (let i = 0; i < 140; i++) {
-    const x = r(X0 + 0.3, X1 - 0.3)
-    const z = r(Z0 + 0.3, Z1 - 0.3)
-    c.beginPath()
-    c.moveTo(x - 0.12, z)
-    c.quadraticCurveTo(x - 0.06, z - 0.06, x, z)
-    c.quadraticCurveTo(x + 0.06, z + 0.06, x + 0.12, z)
-    c.stroke()
-  }
-  c.restore()
 
-  // Land.
-  const land = (pts: [number, number][], other: number) => {
-    const p = new Path2D()
-    pts.forEach(([x, z], i) => (i ? p.lineTo(x, z) : p.moveTo(x, z)))
-    p.lineTo(other, Z1 + 1)
-    p.lineTo(other, Z0 - 1)
-    p.closePath()
-    return p
-  }
-  const manhattan = new Path2D()
-  west.forEach(([x, z], i) => (i ? manhattan.lineTo(x, z) : manhattan.moveTo(x, z)))
-  for (let i = east.length - 1; i >= 0; i--) manhattan.lineTo(east[i][0], east[i][1])
-  manhattan.closePath()
-  const bk = land(brooklyn, X1 + 1)
-
-  for (const p of [manhattan, bk]) {
+  boat(x: number, z: number, len: number, hull: string, deck: string, ang = 0) {
+    const c = this.c
     c.save()
-    c.clip(p)
-    c.fillStyle = C.land
-    c.fillRect(X0, Z0, W, D)
+    c.translate(x, z)
+    c.rotate(ang)
+    // Wake.
+    c.strokeStyle = 'rgba(255,255,255,0.8)'
+    c.lineWidth = 0.02
+    for (let k = 1; k <= 3; k++) {
+      c.beginPath()
+      c.moveTo(-len / 2 - k * 0.12, -0.04 * k)
+      c.lineTo(-len / 2 - k * 0.12 - 0.25, -0.1 * k)
+      c.moveTo(-len / 2 - k * 0.12, 0.04 * k)
+      c.lineTo(-len / 2 - k * 0.12 - 0.25, 0.1 * k)
+      c.stroke()
+    }
+    c.fillStyle = hull
+    c.strokeStyle = INK
+    c.lineWidth = 0.018
+    c.beginPath()
+    c.moveTo(-len / 2, -len * 0.2)
+    c.lineTo(len * 0.25, -len * 0.2)
+    c.quadraticCurveTo(len / 2 + len * 0.1, 0, len * 0.25, len * 0.2)
+    c.lineTo(-len / 2, len * 0.2)
+    c.closePath()
+    c.fill()
+    c.stroke()
+    c.fillStyle = deck
+    c.fillRect(-len * 0.32, -len * 0.1, len * 0.52, len * 0.2)
+    c.strokeRect(-len * 0.32, -len * 0.1, len * 0.52, len * 0.2)
+    c.fillStyle = rgba(INK, 0.6)
+    for (let k = 0; k < 4; k++) c.fillRect(-len * 0.26 + k * len * 0.12, -len * 0.04, len * 0.05, len * 0.08)
     c.restore()
   }
+
+  dotted(draw: () => void) {
+    const c = this.c
+    c.setLineDash([0.06, 0.07])
+    c.strokeStyle = rgba(INK, 0.5)
+    c.lineWidth = 0.014
+    c.beginPath()
+    draw()
+    c.stroke()
+    c.setLineDash([])
+  }
+
+  compass(x: number, z: number) {
+    const c = this.c
+    c.save()
+    c.translate(x, z)
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2 - Math.PI / 2
+      const len = i % 2 ? 0.32 : 0.58
+      c.fillStyle = i % 2 ? '#e8dcc0' : i === 0 ? C.red : '#2f4566'
+      c.strokeStyle = INK
+      c.lineWidth = 0.012
+      c.beginPath()
+      c.moveTo(0, 0)
+      c.lineTo(Math.cos(a - 0.25) * len * 0.3, Math.sin(a - 0.25) * len * 0.3)
+      c.lineTo(Math.cos(a) * len, Math.sin(a) * len)
+      c.lineTo(Math.cos(a + 0.25) * len * 0.3, Math.sin(a + 0.25) * len * 0.3)
+      c.closePath()
+      c.fill()
+      c.stroke()
+    }
+    c.beginPath()
+    c.arc(0, 0, 0.42, 0, Math.PI * 2)
+    c.stroke()
+    c.fillStyle = INK
+    c.scale(0.002, 0.002)
+    c.font = 'bold 100px Georgia, serif'
+    c.textAlign = 'center'
+    c.fillText('N', 0, -330)
+    c.restore()
+  }
+
+  label(t: string, x: number, z: number, size: number, rot = 0, o: LabelOpts = {}) {
+    const c = this.c
+    c.save()
+    c.translate(x, z)
+    c.rotate(rot)
+    c.scale(size / 100, size / 100)
+    c.font = `${o.italic ? 'italic ' : ''}600 100px Georgia, "Times New Roman", serif`
+    ;(c as any).letterSpacing = `${o.spacing ?? 18}px`
+    c.textAlign = 'center'
+    c.fillStyle = o.color ?? rgba(INK, 0.75)
+    c.fillText(t, 0, 0)
+    c.restore()
+  }
+
+  // A ribbon-ended title plate.
+  cartouche(x: number, z: number, title: string, sub: string) {
+    const c = this.c
+    c.save()
+    c.translate(x, z)
+    c.fillStyle = '#fbf3df'
+    c.strokeStyle = INK
+    c.lineWidth = 0.02
+    c.beginPath()
+    c.moveTo(-1.55, -0.3)
+    c.lineTo(1.55, -0.3)
+    c.lineTo(1.35, 0.0)
+    c.lineTo(1.55, 0.3)
+    c.lineTo(-1.55, 0.3)
+    c.lineTo(-1.35, 0.0)
+    c.closePath()
+    c.fill()
+    c.stroke()
+    c.restore()
+    this.label(title, x, z + 0.07, 0.3, 0, { italic: true, spacing: 2, color: INK })
+    this.label(sub, x, z + 0.25, 0.1, 0, { italic: true, spacing: 2 })
+  }
+
+  // Page frames, page numbers and the shadow down the gutter, then split.
+  finish(pages: [string, string]) {
+    const c = this.c
+    c.strokeStyle = rgba(INK, 0.55)
+    for (const [a, b] of [
+      [X0 + 0.3, -0.35],
+      [0.35, X1 - 0.3],
+    ]) {
+      c.lineWidth = 0.025
+      c.strokeRect(a, Z0 + 0.3, b - a, PAGE_D - 0.6)
+      c.lineWidth = 0.01
+      c.strokeRect(a + 0.08, Z0 + 0.38, b - a - 0.16, PAGE_D - 0.76)
+    }
+    this.label(pages[0], X0 + 0.65, Z1 - 0.06, 0.16, 0, { spacing: 0 })
+    this.label(pages[1], X1 - 0.65, Z1 - 0.06, 0.16, 0, { spacing: 0 })
+
+    const gl = c.createLinearGradient(-0.9, 0, 0.9, 0)
+    gl.addColorStop(0, 'rgba(70,50,30,0)')
+    gl.addColorStop(0.42, 'rgba(70,50,30,0.12)')
+    gl.addColorStop(0.5, 'rgba(70,50,30,0.32)')
+    gl.addColorStop(0.58, 'rgba(70,50,30,0.12)')
+    gl.addColorStop(1, 'rgba(70,50,30,0)')
+    c.fillStyle = gl
+    c.fillRect(-0.9, Z0, 1.8, PAGE_D)
+
+    c.setTransform(1, 0, 0, 1, 0, 0)
+    noise(c, this.cv.width, this.cv.height, 14, 9)
+    const half = (left: boolean) => {
+      const h = canvas(this.cv.width / 2, this.cv.height)
+      h.getContext('2d')!.drawImage(this.cv, left ? 0 : -this.cv.width / 2, 0)
+      return h
+    }
+    return { left: half(true), right: half(false) }
+  }
+}
+
+const between = (a: Line, b: Line) => {
+  const p = new Path2D()
+  a.forEach(([x, z], i) => (i ? p.lineTo(x, z) : p.moveTo(x, z)))
+  for (let i = b.length - 1; i >= 0; i--) p.lineTo(b[i][0], b[i][1])
+  p.closePath()
+  return p
+}
+
+// Manhattan between the Hudson and the East River, with Liberty Island.
+export function manhattanSpread() {
+  const m = new MapSheet(42)
+  const { c } = m
+  const west = m.shore(-3.4, 0.25, 3)
+  const east = m.shore(3.15, 0.22, 4)
+  const brooklyn = m.shore(7.05, 0.18, 5)
+  const farLeft: Line = [[X0 - 1, Z0 - 1], [X0 - 1, Z1 + 1]]
+  const farRight: Line = [[X1 + 1, Z0 - 1], [X1 + 1, Z1 + 1]]
+
+  const water = new Path2D()
+  water.addPath(between(farLeft, west))
+  water.addPath(between(east, brooklyn))
+  m.water(water, [
+    [west, -1, 0],
+    [east, 1, 0],
+    [brooklyn, -1, 0],
+  ])
+  const manhattan = between(west, east)
+  const bk = between(brooklyn, farRight)
+  m.fill(manhattan, C.land)
+  m.fill(bk, C.land)
 
   // Street grid on Manhattan.
   c.save()
@@ -168,40 +377,29 @@ export function spread(ppu = 120) {
   c.fillStyle = '#b8cf98'
   c.fillRect(-1.6, Z0 + 0.2, 3.3, 2.3)
   for (let i = 0; i < 70; i++) {
-    const x = r(-1.5, 1.6)
-    const z = r(Z0 + 0.3, Z0 + 2.4)
     c.fillStyle = rgba(C.greenDark, 0.55)
     c.beginPath()
-    c.arc(x, z, r(0.05, 0.11), 0, Math.PI * 2)
+    c.arc(m.r(-1.5, 1.6), m.r(Z0 + 0.3, Z0 + 2.4), m.r(0.05, 0.11), 0, Math.PI * 2)
     c.fill()
   }
   c.fillStyle = rgba('#8fb6c4', 0.9)
   c.beginPath()
   c.ellipse(0.3, Z0 + 1.0, 0.55, 0.28, 0.2, 0, Math.PI * 2)
   c.fill()
-  // Roads.
-  const road = (draw: () => void, w: number) => {
-    c.strokeStyle = rgba(INK, 0.55)
-    c.lineWidth = w + 0.03
-    c.beginPath()
-    draw()
-    c.stroke()
-    c.strokeStyle = '#fbf6ea'
-    c.lineWidth = w
-    c.beginPath()
-    draw()
-    c.stroke()
-  }
-  avenues.forEach((x) => road(() => {
-    c.moveTo(x, Z0 - 1)
-    c.lineTo(x, Z1 + 1)
-  }, 0.16))
-  streets.forEach((z) => road(() => {
-    c.moveTo(X0, z)
-    c.lineTo(X1, z)
-  }, 0.09))
+  avenues.forEach((x) =>
+    m.road(() => {
+      c.moveTo(x, Z0 - 1)
+      c.lineTo(x, Z1 + 1)
+    }, 0.16)
+  )
+  streets.forEach((z) =>
+    m.road(() => {
+      c.moveTo(X0, z)
+      c.lineTo(X1, z)
+    }, 0.09)
+  )
   // Broadway cuts across the grid.
-  road(() => {
+  m.road(() => {
     c.moveTo(-3.4, Z1 + 0.5)
     c.bezierCurveTo(-1.5, 2.5, 0.5, 0.0, 2.2, Z0 - 0.5)
   }, 0.2)
@@ -214,47 +412,26 @@ export function spread(ppu = 120) {
   }
   c.restore()
 
-  // Shore ink.
-  c.strokeStyle = INK
-  c.lineWidth = 0.03
-  ;[west, east, brooklyn].forEach((line) => {
-    c.beginPath()
-    line.forEach(([x, z], i) => (i ? c.lineTo(x, z) : c.moveTo(x, z)))
-    c.stroke()
-  })
-  // Piers along the shores.
-  for (let z = Z0 + 0.6; z < Z1 - 0.3; z += 0.75) {
-    for (const [line, dir] of [
-      [west, -1],
-      [east, 1],
-    ] as [[number, number][], number][]) {
-      const p = line.reduce((best, q) => (Math.abs(q[1] - z) < Math.abs(best[1] - z) ? q : best))
-      c.fillStyle = '#e6d6b6'
-      c.strokeStyle = INK
-      c.lineWidth = 0.014
-      c.beginPath()
-      c.rect(dir < 0 ? p[0] - 0.42 : p[0] - 0.02, z - 0.06, 0.44, 0.12)
-      c.fill()
-      c.stroke()
-    }
-  }
+  m.ink([west, east, brooklyn])
+  m.piers(west, -1)
+  m.piers(east, 1)
 
   // Brooklyn: little rows of houses and trees.
   c.save()
   c.clip(bk)
   for (let z = Z0 + 0.35; z < Z1 - 0.3; z += 0.42) {
     for (let x = 7.35; x < X1 - 0.25; x += 0.3) {
-      if (rnd() < 0.3) {
+      if (m.rnd() < 0.3) {
         c.fillStyle = rgba(C.greenDark, 0.45)
         c.beginPath()
-        c.arc(x + 0.1, z + 0.12, r(0.06, 0.1), 0, Math.PI * 2)
+        c.arc(x + 0.1, z + 0.12, m.r(0.06, 0.1), 0, Math.PI * 2)
         c.fill()
       } else {
-        c.fillStyle = rgba(rnd() < 0.5 ? C.brick : C.brownstone, 0.28)
+        c.fillStyle = rgba(m.rnd() < 0.5 ? C.brick : C.brownstone, 0.28)
         c.strokeStyle = rgba(INK, 0.3)
         c.lineWidth = 0.008
-        const w = r(0.14, 0.22)
-        const d = r(0.18, 0.26)
+        const w = m.r(0.14, 0.22)
+        const d = m.r(0.18, 0.26)
         c.fillRect(x, z, w, d)
         c.strokeRect(x, z, w, d)
       }
@@ -290,158 +467,214 @@ export function spread(ppu = 120) {
   c.lineWidth = 0.015
   c.stroke()
 
-  // Boats.
-  const boat = (x: number, z: number, len: number, hull: string, deck: string, ang = 0) => {
-    c.save()
-    c.translate(x, z)
-    c.rotate(ang)
-    // Wake.
-    c.strokeStyle = 'rgba(255,255,255,0.8)'
-    c.lineWidth = 0.02
-    for (let k = 1; k <= 3; k++) {
-      c.beginPath()
-      c.moveTo(-len / 2 - k * 0.12, -0.04 * k)
-      c.lineTo(-len / 2 - k * 0.12 - 0.25, -0.1 * k)
-      c.moveTo(-len / 2 - k * 0.12, 0.04 * k)
-      c.lineTo(-len / 2 - k * 0.12 - 0.25, 0.1 * k)
-      c.stroke()
-    }
-    c.fillStyle = hull
-    c.strokeStyle = INK
-    c.lineWidth = 0.018
-    c.beginPath()
-    c.moveTo(-len / 2, -len * 0.2)
-    c.lineTo(len * 0.25, -len * 0.2)
-    c.quadraticCurveTo(len / 2 + len * 0.1, 0, len * 0.25, len * 0.2)
-    c.lineTo(-len / 2, len * 0.2)
-    c.closePath()
-    c.fill()
-    c.stroke()
-    c.fillStyle = deck
-    c.fillRect(-len * 0.32, -len * 0.1, len * 0.52, len * 0.2)
-    c.strokeRect(-len * 0.32, -len * 0.1, len * 0.52, len * 0.2)
-    c.fillStyle = rgba(INK, 0.6)
-    for (let k = 0; k < 4; k++) c.fillRect(-len * 0.26 + k * len * 0.12, -len * 0.04, len * 0.05, len * 0.08)
-    c.restore()
-  }
-  boat(-6.7, 3.6, 0.9, '#ee7d33', '#fff4df', -0.35)
-  boat(-4.3, -2.4, 0.45, '#f6f0e2', '#9c6b48', 1.2)
-  boat(5.3, -2.6, 0.5, C.red, '#2f4566', 2.0)
-  boat(6.2, 3.0, 0.55, '#2f4566', '#f6f0e2', -1.4)
+  m.boat(-6.7, 3.6, 0.9, '#ee7d33', '#fff4df', -0.35)
+  m.boat(-4.3, -2.4, 0.45, '#f6f0e2', '#9c6b48', 1.2)
+  m.boat(5.3, -2.6, 0.5, C.red, '#2f4566', 2.0)
+  m.boat(6.2, 3.0, 0.55, '#2f4566', '#f6f0e2', -1.4)
   // Dotted ferry route out to the island.
-  c.setLineDash([0.06, 0.07])
-  c.strokeStyle = rgba(INK, 0.5)
-  c.lineWidth = 0.014
-  c.beginPath()
-  c.moveTo(-3.5, 4.4)
-  c.quadraticCurveTo(-5.0, 3.2, -5.1, 1.75)
-  c.stroke()
-  c.setLineDash([])
+  m.dotted(() => {
+    c.moveTo(-3.5, 4.4)
+    c.quadraticCurveTo(-5.0, 3.2, -5.1, 1.75)
+  })
+  m.compass(5.6, 4.15)
 
-  // Compass rose.
-  const cx = 5.6
-  const cz = 4.15
+  m.label('HUDSON  RIVER', -7.35, -1.2, 0.3, -Math.PI / 2, { color: rgba('#2f5468', 0.8) })
+  m.label('EAST  RIVER', 5.15, -1.6, 0.26, Math.PI / 2, { color: rgba('#2f5468', 0.8) })
+  m.label('BROOKLYN', 7.7, 0.4, 0.2, Math.PI / 2)
+  m.label('Liberty Island', -5.6, 2.15, 0.14, 0, { italic: true, spacing: 2 })
+  m.label('Broadway', -2.05, 3.9, 0.15, -0.95, { italic: true, spacing: 4 })
+  m.label('Central Park', 0.05, Z0 + 2.35, 0.13, 0, { italic: true, spacing: 2 })
+  m.label('M A N H A T T A N', 0, 4.95, 0.22, 0, { spacing: 10 })
+  m.cartouche(-5.7, 4.55, 'New York', '· the city, in paper ·')
+  return m.finish(['14', '15'])
+}
+
+// Brooklyn: the East River on the left with Manhattan's shore beyond, a
+// tilted street grid, Prospect Park, and Coney Island's beach on the
+// Atlantic along the front.
+export function brooklynSpread() {
+  const m = new MapSheet(77)
+  const { c } = m
+  const manhattanShore = m.shore(-7.3, 0.15, 11)
+  const shore = m.shore(-4.5, 0.3, 12)
+  const beach = m.coast(2.75, 0.18, 13)
+  const surf = beach.map(([x, z]) => [x, z + 0.75] as [number, number])
+  const farLeft: Line = [[X0 - 1, Z0 - 1], [X0 - 1, Z1 + 1]]
+  const front: Line = [[X1 + 1, Z1 + 1], [X0 - 1, Z1 + 1]]
+
+  const river = between(manhattanShore, shore)
+  m.water(river, [
+    [shore, -1, 0],
+    [manhattanShore, 1, 0],
+  ])
+  const ocean = new Path2D()
+  surf.forEach(([x, z], i) => (i ? ocean.lineTo(x, z) : ocean.moveTo(x, z)))
+  front.forEach(([x, z]) => ocean.lineTo(x, z))
+  ocean.closePath()
+  m.water(ocean, [[surf, 0, 1]], '#86b7cc', '#5f9ab4')
+  m.fill(between(farLeft, manhattanShore), C.land)
+
+  // Brooklyn itself, bounded by the river and the beach.
+  const land = new Path2D()
+  shore.forEach(([x, z], i) => (i ? land.lineTo(x, z) : land.moveTo(x, z)))
+  land.lineTo(X1 + 1, Z1 + 1)
+  land.lineTo(X1 + 1, Z0 - 1)
+  land.closePath()
   c.save()
-  c.translate(cx, cz)
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2 - Math.PI / 2
-    const len = i % 2 ? 0.32 : 0.58
-    c.fillStyle = i % 2 ? '#e8dcc0' : i === 0 ? C.red : '#2f4566'
-    c.strokeStyle = INK
-    c.lineWidth = 0.012
+  c.clip(land)
+  // Stop the land at the sand.
+  const dry = new Path2D()
+  dry.moveTo(X0 - 1, Z0 - 1)
+  dry.lineTo(X1 + 1, Z0 - 1)
+  for (let i = beach.length - 1; i >= 0; i--) dry.lineTo(beach[i][0], beach[i][1])
+  dry.closePath()
+  c.clip(dry)
+  c.fillStyle = C.land
+  c.fillRect(X0, Z0, X1 - X0, Z1 - Z0)
+  // Light hatching on the blocks, then a grid tilted like Brooklyn's.
+  c.strokeStyle = rgba(INK, 0.12)
+  c.lineWidth = 0.01
+  for (let x = X0 - 4; x < X1; x += 0.09) {
     c.beginPath()
-    c.moveTo(0, 0)
-    c.lineTo(Math.cos(a - 0.25) * len * 0.3, Math.sin(a - 0.25) * len * 0.3)
-    c.lineTo(Math.cos(a) * len, Math.sin(a) * len)
-    c.lineTo(Math.cos(a + 0.25) * len * 0.3, Math.sin(a + 0.25) * len * 0.3)
-    c.closePath()
-    c.fill()
+    c.moveTo(x, Z0)
+    c.lineTo(x + 3, Z1)
     c.stroke()
   }
-  c.beginPath()
-  c.arc(0, 0, 0.42, 0, Math.PI * 2)
-  c.stroke()
-  c.fillStyle = INK
-  c.scale(0.002, 0.002)
-  c.font = 'bold 100px Georgia, serif'
-  c.textAlign = 'center'
-  c.fillText('N', 0, -330)
-  c.restore()
-
-  // Labels.
-  const label = (t: string, x: number, z: number, size: number, rot = 0, o: { italic?: boolean; color?: string; spacing?: number } = {}) => {
-    c.save()
-    c.translate(x, z)
-    c.rotate(rot)
-    c.scale(size / 100, size / 100)
-    c.font = `${o.italic ? 'italic ' : ''}600 100px Georgia, "Times New Roman", serif`
-    ;(c as any).letterSpacing = `${o.spacing ?? 18}px`
-    c.textAlign = 'center'
-    c.fillStyle = o.color ?? rgba(INK, 0.75)
-    c.fillText(t, 0, 0)
-    c.restore()
-  }
-  label('HUDSON  RIVER', -7.35, -1.2, 0.3, -Math.PI / 2, { color: rgba('#2f5468', 0.8) })
-  label('EAST  RIVER', 5.15, -1.6, 0.26, Math.PI / 2, { color: rgba('#2f5468', 0.8) })
-  label('BROOKLYN', 7.7, 0.4, 0.2, Math.PI / 2)
-  label('Liberty Island', -5.6, 2.15, 0.14, 0, { italic: true, spacing: 2 })
-  label('Broadway', -2.05, 3.9, 0.15, -0.95, { italic: true, spacing: 4 })
-  label('Central Park', 0.05, Z0 + 2.35, 0.13, 0, { italic: true, spacing: 2 })
-  label('M A N H A T T A N', 0, 4.95, 0.22, 0, { spacing: 10 })
-
-  // Title cartouche in the harbour.
   c.save()
-  c.translate(-5.7, 4.55)
-  c.fillStyle = '#fbf3df'
-  c.strokeStyle = INK
-  c.lineWidth = 0.02
+  c.rotate(-0.3)
+  for (let x = X0 - 4; x < X1 + 4; x += 1.05) {
+    m.road(() => {
+      c.moveTo(x, Z0 - 4)
+      c.lineTo(x, Z1 + 4)
+    }, 0.12)
+  }
+  for (let z = Z0 - 4; z < Z1 + 4; z += 0.6) {
+    m.road(() => {
+      c.moveTo(X0 - 4, z)
+      c.lineTo(X1 + 4, z)
+    }, 0.08)
+  }
+  c.restore()
+  // Ocean Parkway runs down to the sea.
+  m.road(() => {
+    c.moveTo(1.4, Z0 - 0.5)
+    c.bezierCurveTo(1.6, -1, 0.6, 1.5, 0.9, Z1)
+  }, 0.2)
+  // Prospect Park with its lake and Grand Army Plaza.
+  c.fillStyle = '#b8cf98'
   c.beginPath()
-  c.moveTo(-1.55, -0.3)
-  c.lineTo(1.55, -0.3)
-  c.lineTo(1.35, 0.0)
-  c.lineTo(1.55, 0.3)
-  c.lineTo(-1.55, 0.3)
-  c.lineTo(-1.35, 0.0)
+  c.moveTo(2.4, -4.4)
+  c.lineTo(5.6, -4.1)
+  c.lineTo(6.1, -1.6)
+  c.lineTo(3.0, -1.1)
   c.closePath()
   c.fill()
+  c.strokeStyle = rgba(INK, 0.5)
+  c.lineWidth = 0.02
   c.stroke()
+  for (let i = 0; i < 80; i++) {
+    c.fillStyle = rgba(C.greenDark, 0.55)
+    c.beginPath()
+    c.arc(m.r(2.7, 5.8), m.r(-4.1, -1.5), m.r(0.05, 0.11), 0, Math.PI * 2)
+    c.fill()
+  }
+  c.fillStyle = rgba('#8fb6c4', 0.9)
+  c.beginPath()
+  c.ellipse(4.6, -2.0, 0.6, 0.3, -0.2, 0, Math.PI * 2)
+  c.fill()
+  c.fillStyle = '#fbf6ea'
+  c.strokeStyle = INK
+  c.lineWidth = 0.015
+  c.beginPath()
+  c.arc(2.3, -4.55, 0.28, 0, Math.PI * 2)
+  c.fill()
+  c.stroke()
+  // Rows of houses and trees in the neighbourhoods.
+  for (let i = 0; i < 260; i++) {
+    const x = m.r(-4.2, X1 - 0.3)
+    const z = m.r(Z0 + 0.3, 2.5)
+    if (x > 2.3 && x < 6.2 && z > -4.5 && z < -1.0) continue
+    if (m.rnd() < 0.3) {
+      c.fillStyle = rgba(C.greenDark, 0.4)
+      c.beginPath()
+      c.arc(x, z, m.r(0.05, 0.09), 0, Math.PI * 2)
+      c.fill()
+    } else {
+      c.fillStyle = rgba(m.rnd() < 0.5 ? C.brick : C.brownstone, 0.22)
+      c.fillRect(x, z, m.r(0.12, 0.2), m.r(0.14, 0.22))
+    }
+  }
   c.restore()
-  label('New York', -5.7, 4.62, 0.3, 0, { italic: true, spacing: 2, color: INK })
-  label('· the city, in paper ·', -5.7, 4.8, 0.1, 0, { italic: true, spacing: 2 })
 
-  // Page frames and numbers.
-  c.strokeStyle = rgba(INK, 0.55)
-  for (const [a, b] of [
-    [X0 + 0.3, -0.35],
-    [0.35, X1 - 0.3],
-  ]) {
-    c.lineWidth = 0.025
-    c.strokeRect(a, Z0 + 0.3, b - a, D - 0.6)
-    c.lineWidth = 0.01
-    c.strokeRect(a + 0.08, Z0 + 0.38, b - a - 0.16, D - 0.76)
+  // Sand, the boardwalk and beach umbrellas.
+  const sand = between(beach, surf)
+  m.fill(sand, '#f1dfae')
+  c.save()
+  c.clip(sand)
+  for (let i = 0; i < 260; i++) {
+    c.fillStyle = rgba('#c9a868', m.r(0.2, 0.5))
+    c.fillRect(m.r(X0, X1), m.r(1.5, Z1), 0.015, 0.015)
   }
-  label('14', X0 + 0.65, Z1 - 0.06, 0.16, 0, { spacing: 0 })
-  label('15', X1 - 0.65, Z1 - 0.06, 0.16, 0, { spacing: 0 })
-
-  // Shade into the gutter.
-  const gl = c.createLinearGradient(-0.9, 0, 0.9, 0)
-  gl.addColorStop(0, 'rgba(70,50,30,0)')
-  gl.addColorStop(0.42, 'rgba(70,50,30,0.12)')
-  gl.addColorStop(0.5, 'rgba(70,50,30,0.32)')
-  gl.addColorStop(0.58, 'rgba(70,50,30,0.12)')
-  gl.addColorStop(1, 'rgba(70,50,30,0)')
-  c.fillStyle = gl
-  c.fillRect(-0.9, Z0, 1.8, D)
-
-  c.setTransform(1, 0, 0, 1, 0, 0)
-  noise(c, cv.width, cv.height, 14, 9)
-
-  const half = (left: boolean) => {
-    const h = canvas(cv.width / 2, cv.height)
-    h.getContext('2d')!.drawImage(cv, left ? 0 : -cv.width / 2, 0)
-    return h
+  for (let i = 0; i < 26; i++) {
+    const x = m.r(-3.8, X1 - 0.6)
+    const z = m.r(beach[0][1] + 0.25, beach[0][1] + 0.65)
+    c.fillStyle = [C.red, C.taxi, '#3f6fb0', '#f6f0e2'][i % 4]
+    c.beginPath()
+    c.arc(x, z, 0.09, 0, Math.PI * 2)
+    c.fill()
+    c.strokeStyle = rgba(INK, 0.5)
+    c.lineWidth = 0.008
+    c.stroke()
   }
-  return { left: half(true), right: half(false) }
+  c.restore()
+  c.strokeStyle = '#a77b4f'
+  c.lineWidth = 0.14
+  c.beginPath()
+  beach.forEach(([x, z], i) => (i ? c.lineTo(x, z + 0.08) : c.moveTo(x, z + 0.08)))
+  c.stroke()
+  c.strokeStyle = rgba(INK, 0.45)
+  c.lineWidth = 0.008
+  for (let x = X0; x < X1; x += 0.07) {
+    const p = beach.reduce((best, q) => (Math.abs(q[0] - x) < Math.abs(best[0] - x) ? q : best))
+    c.beginPath()
+    c.moveTo(x, p[1] + 0.01)
+    c.lineTo(x, p[1] + 0.15)
+    c.stroke()
+  }
+
+  m.ink([manhattanShore, shore, beach])
+  m.piers(shore, -1, Z0 + 0.6, 2.2, 0.85)
+  // Manhattan's waterfront across the river.
+  c.save()
+  c.clip(between(farLeft, manhattanShore))
+  for (let z = Z0 + 0.3; z < Z1 - 0.3; z += 0.36) {
+    for (let x = X0 + 0.25; x < -7.4; x += 0.26) {
+      c.fillStyle = rgba(m.rnd() < 0.5 ? C.slate : C.brick, 0.3)
+      c.fillRect(x, z, 0.16, 0.24)
+    }
+  }
+  c.restore()
+
+  m.boat(-5.9, -3.1, 0.55, '#2f4566', '#f6f0e2', 1.6)
+  m.boat(-6.3, 0.9, 0.85, '#ee7d33', '#fff4df', -1.5)
+  m.boat(-2.5, 4.7, 0.6, '#f6f0e2', '#9c6b48', 0.15)
+  m.boat(4.8, 4.9, 0.5, C.red, '#f6f0e2', 3.0)
+  m.dotted(() => {
+    c.moveTo(-6.3, 1.6)
+    c.quadraticCurveTo(-5.6, -1.2, -6.0, -3.6)
+  })
+  m.compass(6.6, 4.45)
+
+  m.label('EAST  RIVER', -5.95, -1.0, 0.28, -Math.PI / 2, { color: rgba('#2f5468', 0.8) })
+  m.label('MANHATTAN', -7.75, 0.2, 0.18, -Math.PI / 2)
+  m.label('B R O O K L Y N', 0.6, -0.4, 0.26, -0.3, { spacing: 10 })
+  m.label('Prospect Park', 4.35, -1.45, 0.14, -0.1, { italic: true, spacing: 2 })
+  m.label('DUMBO', -3.6, -4.3, 0.13, 0, { spacing: 6 })
+  m.label('Williamsburg', -3.4, -2.2, 0.13, -0.3, { italic: true, spacing: 2 })
+  m.label('Coney Island', 2.6, 2.45, 0.15, 0, { italic: true, spacing: 2 })
+  m.label('A T L A N T I C   O C E A N', 1.2, 5.0, 0.2, 0, { color: rgba('#2f5468', 0.85), spacing: 8 })
+  m.cartouche(-4.4, 4.4, 'Brooklyn', '· how sweet it is ·')
+  return m.finish(['16', '17'])
 }
 
 // ---------------------------------------------------------------------------

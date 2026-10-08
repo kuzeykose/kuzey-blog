@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom'
 import {
   ArrowCounterClockwise,
   ArrowLeft,
+  ArrowRight,
   BookOpen,
   Book,
   Moon,
@@ -14,6 +15,8 @@ import {
 import type { CityStage } from './scene/stage'
 
 type Status = 'loading' | 'ready' | 'error'
+
+const PAGES = ['Manhattan', 'Brooklyn']
 
 function webglAvailable() {
   try {
@@ -29,6 +32,7 @@ export default function PopupCity() {
   const [status, setStatus] = useState<Status>('loading')
   const [progress, setProgress] = useState(0)
   const [open, setOpen] = useState(false)
+  const [page, setPage] = useState(0)
   const [night, setNight] = useState(false)
   const [label, setLabel] = useState<string | null>(null)
   const [hint, setHint] = useState(false)
@@ -65,6 +69,7 @@ export default function PopupCity() {
             onProgress: setProgress,
             onHover: setLabel,
             onOpenChange: setOpen,
+            onPageChange: setPage,
             onReady: () => setStatus('ready'),
           },
         })
@@ -87,6 +92,16 @@ export default function PopupCity() {
   useEffect(() => {
     stage.current?.setNight(night)
   }, [night])
+
+  // Arrow keys turn the pages.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') stage.current?.setPage(page + 1)
+      if (e.key === 'ArrowLeft') stage.current?.setPage(page - 1)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [page])
 
   // Once the book is open, show how to explore it for a little while.
   useEffect(() => {
@@ -115,7 +130,7 @@ export default function PopupCity() {
         ref={host}
         className="absolute inset-0"
         role="img"
-        aria-label="A 3D pop-up book of New York City: the Empire State and Chrysler buildings, Times Square, the Flatiron, brownstones with water towers, a yellow cab, the Statue of Liberty and the Brooklyn Bridge rise out of the pages."
+        aria-label="A 3D pop-up book of New York City. Manhattan: the Empire State and Chrysler buildings, One World Trade Center, Times Square, the Flatiron, brownstones with water towers, a yellow cab, the Statue of Liberty and the Brooklyn Bridge. Turn the page for Brooklyn: DUMBO and the Manhattan Bridge, a carousel, and Coney Island's Wonder Wheel, Cyclone and Parachute Jump."
         onPointerDown={() => setHint(false)}
       />
       <div
@@ -140,7 +155,7 @@ export default function PopupCity() {
           <h1 className={`mt-3 font-serif text-2xl italic tracking-tight sm:text-3xl ${ink}`}>
             New York, New York
           </h1>
-          <p className={`text-sm ${muted}`}>a pop-up city</p>
+          <p className={`text-sm ${muted}`}>a pop-up city · {PAGES[page]}</p>
         </div>
       </header>
 
@@ -165,6 +180,25 @@ export default function PopupCity() {
               {open ? <Book size={16} /> : <BookOpen size={16} />}
               {open ? 'Close the book' : 'Open the book'}
             </button>
+            {open && (
+              <button
+                type="button"
+                className={button}
+                onClick={() => stage.current?.setPage(page === 0 ? 1 : 0)}
+              >
+                {page === 0 ? (
+                  <>
+                    {PAGES[1]}
+                    <ArrowRight size={16} />
+                  </>
+                ) : (
+                  <>
+                    <ArrowLeft size={16} />
+                    {PAGES[0]}
+                  </>
+                )}
+              </button>
+            )}
             <button
               type="button"
               className={button}

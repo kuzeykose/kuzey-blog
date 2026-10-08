@@ -5,7 +5,7 @@ import { Part, paint, pts } from './art-common'
 // ---------------------------------------------------------------------------
 // The big arched sky that closes the scene, with sun rays (or stars).
 
-export function skyBackdrop(s: Sketch, night: boolean) {
+export function skyBackdrop(s: Sketch, night: boolean, sunset = false) {
   const W = s.w
   const H = s.h
   const side = H * 0.5
@@ -33,6 +33,11 @@ export function skyBackdrop(s: Sketch, night: boolean) {
     g.addColorStop(0, '#34477a')
     g.addColorStop(0.45, C.skyNight)
     g.addColorStop(1, C.skyNightDeep)
+  } else if (sunset) {
+    g.addColorStop(0, '#ffe0b0')
+    g.addColorStop(0.3, '#f7b39a')
+    g.addColorStop(0.65, '#d79bb3')
+    g.addColorStop(1, '#8f8cc6')
   } else {
     g.addColorStop(0, '#e3f0f2')
     g.addColorStop(0.4, C.sky)
@@ -40,7 +45,7 @@ export function skyBackdrop(s: Sketch, night: boolean) {
   }
   c.fillStyle = g
   c.fillRect(0, 0, W, H)
-  s.wash(arch, night ? C.skyNight : C.sky, { blooms: 26, vary: 0.12, edge: 0, light: 0, dark: 0 })
+  s.wash(arch, night ? C.skyNight : sunset ? '#e9a9a6' : C.sky, { blooms: 26, vary: 0.12, edge: 0, light: 0, dark: 0 })
   c.globalAlpha = 0.55
   c.fillStyle = g
   c.fillRect(0, 0, W, H)
@@ -53,7 +58,11 @@ export function skyBackdrop(s: Sketch, night: boolean) {
   for (let i = 0; i < n; i++) {
     const a = Math.PI * (0.06 + (0.88 * (i + 0.5)) / n)
     const spread = 0.022 + (i % 3) * 0.008
-    c.fillStyle = night ? 'rgba(170,190,255,0.06)' : `rgba(255,255,255,${i % 2 ? 0.22 : 0.38})`
+    c.fillStyle = night
+      ? 'rgba(170,190,255,0.06)'
+      : sunset
+        ? `rgba(255,236,200,${i % 2 ? 0.18 : 0.32})`
+        : `rgba(255,255,255,${i % 2 ? 0.22 : 0.38})`
     c.beginPath()
     c.moveTo(ox, oy)
     c.lineTo(ox + Math.cos(a - spread) * 20, oy + Math.sin(a - spread) * 20)
@@ -116,8 +125,9 @@ export function skyBackdrop(s: Sketch, night: boolean) {
     }
     s.ink(s.custom((p) => p.arc(mx, my, 0.5, 0.95, 5.55, false), [[mx - 0.5, my - 0.5], [mx + 0.5, my + 0.5]]), 0.02)
   } else {
-    const sun = s.ellipse(ox, oy + 0.6, 1.25, 1.25)
-    s.wash(sun, C.sun, { edge: 0.15, blooms: 8 })
+    // A low, big orange sun at sunset.
+    const sun = sunset ? s.ellipse(ox, oy + 0.3, 1.55, 1.55) : s.ellipse(ox, oy + 0.6, 1.25, 1.25)
+    s.wash(sun, sunset ? '#f39a55' : C.sun, { edge: 0.15, blooms: 8 })
     s.ink(sun, 0.02, rgba(INK, 0.7))
     // A few small painted clouds and birds far away.
     for (const [x, y, k] of [

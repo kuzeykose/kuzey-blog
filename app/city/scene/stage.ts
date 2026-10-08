@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { Cutout, Sketch } from './sketch'
 import { PIECES, PLATFORM, PieceDef } from './pieces'
+import { BROOKLYN } from './pieces-brooklyn'
 import { buildBook, Book } from './book'
 import { canvasTexture, paperMaterials, shared } from './materials'
 import { PageCurl } from './bend'
@@ -12,6 +13,7 @@ export type StageEvents = {
   onReady?: () => void
   onHover?: (label: string | null) => void
   onOpenChange?: (open: boolean) => void
+  onPageChange?: (page: number) => void
 }
 
 type Spring = { x: number; v: number }
@@ -25,8 +27,13 @@ type Half = {
   mesh: THREE.Mesh
 }
 
+type Paper = { front: THREE.Material; back: THREE.Material }
+
 type Piece = {
   def: PieceDef
+  paper: Paper
+  // Which spread it belongs to: 0 = Manhattan, 1 = Brooklyn.
+  spread: number
   cut: Cutout
   halves: Half[]
   start: number
@@ -41,6 +48,8 @@ type Piece = {
   // Pieces that scurry along a path: distance from home, where they're
   // headed, which way they face, how long they've been out.
   run: { s: number; target: number; dir: number; wait: number; cum: number[]; len: number } | null
+  // Pieces that turn about a point (the Wonder Wheel).
+  spin: { angle: number; vel: number } | null
 }
 
 const OPEN_TIME = 4.4
@@ -50,6 +59,12 @@ const CLOSE_TIME = 2.8
 const TURN = 0.4
 const RISE_SPAN = 0.18
 const riseStart = (order: number) => TURN + 0.02 + order * 0.4
+// Turning to the next spread: the current pop-ups fold away, the page turns,
+// then the next spread's pop-ups rise.
+const PAGE_TIME = 4.2
+const FOLD_END = 0.3
+const LAND = 0.7
+const SPREADS = [PIECES, BROOKLYN]
 
 const DAY = {
   bg: new THREE.Color('#ece3d2'),
@@ -94,9 +109,13 @@ export class CityStage {
   private disposed = false
   private book: Book | null = null
   private curl: PageCurl | null = null
+  private leafCurl: PageCurl | null = null
   private pieces: Piece[] = []
   private pickables: THREE.Object3D[] = []
   private platform: { groups: THREE.Group[]; rise: number; start: number; eps: number; top: number } | null = null
+  // Which spread is showing (target) and how far the turn between them is.
+  private page = 0
+  private pageT = 0
   private disposables: { dispose: () => void }[] = []
 
   private openT = 0
@@ -241,6 +260,8 @@ export class CityStage {
     this.book.setAngle(1)
     this.curl = new PageCurl(this.book.flapLength)
     this.curl.attach(this.book.flap)
+    this.leafCurl = new PageCurl(this.book.leafLength)
+    this.leafCurl.attach(this.book.leaf)
     // Show the closed book straight away; the pop-ups are cut behind it.
     this.update(0)
     this.loop()
@@ -248,19 +269,27 @@ export class CityStage {
     if (this.disposed) return
 
     const byId = new Map<string, Piece>()
-    let done = 0
-    for (const def of PIECES) {
-      const piece = this.buildPiece(def, aniso, def.parent ? byId.get(def.parent) ?? null : null)
-      byId.set(def.id, piece)
-      this.pieces.push(piece)
-      done++
-      this.events.onProgress?.(done / (PIECES.length + 1))
-      await nextFrame()
-      if (this.disposed) return
+    const total = SPREADS.reduce((n, list) => n + list.length, 0)
+    for (let spread = 0; spread < SPREADS.length; spread++) {
+      for (const def of SPREADS[spread]) {
+        const piece = this.buildPiece(
+          def,
+          aniso,
+          def.parent ? byId.get(def.parent) ?? null : null,
+          spread,
+          def.sameArtAs ? byId.get(def.sameArtAs) ?? null : null
+        )
+        byId.set(def.id, piece)
+        this.pieces.push(piece)
+        this.events.onProgress?.(this.pieces.length / (total + 1))
+        await nextFrame()
+        if (this.disposed) return
+      }
     }
     this.buildPlatform(aniso)
     // Everything now glued to the left page curls with it.
     this.curl.attach(this.book.flap)
+    this.leafCurl.attach(this.book.leaf)
     this.events.onProgress?.(1)
     this.renderer.compile(this.scene, this.camera)
     this.ready = true
@@ -268,26 +297,8 @@ export class CityStage {
     if (this.pendingOpen) this.setOpen(true)
   }
 
-  private buildPiece(def: PieceDef, aniso: number, parent: Piece | null): Piece {
-    const sketch = new Sketch({ w: def.w, h: def.h, seed: def.seed, glow: def.glow, padBottom: def.padBottom })
-    def.art(sketch)
-    const cut = sketch.finish()
-    let nightTex: THREE.Texture | null = null
-    let glowCanvas = cut.glow
-    if (def.nightArt) {
-      const ns = new Sketch({ w: def.w, h: def.h, seed: def.seed, glow: true, padBottom: def.padBottom })
-      def.nightArt(ns)
-      const nc = ns.finish()
-      nightTex = canvasTexture(nc.canvas, { anisotropy: aniso })
-      glowCanvas = nc.glow
-    }
-    const map = canvasTexture(cut.canvas, { anisotropy: aniso })
-    const glow = glowCanvas ? canvasTexture(glowCanvas, { anisotropy: aniso }) : null
-    const material = paperMaterials({ map, glow, night: nightTex })
-    this.disposables.push(map, material.front, material.back)
-    if (glow) this.disposables.push(glow)
-    if (nightTex) this.disposables.push(nightTex)
-
+  private buildPiece(def: PieceDef, aniso: number, parent: Piece | null, spread: number, twin: Piece | null): Piece {
+    const { cut, material } = twin ? { cut: twin.cut, material: twin.paper } : this.paint(def, aniso)
     const k = def.scale ?? 1
     const W = cut.width * k
     const H = cut.height * k
@@ -295,7 +306,7 @@ export class CityStage {
     const right = def.x + (def.w / 2 + cut.pad) * k
     type Seg = { x0: number; x1: number; anchorX: number; root: THREE.Object3D; pos: THREE.Vector3 }
     const segs: Seg[] = []
-    const book = this.book!
+    const pages = this.book!.spreads[spread]
 
     if (parent) {
       // Glued onto the parent: pick the parent half under the child.
@@ -311,14 +322,14 @@ export class CityStage {
         pos: new THREE.Vector3(childX - anchorX, dy, dz),
       })
     } else if (!def.ry && left < 0 && right > 0) {
-      segs.push({ x0: left, x1: 0, anchorX: 0, root: book.left, pos: new THREE.Vector3(0, 0, def.z) })
-      segs.push({ x0: 0, x1: right, anchorX: 0, root: book.right, pos: new THREE.Vector3(0, 0, def.z) })
+      segs.push({ x0: left, x1: 0, anchorX: 0, root: pages.left, pos: new THREE.Vector3(0, 0, def.z) })
+      segs.push({ x0: 0, x1: right, anchorX: 0, root: pages.right, pos: new THREE.Vector3(0, 0, def.z) })
     } else {
       segs.push({
         x0: left,
         x1: right,
         anchorX: def.x,
-        root: def.x < 0 ? book.left : book.right,
+        root: def.x < 0 ? pages.left : pages.right,
         pos: new THREE.Vector3(def.x, 0, def.z),
       })
     }
@@ -326,11 +337,13 @@ export class CityStage {
     const start = riseStart(def.order)
     const piece: Piece = {
       def,
+      paper: material,
+      spread,
       cut,
       halves: [],
       start,
       rise: 0,
-      eps: 0.003 + (1 - def.order) * 0.04,
+      eps: 0.003 + (1 - def.order) * 0.02,
       phase: Math.random() * Math.PI * 2,
       tilt: { x: 0, v: 0 },
       lift: { x: 0, v: 0 },
@@ -338,6 +351,7 @@ export class CityStage {
       light: null,
       parent,
       run: def.run ? runState(def.run) : null,
+      spin: def.spin ? { angle: 0, vel: def.spin.idle } : null,
     }
 
     for (const seg of segs) {
@@ -365,6 +379,16 @@ export class CityStage {
 
       const anchor = new THREE.Object3D()
       anchor.position.copy(seg.pos)
+      if (def.spin) {
+        // Put the turning point at the origin of the bob node.
+        const hx = (def.spin.at[0] - def.w / 2) * k
+        const hy = def.spin.at[1] * k
+        anchor.position.x += hx
+        anchor.position.y += hy
+        mesh.position.x -= hx
+        mesh.position.y -= hy
+        back.position.copy(mesh.position)
+      }
       anchor.rotation.y = def.ry ?? 0
       const hinge = new THREE.Object3D()
       const poke = new THREE.Object3D()
@@ -384,6 +408,29 @@ export class CityStage {
       piece.light = light
     }
     return piece
+  }
+
+  // Paint a piece's art into textures and paper materials.
+  private paint(def: PieceDef, aniso: number): { cut: Cutout; material: Paper } {
+    const sketch = new Sketch({ w: def.w, h: def.h, seed: def.seed, glow: def.glow, padBottom: def.padBottom })
+    def.art(sketch)
+    const cut = sketch.finish()
+    let nightTex: THREE.Texture | null = null
+    let glowCanvas = cut.glow
+    if (def.nightArt) {
+      const ns = new Sketch({ w: def.w, h: def.h, seed: def.seed, glow: true, padBottom: def.padBottom })
+      def.nightArt(ns)
+      const nc = ns.finish()
+      nightTex = canvasTexture(nc.canvas, { anisotropy: aniso })
+      glowCanvas = nc.glow
+    }
+    const map = canvasTexture(cut.canvas, { anisotropy: aniso })
+    const glow = glowCanvas ? canvasTexture(glowCanvas, { anisotropy: aniso }) : null
+    const material = paperMaterials({ map, glow, night: nightTex })
+    this.disposables.push(map, material.front, material.back)
+    if (glow) this.disposables.push(glow)
+    if (nightTex) this.disposables.push(nightTex)
+    return { cut, material }
   }
 
   private buildPlatform(aniso: number) {
@@ -425,14 +472,15 @@ export class CityStage {
           g.add(m)
         })
       })
-      ;(dir < 0 ? book.left : book.right).add(g)
+      const pages = book.spreads[0]
+      ;(dir < 0 ? pages.left : pages.right).add(g)
       groups.push(g)
     }
     this.platform = {
       groups,
       rise: 0,
       start: riseStart(PLATFORM.order),
-      eps: 0.003 + (1 - PLATFORM.order) * 0.04,
+      eps: 0.003 + (1 - PLATFORM.order) * 0.02,
       top: PLATFORM.tiers.length * PLATFORM.step,
     }
   }
@@ -457,6 +505,14 @@ export class CityStage {
     this.events.onOpenChange?.(open)
   }
 
+  // Turn to another spread; only while the book lies open.
+  setPage(page: number) {
+    const next = Math.max(0, Math.min(SPREADS.length - 1, page))
+    if (!this.ready || this.openTarget !== 1 || this.openT < 1 || next === this.page) return
+    this.page = next
+    this.events.onPageChange?.(next)
+  }
+
   setNight(night: boolean) {
     this.nightTarget = night ? 1 : 0
   }
@@ -464,6 +520,7 @@ export class CityStage {
   // Skip any running transition (handy from the dev console).
   settle() {
     this.openT = this.openTarget
+    this.pageT = this.page
     this.nightT = this.nightTarget
     this.glide = null
     this.place(this.openTarget ? this.homeShot() : this.closedShot())
@@ -583,7 +640,9 @@ export class CityStage {
 
   private poke(p: Piece) {
     const kind = p.def.poke ?? 'tilt'
-    if (p.run) {
+    if (p.spin) {
+      p.spin.vel += 2.4
+    } else if (p.run) {
       // Out of hiding, or straight back into it.
       p.run.target = p.run.s < p.run.len / 2 ? p.run.len : 0
     } else if (kind === 'lift') p.lift.v += 2.2
@@ -646,23 +705,60 @@ export class CityStage {
     }
     this.closedNow = closed
     this.curlNow = curl
+
+    // Once the book is shut it starts again at the first spread.
+    if (t === 0 && !opening && this.page !== 0) {
+      this.page = 0
+      this.pageT = 0
+      this.events.onPageChange?.(0)
+    }
+    // Turning between spreads.
+    if (this.pageT !== this.page) {
+      const step = dt / PAGE_TIME
+      this.pageT = this.page > this.pageT ? Math.min(this.page, this.pageT + step) : Math.max(this.page, this.pageT - step)
+    }
+    const forward = this.page === 1
+    const lp = clamp01((this.pageT - FOLD_END) / (LAND - FOLD_END))
+    let leafClosed = 1 - easeInOut(lp)
+    let leafCurl = forward
+      ? Math.min(1.4 * Math.sin(Math.PI * lp) * (1 - lp) ** 0.6, 0.9 * Math.PI * leafClosed)
+      : Math.max(-1.3 * Math.sin(Math.PI * (1 - lp)) * lp ** 0.6, -0.9 * Math.PI * (1 - leafClosed))
+    // A page turned over to the cover's side goes wherever the cover goes
+    // (on the first spread it stays put on the right).
+    if (leafClosed < 1 && closed >= leafClosed) {
+      leafClosed = closed
+      leafCurl = curl
+    }
     if (this.book) {
       this.book.setAngle(closed)
       this.curl?.update(this.book.flap, curl)
+      this.book.setLeaf(leafClosed)
+      this.leafCurl?.update(this.book.leaf, leafCurl)
     }
 
     const riseOf = (start: number) => {
       const k = clamp01((t - start) / RISE_SPAN)
       return opening ? (k >= 1 ? 1 : easeOutBack(k)) : smooth(k)
     }
+    // How far a spread's pop-ups stand while the page turns: the leaving
+    // spread folds front to back, the arriving one rises back to front.
+    const gate = (spread: number, order: number) => {
+      if (spread === 0) return 1 - smooth(clamp01((this.pageT - (1 - order) * 0.12) / (FOLD_END - 0.12)))
+      const k = clamp01((this.pageT - LAND - order * 0.12) / (1 - LAND - 0.12))
+      return forward && k < 1 ? easeOutBack(k) : smooth(k)
+    }
+    // Only the spread that can be seen is drawn: the other is shut under
+    // the loose page.
+    const shown = (spread: number) => (spread === 0 ? this.pageT < LAND - 0.01 : this.pageT > FOLD_END + 0.01)
 
     if (this.platform) {
       const k = clamp01((t - this.platform.start) / RISE_SPAN)
-      const r = opening ? easeOutBack(k) : smooth(k)
+      const r = (opening ? easeOutBack(k) : smooth(k)) * gate(0, PLATFORM.order)
       this.platform.rise = r
       for (const g of this.platform.groups) {
         g.scale.y = Math.max(0.002, r)
         g.position.y = this.platform.eps * (1 - Math.min(1, r))
+        g.visible = shown(0)
       }
     }
 
@@ -685,12 +781,14 @@ export class CityStage {
         s.x += s.v * dt
       })
       // Glued pieces ride along with their parent and only bob.
-      p.rise = p.parent ? p.parent.rise : riseOf(p.start)
+      p.rise = p.parent ? p.parent.rise : riseOf(p.start) * gate(p.spread, p.def.order)
       const flat = 1 - Math.min(1, p.rise)
       const fold = p.parent ? 0 : (Math.PI / 2) * (1 - p.rise)
       const mountY = p.def.mount && this.platform ? this.platform.top * Math.max(0, this.platform.rise) : 0
       const bobAmp = p.def.bob && !this.reduced ? p.def.bob : null
+      const visible = shown(p.spread)
       for (const h of p.halves) {
+        h.anchor.visible = visible
         h.hinge.rotation.x = fold
         if (!p.parent) h.anchor.position.y = p.eps * flat + mountY + 0.001
         h.poke.rotation.x = p.tilt.x * 0.35
@@ -702,15 +800,23 @@ export class CityStage {
         }
       }
       if (p.light) p.light.intensity = shared.uNight.value * 2.4 * clamp01(p.rise)
+      if (p.spin) {
+        // Coast back down to its idle turn after a spin.
+        const idle = this.reduced ? 0 : p.def.spin!.idle
+        p.spin.vel += (idle - p.spin.vel) * Math.min(1, dt * 0.5)
+        p.spin.angle += p.spin.vel * dt
+        for (const h of p.halves) h.bob.rotation.z = p.spin.angle
+      }
       if (p.run) this.scurry(p, dt, time)
     }
 
-    const isOpen = this.openTarget === 1 && this.openT === 1
+    // Each spread puts on its little show once it has fully risen.
+    const isOpen = this.openTarget === 1 && this.openT === 1 && this.pageT === this.page
     if (isOpen && !this.wasOpen && !this.reduced) this.showAt = time + 0.6
     this.wasOpen = isOpen
     if (this.showAt && time >= this.showAt) {
       this.showAt = 0
-      if (isOpen) this.pieces.filter((p) => p.def.pokeOnOpen).forEach((p) => this.poke(p))
+      if (isOpen) this.pieces.filter((p) => p.def.pokeOnOpen && p.spread === this.page).forEach((p) => this.poke(p))
     }
 
     // Camera glides (opening, closing, reset).
@@ -749,8 +855,8 @@ export class CityStage {
     const { path, face } = p.def.run!
     // Back into hiding as soon as the book starts to close, and be there
     // before the pages fold shut.
-    if (this.openTarget === 0) r.target = 0
-    if (this.openT < 0.5) r.s = 0
+    if (this.openTarget === 0 || this.page !== p.spread) r.target = 0
+    if (this.openT < 0.5 || Math.abs(this.pageT - p.spread) > 0.15) r.s = 0
     // Out in the open: look around for a moment, then sneak back.
     if (r.target === r.len && r.s >= r.len) {
       r.wait += dt
@@ -812,6 +918,7 @@ export class CityStage {
     this.controls.dispose()
     this.timer.dispose()
     this.curl?.dispose()
+    this.leafCurl?.dispose()
     this.book?.dispose()
     this.disposables.forEach((d) => d.dispose())
     this.renderer.dispose()
