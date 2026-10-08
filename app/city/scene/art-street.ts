@@ -769,53 +769,6 @@ export function pizzaSlice(s: Sketch) {
   ])
 }
 
-// An everything bagel standing on its edge, hole cut out of the paper.
-export function bagel(s: Sketch) {
-  const cx = s.w / 2
-  const cy = s.h / 2
-  const r = Math.min(s.w, s.h) / 2 - 0.02
-  const ring = s.ellipse(cx, cy, r, r * 0.97)
-  const hole = s.ellipse(cx, cy + 0.01, r * 0.26, r * 0.24)
-  paint(s, [
-    {
-      shape: ring,
-      color: '#cf8f48',
-      ink: 0.022,
-      detail: () => {
-        const c = s.ctx
-        // Toasty underside, glossy crown.
-        const g = c.createLinearGradient(0, cy - r, 0, cy + r)
-        g.addColorStop(0, 'rgba(110,55,15,0.45)')
-        g.addColorStop(0.5, 'rgba(0,0,0,0)')
-        g.addColorStop(1, 'rgba(255,235,190,0.35)')
-        c.save()
-        c.clip(ring.path)
-        c.fillStyle = g
-        c.fillRect(cx - r, cy - r, r * 2, r * 2)
-        c.restore()
-        s.ink(s.custom((p) => p.arc(cx, cy, r * 0.62, 0.5, 2.6, false), pts(cx - r, cy, cx + r, cy + r)), 0.02, 'rgba(255,240,210,0.6)')
-        // Everything seasoning: sesame, poppy, onion and garlic flakes.
-        for (let i = 0; i < 140; i++) {
-          const a = s.r(0, Math.PI * 2)
-          const d = Math.sqrt(s.r(0.12, 1)) * r * 0.95
-          if (d < r * 0.3) continue
-          const x = cx + Math.cos(a) * d
-          const y = cy + Math.sin(a) * d
-          const kind = s.rnd()
-          const color = kind < 0.4 ? '#fbf3dc' : kind < 0.75 ? '#26222a' : kind < 0.9 ? '#e8c27d' : '#f6e6c4'
-          s.fill(s.ellipse(x, y, s.r(0.009, 0.016), s.r(0.005, 0.009), s.r(0, Math.PI)), color)
-        }
-      },
-    },
-  ])
-  const c = s.ctx
-  c.save()
-  c.globalCompositeOperation = 'destination-out'
-  c.fill(hole.path)
-  c.restore()
-  s.ink(hole, 0.018)
-}
-
 // Pizza rat: a scruffy subway rat hauling a slice of its own.
 export function pizzaRat(s: Sketch) {
   const fur = '#7c767c'

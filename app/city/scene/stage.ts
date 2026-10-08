@@ -37,8 +37,9 @@ type Piece = {
   drive: Spring
   light: THREE.PointLight | null
   parent: Piece | null
-  // Pieces that scurry: where they are, where they're going, which way they face.
-  run: { x: number; target: number; dir: number } | null
+  // Pieces that scurry along a path: distance from home, where they're
+  // headed, which way they face, how long they've been out.
+  run: { s: number; target: number; dir: number; wait: number; cum: number[]; len: number } | null
 }
 
 const OPEN_TIME = 4.4
@@ -234,13 +235,12 @@ export class CityStage {
 
     const byId = new Map<string, Piece>()
     let done = 0
-    const defs = PIECES.filter((d) => !d.hidden)
-    for (const def of defs) {
+    for (const def of PIECES) {
       const piece = this.buildPiece(def, aniso, def.parent ? byId.get(def.parent) ?? null : null)
       byId.set(def.id, piece)
       this.pieces.push(piece)
       done++
-      this.events.onProgress?.(done / (defs.length + 1))
+      this.events.onProgress?.(done / (PIECES.length + 1))
       await nextFrame()
       if (this.disposed) return
     }
@@ -321,7 +321,7 @@ export class CityStage {
       drive: { x: 0, v: 0 },
       light: null,
       parent,
-      run: def.run ? { x: def.x, target: def.x, dir: 1 } : null,
+      run: def.run ? runState(def.run) : null,
     }
 
     for (const seg of segs) {
@@ -561,15 +561,18 @@ export class CityStage {
 
   private poke(p: Piece) {
     const kind = p.def.poke ?? 'tilt'
-    if (p.run && p.def.run) {
-      // Dash to whichever end of the run it isn't at.
-      const [home, away] = p.def.run
-      p.run.target = Math.abs(p.run.x - home) < Math.abs(p.run.x - away) ? away : home
+    if (p.run) {
+      // Out of hiding, or straight back into it.
+      p.run.target = p.run.s < p.run.len / 2 ? p.run.len : 0
     } else if (kind === 'lift') p.lift.v += 2.2
     else if (kind === 'drive') {
       p.drive.v += 3.2
       p.lift.v += 0.8
     } else p.tilt.v += p.def.h > 4 ? 0.9 : 2.0
+    if (p.def.startles) {
+      const q = this.pieces.find((o) => o.def.id === p.def.startles)
+      if (q?.run && q.run.s === 0) q.run.target = q.run.len
+    }
   }
 
   // ---------------------------------------------------------------- frame
@@ -706,27 +709,42 @@ export class CityStage {
 
   private scurry(p: Piece, dt: number, time: number) {
     const r = p.run!
-    const home = p.def.x
-    // Head home as soon as the book starts to close; be there before the
-    // pages fold shut (it is glued to the right-hand page).
-    if (this.openTarget === 0) r.target = home
-    if (this.openT < 0.5) r.x = home
-    const dist = r.target - r.x
+    const { path, face } = p.def.run!
+    // Back into hiding as soon as the book starts to close, and be there
+    // before the pages fold shut.
+    if (this.openTarget === 0) r.target = 0
+    if (this.openT < 0.5) r.s = 0
+    // Out in the open: look around for a moment, then sneak back.
+    if (r.target === r.len && r.s >= r.len) {
+      r.wait += dt
+      if (r.wait > 2.6) r.target = 0
+    } else r.wait = 0
+
+    const dist = r.target - r.s
     const moving = Math.abs(dist) > 1e-3
     if (moving) {
-      const speed = this.openTarget ? 3.6 : 8
+      const speed = this.openTarget ? 3.4 : 8
       // Quick start, a little braking at the end.
-      const step = speed * dt * Math.min(1, 0.35 + Math.abs(dist) / 0.5)
-      r.x += Math.sign(dist) * Math.min(Math.abs(dist), step)
-      r.dir = Math.sign(dist)
+      const step = speed * dt * Math.min(1, 0.35 + Math.abs(dist) / 0.4)
+      r.s += Math.sign(dist) * Math.min(Math.abs(dist), step)
     }
+    let i = 1
+    while (i < r.cum.length - 1 && r.cum[i] < r.s) i++
+    const [ax, az] = path[i - 1]
+    const [bx, bz] = path[i]
+    const k = clamp01((r.s - r.cum[i - 1]) / (r.cum[i] - r.cum[i - 1] || 1))
+    if (moving && Math.abs(bx - ax) > 0.05) r.dir = Math.sign(bx - ax) * Math.sign(dist)
+    if (!moving && r.s === 0) r.dir = face
+    // A glance over its shoulder while it waits.
+    const look = r.wait > 0.8 && r.wait < 1.6 ? -1 : 1
     const hop = moving ? Math.abs(Math.sin(time * 22)) : 0
     for (const h of p.halves) {
-      h.poke.position.x = r.x - home
-      h.poke.position.y = hop * 0.07
+      h.anchor.position.x = ax + (bx - ax) * k
+      h.anchor.position.z = az + (bz - az) * k
+      h.poke.position.y = hop * 0.05
       h.poke.rotation.z = moving ? -r.dir * 0.08 * Math.sin(time * 22) : 0
-      // The art faces right; mirror it when running left.
-      h.poke.scale.x = r.dir
+      // The art faces right; mirror it to face left.
+      h.poke.scale.x = r.dir * look
     }
   }
 
@@ -861,4 +879,14 @@ function prism(
     m.receiveShadow = true
   }
   return [top, walls]
+}
+
+function runState(run: NonNullable<PieceDef['run']>) {
+  const cum = [0]
+  for (let i = 1; i < run.path.length; i++) {
+    const [ax, az] = run.path[i - 1]
+    const [bx, bz] = run.path[i]
+    cum.push(cum[i - 1] + Math.hypot(bx - ax, bz - az))
+  }
+  return { s: 0, target: 0, dir: run.face, wait: 0, cum, len: cum[cum.length - 1] }
 }

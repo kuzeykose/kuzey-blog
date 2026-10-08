@@ -1,9 +1,8 @@
 import { Sketch } from './sketch'
 import { C } from './palette'
-import { skyBackdrop, empireState, chrysler, liberty, brooklynBridge, oneWorldTrade } from './art-landmarks'
+import { skyBackdrop, empireState, chrysler, liberty, brooklynBridge, oneWorldTrade, spireBagel } from './art-landmarks'
 import { LEFT_HOUSES, RIGHT_HOUSES, brownstones, farSkyline, flatiron, midriseRow, timesSquare } from './art-buildings'
 import {
-  bagel,
   blimp,
   cloud,
   commuters,
@@ -48,13 +47,17 @@ export type PieceDef = {
   mount?: 'platform'
   bob?: { amp: number; speed: number; sway?: number }
   poke?: Poke
-  // For 'run': the two x positions it dashes between (the first is home).
-  run?: [number, number]
-  // Left out of the scene (kept here so it's easy to bring back).
-  hidden?: boolean
+  // For 'run': waypoints (x, z) from its hiding place out to where it stops
+  // and looks around, and which way it faces while hiding.
+  run?: { path: [number, number][]; face: 1 | -1 }
+  // Poking this piece also sends these runners off.
+  startles?: string
   // A warm point light at this art position after dark.
   lamp?: [number, number]
 }
+
+// Where the ring-toss bagel rests on the Chrysler's crown.
+const RING_Y = 5.28
 
 export const PIECES: PieceDef[] = [
   {
@@ -203,6 +206,22 @@ export const PIECES: PieceDef[] = [
     poke: 'tilt',
   },
   {
+    // Easter egg: a bagel ring-tossed onto the spire.
+    id: 'bagel',
+    label: 'Ring toss: one everything bagel',
+    art: (s) => spireBagel(s, RING_Y),
+    w: 0.62,
+    h: 0.3,
+    x: -1.85,
+    z: 0,
+    parent: 'chrysler',
+    offset: [0, RING_Y, 0.03],
+    order: 0.2,
+    seed: 1102,
+    padBottom: true,
+    poke: 'lift',
+  },
+  {
     id: 'flatiron',
     label: 'Flatiron Building',
     art: flatiron,
@@ -336,6 +355,23 @@ export const PIECES: PieceDef[] = [
     lamp: [0.53, 3.86],
   },
   {
+    // Easter egg: Lady Liberty swapped her tablet for a slice.
+    id: 'liberty-slice',
+    label: "Lady Liberty's lunch",
+    art: pizzaSlice,
+    w: 0.7,
+    h: 0.85,
+    scale: 0.42,
+    x: -5.34,
+    z: 0,
+    parent: 'liberty',
+    offset: [0.26, 2.4, 0.04],
+    order: 0.6,
+    seed: 1101,
+    padBottom: true,
+    poke: 'tilt',
+  },
+  {
     id: 'bridge',
     label: 'Brooklyn Bridge',
     art: brooklynBridge,
@@ -361,6 +397,32 @@ export const PIECES: PieceDef[] = [
     seed: 901,
     glow: true,
     poke: 'drive',
+    startles: 'rat',
+  },
+  {
+    // Easter egg: hides behind the cab with only its tail showing; poke it
+    // (or honk the cab) and it dashes out across the zebra crossing.
+    id: 'rat',
+    label: 'Pizza rat',
+    art: pizzaRat,
+    w: 1.1,
+    h: 0.42,
+    x: 0.92,
+    z: -0.1,
+    scale: 0.65,
+    mount: 'platform',
+    order: 0.8,
+    seed: 1103,
+    poke: 'run',
+    run: {
+      path: [
+        [0.92, -0.1],
+        [1.3, 0.1],
+        [1.2, 0.7],
+        [-0.5, 0.7],
+      ],
+      face: -1,
+    },
   },
   {
     id: 'cart',
@@ -427,49 +489,6 @@ export const PIECES: PieceDef[] = [
     order: 0.88,
     seed: 1003,
     poke: 'tilt',
-  },
-  {
-    id: 'pizza',
-    hidden: true,
-    label: 'A dollar slice',
-    art: pizzaSlice,
-    w: 0.7,
-    h: 0.85,
-    x: -3.0,
-    z: 4.1,
-    scale: 1.25,
-    order: 0.95,
-    seed: 1101,
-    poke: 'tilt',
-  },
-  {
-    id: 'bagel',
-    hidden: true,
-    label: 'Everything bagel',
-    art: bagel,
-    w: 0.75,
-    h: 0.72,
-    x: 2.1,
-    z: 4.25,
-    scale: 1.25,
-    order: 0.95,
-    seed: 1102,
-    poke: 'tilt',
-  },
-  {
-    id: 'rat',
-    hidden: true,
-    label: 'Pizza rat',
-    art: pizzaRat,
-    w: 1.1,
-    h: 0.42,
-    x: 1.45,
-    z: 4.6,
-    scale: 1.25,
-    order: 0.97,
-    seed: 1103,
-    poke: 'run',
-    run: [1.45, -2.0],
   },
 ]
 

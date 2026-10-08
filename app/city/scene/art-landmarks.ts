@@ -270,6 +270,10 @@ export function empireState(s: Sketch) {
 // ---------------------------------------------------------------------------
 // Chrysler Building with its stacked sunburst crown.
 
+// The needle on top, centred on the art (x = 1).
+export const SPIRE = { base: 5.25, tip: 6.3, half: 0.06 }
+export const spireHalfWidth = (y: number) => (SPIRE.half * (SPIRE.tip - y)) / (SPIRE.tip - SPIRE.base)
+
 export function chrysler(s: Sketch) {
   const brick = '#ddd7cb'
   const base = s.rect(0, 0, 2.0, 0.9, 0.005)
@@ -300,7 +304,7 @@ export function chrysler(s: Sketch) {
       )
     )
   }
-  const spire = s.poly(pts(0.94, 5.25, 1.06, 5.25, 1.0, 6.3), 0)
+  const spire = s.poly(pts(1 - SPIRE.half, SPIRE.base, 1 + SPIRE.half, SPIRE.base, 1.0, SPIRE.tip), 0)
 
   const strips = (x0: number, x1: number, y0: number, y1: number, n: number) => {
     const w = (x1 - x0) / n
@@ -379,6 +383,79 @@ export function chrysler(s: Sketch) {
   paint(s, parts.map((p) => ({ ink: 0.024, ...p })))
 }
 
+// An everything bagel ring-tossed onto the spire, seen from a little above.
+// `y0` is where this art's base sits on the Chrysler art, so the slice of
+// spire painted through the hole lines up with the real one.
+export function spireBagel(s: Sketch, y0: number) {
+  const cx = s.w / 2
+  const t = 0.05
+  const cy = s.h / 2 + t / 2
+  const rx = cx - 0.03
+  const ry = rx * 0.42
+  const hx = rx * 0.36
+  const hy = ry * 0.36
+  const hcy = cy + 0.012
+  const ring = s.ellipse(cx, cy, rx, ry)
+  // The puffy outer wall below the top surface.
+  const side = s.custom(
+    (p) => {
+      p.ellipse(cx, cy, rx, ry, 0, Math.PI, Math.PI * 2, false)
+      p.ellipse(cx, cy - t, rx, ry, 0, 0, Math.PI, true)
+      p.closePath()
+    },
+    pts(cx - rx, cy - ry - t, cx + rx, cy)
+  )
+  const hole = s.ellipse(cx, hcy, hx, hy)
+  // The near half of the ring, which passes in front of the spire.
+  const front = s.custom(
+    (p) => {
+      p.ellipse(cx, cy, rx, ry, 0, Math.PI, Math.PI * 2, false)
+      p.ellipse(cx, hcy, hx, hy, 0, Math.PI * 2, Math.PI, true)
+      p.closePath()
+    },
+    pts(cx - rx, cy - ry, cx + rx, cy)
+  )
+  const dough = (shape: Shape) => {
+    s.wash(shape, '#cf8f48', { edge: 0.15, blooms: 6 })
+    const c = s.ctx
+    c.save()
+    c.clip(shape.path)
+    for (let i = 0; i < 60; i++) {
+      const k = s.rnd()
+      const color = k < 0.4 ? '#fbf3dc' : k < 0.75 ? '#26222a' : '#e8c27d'
+      s.fill(s.ellipse(s.r(cx - rx, cx + rx), s.r(cy - ry, cy + ry), s.r(0.006, 0.01), s.r(0.003, 0.006), s.r(0, 3)), color)
+    }
+    c.restore()
+  }
+
+  s.border([ring, side], 0.05)
+  dough(ring)
+  s.ink(ring, 0.014)
+  const c = s.ctx
+  c.save()
+  c.globalCompositeOperation = 'destination-out'
+  c.fill(hole.path)
+  c.restore()
+  s.ink(hole, 0.01)
+
+  // A short length of spire through the hole.
+  const yb = cy - ry - t - 0.02
+  const yt = cy + ry + 0.02
+  const w0 = spireHalfWidth(y0 + yb)
+  const w1 = spireHalfWidth(y0 + yt)
+  const needle = s.poly(pts(cx - w0, yb, cx + w0, yb, cx + w1, yt, cx - w1, yt), 0)
+  s.fill(needle, C.steel)
+  s.line([[cx - w0, yb], [cx - w1, yt]], 0.012, INK, 0)
+  s.line([[cx + w0, yb], [cx + w1, yt]], 0.012, INK, 0)
+
+  // The near wall and top hide the spire where it runs inside the bagel.
+  s.wash(side, '#a8692f', { edge: 0.1, blooms: 4 })
+  s.ink(side, 0.014)
+  dough(front)
+  s.ink(s.custom((p) => p.ellipse(cx, cy, rx, ry, 0, Math.PI, Math.PI * 2, false), pts(cx - rx, cy - ry, cx + rx, cy)), 0.014)
+  s.ink(s.custom((p) => p.ellipse(cx, hcy, hx, hy, 0, Math.PI, Math.PI * 2, false), pts(cx - hx, hcy - hy, cx + hx, hcy)), 0.01)
+}
+
 // ---------------------------------------------------------------------------
 // Lady Liberty on her pedestal.
 
@@ -434,7 +511,6 @@ export function liberty(s: Sketch) {
       )
     )
   }
-  const tablet = s.poly(pts(1.03, 2.38, 1.2, 2.33, 1.27, 2.66, 1.1, 2.71), 0.002)
   const forearm = s.poly(pts(1.06, 2.82, 1.13, 2.78, 1.2, 2.5, 1.12, 2.5), 0.002)
 
   const parts: Part[] = [
@@ -494,12 +570,9 @@ export function liberty(s: Sketch) {
         s.fill(s.rect(0.8, 3.22, 0.2, 0.04, 0), C.copperDark)
       },
     },
+    // Her left hand is free: in this book she's holding a slice instead of
+    // the tablet (see the 'liberty-slice' piece).
     { shape: forearm, color: cu },
-    {
-      shape: tablet,
-      color: C.copperLight,
-      detail: () => s.line([[1.08, 2.45], [1.2, 2.42]], 0.008, rgba(INK, 0.6)),
-    },
   ]
   paint(s, parts.map((p) => ({ ink: 0.02, ...p })))
   s.glow(flame, '#ffc24a')
