@@ -1330,6 +1330,136 @@ export function dumboSpread(first: number) {
 }
 
 // ---------------------------------------------------------------------------
+// Williamsburg, looking west across the East River to the Lower East Side
+// and Midtown: the waterfront parks along the shore, the bridge coming in
+// on the left, and the grid back to Bedford Avenue.
+export function williamsburgSpread(first: number) {
+  const m = new MapSheet(97)
+  const { c } = m
+  const shore = m.coast(-2.35, 0.1, 41)
+  const farShore = m.coast(-4.7, 0.08, 42)
+  const top: Line = [[X0 - 1, Z0 - 1], [X1 + 1, Z0 - 1]]
+  const front: Line = [[X1 + 1, Z1 + 1], [X0 - 1, Z1 + 1]]
+
+  m.water(
+    (() => {
+      const p = new Path2D()
+      farShore.forEach(([x, z], i) => (i ? p.lineTo(x, z) : p.moveTo(x, z)))
+      for (let i = shore.length - 1; i >= 0; i--) p.lineTo(shore[i][0], shore[i][1])
+      p.closePath()
+      return p
+    })(),
+    [
+      [shore, 0, -1],
+      [farShore, 0, 1],
+    ]
+  )
+  const land = new Path2D()
+  shore.forEach(([x, z], i) => (i ? land.lineTo(x, z) : land.moveTo(x, z)))
+  front.forEach(([x, z]) => land.lineTo(x, z))
+  land.closePath()
+  const manhattan = new Path2D()
+  top.forEach(([x, z], i) => (i ? manhattan.lineTo(x, z) : manhattan.moveTo(x, z)))
+  for (let i = farShore.length - 1; i >= 0; i--) manhattan.lineTo(farShore[i][0], farShore[i][1])
+  manhattan.closePath()
+  m.fill(manhattan, C.land)
+  m.fill(land, C.land)
+
+  c.save()
+  c.clip(land)
+  for (let i = 0; i < 420; i++) {
+    c.fillStyle = rgba(m.pick([C.brick, C.brickDark, C.brownstone, C.limestoneDark, C.slate]), 0.26)
+    c.fillRect(m.r(X0, X1), m.r(-2.2, Z1), m.r(0.15, 0.3), m.r(0.15, 0.3))
+  }
+  // Domino Park on the left, Marsha P. Johnson State Park (Smorgasburg's
+  // Saturdays) in the middle, McCarren Park up at the front right.
+  const green = (x0: number, z0: number, x1: number, z1: number) => {
+    c.fillStyle = '#b8cf98'
+    c.fillRect(x0, z0, x1 - x0, z1 - z0)
+    for (let i = 0; i < (x1 - x0) * (z1 - z0) * 30; i++) {
+      c.fillStyle = rgba(m.pick([C.greenDark, '#d98b3c', '#7fa860']), 0.6)
+      c.beginPath()
+      c.arc(m.r(x0, x1), m.r(z0, z1), m.r(0.04, 0.08), 0, Math.PI * 2)
+      c.fill()
+    }
+    c.strokeStyle = rgba(INK, 0.4)
+    c.lineWidth = 0.015
+    c.strokeRect(x0, z0, x1 - x0, z1 - z0)
+  }
+  green(-6.0, -2.5, -1.2, -1.85)
+  green(0.6, -2.5, 4.6, -0.95)
+  green(4.9, 2.2, 7.6, 3.7)
+  // Streets: Kent, Wythe, Berry and Bedford running along the river; the
+  // cross streets running down to it.
+  const along = [-1.3, -0.05, 1.15, 2.55]
+  const down = [-4.6, -1.4, 0.4, 2.9, 5.6]
+  for (const z of along) {
+    m.road(() => {
+      c.moveTo(X0 - 1, z)
+      c.lineTo(X1 + 1, z)
+    }, z === 2.55 ? 0.26 : 0.18)
+  }
+  for (const x of down) {
+    m.road(() => {
+      c.moveTo(x, -1.8)
+      c.lineTo(x, Z1 + 1)
+    }, 0.16)
+  }
+  // The refinery's footprint by the bridge.
+  c.fillStyle = '#d9b9a6'
+  c.fillRect(-7.4, -1.7, 1.8, 1.4)
+  c.strokeStyle = INK
+  c.lineWidth = 0.015
+  c.strokeRect(-7.4, -1.7, 1.8, 1.4)
+  c.restore()
+  m.ink([shore, farShore])
+  // The ferry landing at North 6th.
+  c.fillStyle = '#e6d6b6'
+  c.strokeStyle = INK
+  c.lineWidth = 0.014
+  c.beginPath()
+  c.rect(4.75, -3.0, 0.5, 0.7)
+  c.fill()
+  c.stroke()
+  // The Williamsburg Bridge, coming in over the river on the left.
+  m.road(() => {
+    c.moveTo(-5.4, Z0 - 1)
+    c.lineTo(-5.4, Z1 + 1)
+  }, 0.5)
+  c.strokeStyle = rgba(INK, 0.35)
+  c.lineWidth = 0.01
+  for (let z = Z0; z < Z1; z += 0.2) {
+    c.beginPath()
+    c.moveTo(-5.65, z)
+    c.lineTo(-5.15, z + 0.1)
+    c.stroke()
+  }
+  m.dotted(() => {
+    c.moveTo(5.0, -3.0)
+    c.quadraticCurveTo(3.0, -3.6, 0.0, -3.7)
+  })
+  for (let i = 0; i < 4; i++) m.boat(m.r(-3, 6), m.r(-4.3, -2.9), m.r(0.35, 0.55), m.pick([C.red, '#2f4566', '#f6f0e2']), '#f6f0e2', m.r(-0.3, 0.3) + (i % 2 ? Math.PI : 0))
+
+  m.label('EAST  RIVER', 1.6, -3.2, 0.24, 0, { color: rgba('#2f5468', 0.8), spacing: 10 })
+  m.label('LOWER  EAST  SIDE', -1.0, -4.95, 0.14, 0, { spacing: 8 })
+  m.label('W I L L I A M S B U R G', 1.2, 3.35, 0.22, 0, { spacing: 10 })
+  m.label('Domino Park', -3.6, -1.95, 0.11, 0, { italic: true, spacing: 2 })
+  m.label('Marsha P. Johnson State Park', 2.6, -1.1, 0.1, 0, { italic: true, spacing: 1 })
+  m.label('McCarren Park', 6.25, 3.0, 0.11, 0, { italic: true, spacing: 2 })
+  m.label('Williamsburg Bridge', -5.4, 0.9, 0.1, -Math.PI / 2, { italic: true, spacing: 2 })
+  m.label('KENT AVE', -2.6, -1.25, 0.09, 0, { color: rgba(INK, 0.7), spacing: 3 })
+  m.label('WYTHE AVE', -2.6, 0.0, 0.09, 0, { color: rgba(INK, 0.7), spacing: 3 })
+  m.label('BERRY ST', -2.6, 1.2, 0.09, 0, { color: rgba(INK, 0.7), spacing: 3 })
+  m.label('BEDFORD AVE', -2.8, 2.6, 0.1, 0, { color: rgba(INK, 0.7), spacing: 3 })
+  m.label('GRAND ST', -1.38, 3.9, 0.09, -Math.PI / 2, { color: rgba(INK, 0.7), spacing: 3 })
+  m.label('N 7 ST', 2.92, 3.9, 0.09, -Math.PI / 2, { color: rgba(INK, 0.7), spacing: 3 })
+  m.cartouche(-4.6, 4.5, 'Williamsburg', '· across the water from the Lower East Side ·')
+  // Looking west, north is off to the right.
+  m.compass(6.6, 4.45, Math.PI / 2)
+  return m.finish([String(first), String(first + 1)])
+}
+
+// ---------------------------------------------------------------------------
 
 export function cloth(color: string, seed = 1) {
   const s = 512

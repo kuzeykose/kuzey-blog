@@ -8,6 +8,7 @@ import { TIMES } from './pieces-times'
 import { LOWER } from './pieces-lower'
 import { MIDTOWN } from './pieces-midtown'
 import { DUMBO } from './pieces-dumbo'
+import { WILLIAMSBURG } from './pieces-williamsburg'
 import { buildBook, Book, Sheet } from './book'
 import { PAGES, pageNumber } from '../contents'
 import { canvasTexture, groundMaterial, paperMaterials, shared } from './materials'
@@ -26,6 +27,7 @@ import {
   sidewalk,
   tableTop,
   timesSquareSpread,
+  williamsburgSpread,
 } from './art-book'
 
 export type StageEvents = {
@@ -124,6 +126,7 @@ const PLACES: Record<string, { pieces: PieceDef[]; sheet: (first: number, season
   'Central Park': { pieces: PARK, sheet: centralParkSpread, seasonal: true },
   Brooklyn: { pieces: BROOKLYN, sheet: brooklynSpread },
   DUMBO: { pieces: DUMBO, sheet: dumboSpread },
+  Williamsburg: { pieces: WILLIAMSBURG, sheet: williamsburgSpread },
 }
 const SPREADS = PAGES.map((name) => PLACES[name])
 

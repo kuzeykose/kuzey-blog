@@ -973,7 +973,9 @@ export function pizzaRat(s: Sketch) {
 
 // A classic subway entrance: green globe lamps, an iron railing around the
 // stairs going down, and the black sign with coloured line bullets.
-export function subwayEntrance(s: Sketch) {
+// The sign says SUBWAY over a few line bullets, unless it's a station's own
+// name and lines ([letter, colour, text colour]).
+export function subwayEntrance(s: Sketch, o: { name?: string; lines?: [string, string, string][] } = {}) {
   const W = s.w
   const iron = '#2f4a3c'
   const posts = [0.14, W - 0.14]
@@ -1004,20 +1006,21 @@ export function subwayEntrance(s: Sketch) {
       color: '#1f1e24',
       ink: 0.016,
       detail: () => {
-        s.text('SUBWAY', W / 2, 0.77, 0.12, {
+        const name = o.name ?? 'SUBWAY'
+        s.text(name, W / 2, 0.77, name.length > 6 ? 0.09 : 0.12, {
           color: '#f6f2e6',
           glow: '#ffffff',
           font: 'Helvetica, Arial, sans-serif',
-          spacing: 6,
+          spacing: name.length > 6 ? 3 : 6,
         })
-        const bullets: [string, string, string][] = [
+        const bullets: [string, string, string][] = o.lines ?? [
           ['1', '#ee352e', '#ffffff'],
           ['4', '#00933c', '#ffffff'],
           ['A', '#0039a6', '#ffffff'],
           ['N', '#fccc0a', '#1f1e24'],
         ]
         bullets.forEach(([t, bg, fg], i) => {
-          const x = W / 2 + (i - 1.5) * 0.13
+          const x = W / 2 + (i - (bullets.length - 1) / 2) * 0.13
           const dot = s.ellipse(x, 0.665, 0.047, 0.047)
           s.fill(dot, bg)
           s.glow(dot, bg)
