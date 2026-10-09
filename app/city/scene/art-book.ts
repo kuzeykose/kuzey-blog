@@ -62,6 +62,10 @@ class MapSheet {
     return a + (b - a) * this.rnd()
   }
 
+  pick<T>(arr: T[]): T {
+    return arr[Math.floor(this.rnd() * arr.length)]
+  }
+
   bloom(x: number, z: number, rad: number, color: string) {
     const g = this.c.createRadialGradient(x, z, 0, x, z, rad)
     g.addColorStop(0, color)
@@ -224,12 +228,13 @@ class MapSheet {
     c.setLineDash([])
   }
 
-  compass(x: number, z: number) {
+  // `north` turns the rose (0 = north at the top of the page).
+  compass(x: number, z: number, north = 0) {
     const c = this.c
     c.save()
     c.translate(x, z)
     for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2 - Math.PI / 2
+      const a = (i / 8) * Math.PI * 2 - Math.PI / 2 + north
       const len = i % 2 ? 0.32 : 0.58
       c.fillStyle = i % 2 ? '#e8dcc0' : i === 0 ? C.red : '#2f4566'
       c.strokeStyle = INK
@@ -246,11 +251,14 @@ class MapSheet {
     c.beginPath()
     c.arc(0, 0, 0.42, 0, Math.PI * 2)
     c.stroke()
+    // The N stays upright, just past the north point.
+    const r = Math.cos(north) > 0 ? 0.66 : 0.86
     c.fillStyle = INK
+    c.translate(Math.sin(north) * r, -Math.cos(north) * r)
     c.scale(0.002, 0.002)
     c.font = 'bold 100px Georgia, serif'
     c.textAlign = 'center'
-    c.fillText('N', 0, -330)
+    c.fillText('N', 0, 0)
     c.restore()
   }
 
@@ -681,6 +689,152 @@ export function brooklynSpread() {
   m.label('A T L A N T I C   O C E A N', 1.2, 5.0, 0.2, 0, { color: rgba('#2f5468', 0.85), spacing: 8 })
   m.cartouche(-4.4, 4.4, 'Brooklyn', '· how sweet it is ·')
   return m.finish(['16', '17'])
+}
+
+// ---------------------------------------------------------------------------
+// Central Park, looking south: Central Park South along the back, Fifth
+// Avenue down the left, Central Park West down the right, and the
+// Reservoir at the front.
+export function centralParkSpread() {
+  const m = new MapSheet(91)
+  const { c } = m
+  const east = -7.0
+  const west = 7.0
+  const south = -4.45
+
+  // The city round the park.
+  c.fillStyle = C.land
+  c.fillRect(X0, Z0, X1 - X0, Z1 - Z0)
+  for (let z = Z0 + 0.1; z < Z1; z += 0.42) {
+    for (const [a, b] of [
+      [X0, east - 0.2],
+      [west + 0.2, X1],
+    ]) {
+      for (let x = a + 0.05; x < b - 0.1; x += 0.24) {
+        c.fillStyle = rgba(m.pick([C.brick, C.brownstone, C.slate, C.limestoneDark]), 0.3)
+        c.fillRect(x, z, 0.18, 0.3)
+      }
+    }
+  }
+  for (let x = X0; x < X1; x += 0.5) {
+    c.fillStyle = rgba(m.pick([C.brick, C.limestoneDark, C.slate]), 0.3)
+    c.fillRect(x, Z0 + 0.1, 0.4, south - Z0 - 0.4)
+  }
+  for (const x of [east, west]) {
+    m.road(() => {
+      c.moveTo(x, Z0 - 1)
+      c.lineTo(x, Z1 + 1)
+    }, 0.24)
+  }
+  m.road(() => {
+    c.moveTo(X0 - 1, south)
+    c.lineTo(X1 + 1, south)
+  }, 0.22)
+
+  // The park itself.
+  const park = new Path2D()
+  park.rect(east + 0.16, south + 0.16, west - east - 0.32, Z1 - south)
+  m.fill(park, '#b8cf98')
+  c.save()
+  c.clip(park)
+  // Lawns, then trees in their October colours.
+  for (let i = 0; i < 14; i++) m.bloom(m.r(east, west), m.r(south, Z1), m.r(0.6, 1.4), 'rgba(214,230,170,0.5)')
+  const leaves = ['#6f9a55', '#557f4b', '#7fa860', '#d98b3c', '#c9583a', '#e6bb4c', '#e3923f']
+  for (let i = 0; i < 900; i++) {
+    c.fillStyle = rgba(m.pick(leaves), m.r(0.55, 0.85))
+    c.beginPath()
+    c.arc(m.r(east + 0.2, west - 0.2), m.r(south + 0.2, Z1), m.r(0.05, 0.11), 0, Math.PI * 2)
+    c.fill()
+  }
+  // The drives looping round, and the Terrace Drive across.
+  const drives = () => {
+    c.moveTo(-3.6, south)
+    c.bezierCurveTo(-5.4, -2.6, -4.6, 0.6, -5.8, Z1 + 0.5)
+    c.moveTo(3.8, south)
+    c.bezierCurveTo(5.4, -2.8, 4.4, 1.2, 5.9, Z1 + 0.5)
+    c.moveTo(-5.1, -2.0)
+    c.bezierCurveTo(-2.5, -2.3, 2.5, -1.7, 5.0, -2.0)
+  }
+  m.road(drives, 0.16)
+  // Footpaths winding between.
+  c.strokeStyle = '#f1e8d0'
+  c.lineWidth = 0.055
+  c.beginPath()
+  for (let i = 0; i < 9; i++) {
+    const x = m.r(east + 0.5, west - 0.5)
+    const z = m.r(south + 0.3, Z1 - 0.5)
+    c.moveTo(x, z)
+    c.bezierCurveTo(x + m.r(-1.5, 1.5), z + m.r(0.3, 1.2), x + m.r(-1.5, 1.5), z + m.r(1.0, 2.0), x + m.r(-1, 1), z + m.r(1.8, 2.8))
+  }
+  c.stroke()
+
+  // Water: the Pond, the Lake, Turtle Pond and the Reservoir.
+  const pond = (cx: number, cz: number, rx: number, rz: number, seed: number): Line => {
+    const rr = mulberry32(seed)
+    const p1 = rr() * 6
+    const p2 = rr() * 6
+    const out: Line = []
+    for (let k = 0; k <= 72; k++) {
+      const a = (k / 72) * Math.PI * 2
+      const w = 1 + 0.12 * Math.sin(a * 3 + p1) + 0.06 * Math.sin(a * 7 + p2)
+      out.push([cx + Math.cos(a) * rx * w, cz + Math.sin(a) * rz * w])
+    }
+    return out
+  }
+  const ponds = [pond(-2.3, -2.5, 1.5, 0.55, 21), pond(3.8, 0.25, 3.0, 1.25, 22), pond(-2.4, 2.05, 0.9, 0.35, 23), pond(0.6, 4.7, 5.0, 1.1, 24)]
+  const water = new Path2D()
+  ponds.forEach((line) => line.forEach(([x, z], i) => (i ? water.lineTo(x, z) : water.moveTo(x, z))))
+  m.water(water, [])
+  m.ink(ponds, 0.022)
+  // The jogging track round the Reservoir.
+  m.dotted(() => {
+    const track = pond(0.6, 4.7, 5.35, 1.4, 24)
+    track.forEach(([x, z], i) => (i ? c.lineTo(x, z) : c.moveTo(x, z)))
+  })
+  c.restore()
+  c.strokeStyle = INK
+  c.lineWidth = 0.03
+  c.stroke(park)
+
+  // Strawberry Fields: the IMAGINE mosaic.
+  c.save()
+  c.translate(6.2, 2.5)
+  c.scale(1, 0.85)
+  c.fillStyle = '#f1ece0'
+  c.beginPath()
+  c.arc(0, 0, 0.42, 0, Math.PI * 2)
+  c.fill()
+  for (let k = 0; k < 16; k++) {
+    c.fillStyle = k % 2 ? rgba(INK, 0.65) : '#d9d2c2'
+    c.beginPath()
+    c.moveTo(0, 0)
+    c.arc(0, 0, 0.42, (k / 16) * Math.PI * 2, ((k + 1) / 16) * Math.PI * 2)
+    c.closePath()
+    c.fill()
+  }
+  c.fillStyle = '#f1ece0'
+  c.beginPath()
+  c.arc(0, 0, 0.2, 0, Math.PI * 2)
+  c.fill()
+  c.strokeStyle = INK
+  c.lineWidth = 0.012
+  c.beginPath()
+  c.arc(0, 0, 0.42, 0, Math.PI * 2)
+  c.stroke()
+  c.restore()
+  m.label('IMAGINE', 6.2, 2.53, 0.065, 0, { color: INK, spacing: 1 })
+
+  m.label('FIFTH  AVENUE', east, 1.2, 0.13, -Math.PI / 2, { color: rgba(INK, 0.7), spacing: 6 })
+  m.label('CENTRAL  PARK  WEST', west, 1.2, 0.13, Math.PI / 2, { color: rgba(INK, 0.7), spacing: 6 })
+  m.label('C E N T R A L   P A R K', -0.6, 3.3, 0.22, 0, { spacing: 10 })
+  m.label('The Lake', 5.7, 1.65, 0.13, -0.05, { italic: true, spacing: 2, color: rgba('#2f5468', 0.85) })
+  m.label('The Pond', -3.3, -1.75, 0.12, 0, { italic: true, spacing: 2, color: rgba('#2f5468', 0.85) })
+  m.label('Turtle Pond', -1.3, 2.62, 0.1, 0, { italic: true, spacing: 2, color: rgba('#2f5468', 0.85) })
+  m.label('The Reservoir', 2.6, 4.45, 0.15, 0, { italic: true, spacing: 2, color: rgba('#2f5468', 0.85) })
+  m.label('Strawberry Fields', 6.2, 3.15, 0.1, 0, { italic: true, spacing: 2 })
+  m.cartouche(-4.6, 4.5, 'Central Park', '· the city’s backyard ·')
+  m.compass(6.6, 4.45, Math.PI)
+  return m.finish(['18', '19'])
 }
 
 // ---------------------------------------------------------------------------

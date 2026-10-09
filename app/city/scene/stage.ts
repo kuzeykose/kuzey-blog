@@ -3,11 +3,12 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { Cutout, Sketch } from './sketch'
 import { PIECES, PLATFORM, PieceDef } from './pieces'
 import { BROOKLYN } from './pieces-brooklyn'
+import { PARK } from './pieces-park'
 import { buildBook, Book } from './book'
 import { canvasTexture, groundMaterial, paperMaterials, shared } from './materials'
 import { PageCurl } from './bend'
 import { Ground, Weather, WeatherFx } from './weather'
-import { curb, roadTop, sidewalk, tableTop } from './art-book'
+import { brooklynSpread, centralParkSpread, curb, manhattanSpread, roadTop, sidewalk, tableTop } from './art-book'
 
 export type StageEvents = {
   onProgress?: (p: number) => void
@@ -70,7 +71,12 @@ const riseStart = (order: number) => TURN + 0.02 + order * 0.4
 const PAGE_TIME = 4.2
 const FOLD_END = 0.3
 const LAND = 0.7
-const SPREADS = [PIECES, BROOKLYN]
+// The spreads, in page order: their pop-ups and their printed map.
+const SPREADS = [
+  { pieces: PIECES, sheet: manhattanSpread },
+  { pieces: BROOKLYN, sheet: brooklynSpread },
+  { pieces: PARK, sheet: centralParkSpread },
+]
 
 const DAY = {
   bg: new THREE.Color('#ece3d2'),
@@ -134,7 +140,7 @@ export class CityStage {
   private disposed = false
   private book: Book | null = null
   private curl: PageCurl | null = null
-  private leafCurl: PageCurl | null = null
+  private leafCurls: PageCurl[] = []
   private pieces: Piece[] = []
   private pickables: THREE.Object3D[] = []
   private petalKit: { geo: THREE.BufferGeometry; mat: THREE.Material } | null = null
@@ -283,7 +289,7 @@ export class CityStage {
 
   async build() {
     const aniso = Math.min(8, this.renderer.capabilities.getMaxAnisotropy())
-    this.book = buildBook(aniso)
+    this.book = buildBook(aniso, SPREADS.map((sp) => sp.sheet()))
     this.book.root.traverse((o) => {
       if ((o as THREE.Mesh).isMesh) this.pickables.push(o)
     })
@@ -291,8 +297,11 @@ export class CityStage {
     this.book.setAngle(1)
     this.curl = new PageCurl(this.book.flapLength)
     this.curl.attach(this.book.flap)
-    this.leafCurl = new PageCurl(this.book.leafLength)
-    this.leafCurl.attach(this.book.leaf)
+    this.leafCurls = this.book.leaves.map((leaf) => {
+      const curl = new PageCurl(this.book!.leafLength)
+      curl.attach(leaf)
+      return curl
+    })
     // Show the closed book straight away; the pop-ups are cut behind it.
     this.update(0)
     this.loop()
@@ -300,9 +309,9 @@ export class CityStage {
     if (this.disposed) return
 
     const byId = new Map<string, Piece>()
-    const total = SPREADS.reduce((n, list) => n + list.length, 0)
+    const total = SPREADS.reduce((n, sp) => n + sp.pieces.length, 0)
     for (let spread = 0; spread < SPREADS.length; spread++) {
-      for (const def of SPREADS[spread]) {
+      for (const def of SPREADS[spread].pieces) {
         const piece = this.buildPiece(
           def,
           aniso,
@@ -320,7 +329,7 @@ export class CityStage {
     this.buildPlatform(aniso)
     // Everything now glued to the left page curls with it.
     this.curl.attach(this.book.flap)
-    this.leafCurl.attach(this.book.leaf)
+    this.leafCurls.forEach((curl, j) => curl.attach(this.book!.leaves[j]))
     this.events.onProgress?.(1)
     this.renderer.compile(this.scene, this.camera)
     this.ready = true
@@ -449,7 +458,7 @@ export class CityStage {
       }
       // Under the anchor, so they fall free of the paper's wobble.
       const mesh = new THREE.InstancedMesh(this.petalKit.geo, this.petalKit.mat, PETALS)
-      const tones = ['#ef8fb0', '#fde6ee', '#f6b3c9'].map((c) => new THREE.Color(c))
+      const tones = (def.petalColors ?? ['#ef8fb0', '#fde6ee', '#f6b3c9']).map((c) => new THREE.Color(c))
       for (let i = 0; i < PETALS; i++) mesh.setColorAt(i, tones[i % tones.length])
       mesh.count = 0
       mesh.frustumCulled = false
@@ -838,39 +847,44 @@ export class CityStage {
       const step = dt / PAGE_TIME
       this.pageT = this.page > this.pageT ? Math.min(this.page, this.pageT + step) : Math.max(this.page, this.pageT - step)
     }
-    const forward = this.page === 1
-    const lp = clamp01((this.pageT - FOLD_END) / (LAND - FOLD_END))
-    let leafClosed = 1 - easeInOut(lp)
-    let leafCurl = forward
-      ? Math.min(1.4 * Math.sin(Math.PI * lp) * (1 - lp) ** 0.6, 0.9 * Math.PI * leafClosed)
-      : Math.max(-1.3 * Math.sin(Math.PI * (1 - lp)) * lp ** 0.6, -0.9 * Math.PI * (1 - leafClosed))
-    // A page turned over to the cover's side goes wherever the cover goes
-    // (on the first spread it stays put on the right).
-    if (leafClosed < 1 && closed >= leafClosed) {
-      leafClosed = closed
-      leafCurl = curl
-    }
+    const forward = this.page > this.pageT
     if (this.book) {
       this.book.setAngle(closed)
       this.curl?.update(this.book.flap, curl)
-      this.book.setLeaf(leafClosed)
-      this.leafCurl?.update(this.book.leaf, leafCurl)
+      // Leaf j turns in the middle of the move from spread j to j + 1.
+      this.book.leaves.forEach((leaf, j) => {
+        const lp = clamp01((this.pageT - j - FOLD_END) / (LAND - FOLD_END))
+        let leafClosed = 1 - easeInOut(lp)
+        let leafCurl = forward
+          ? Math.min(1.4 * Math.sin(Math.PI * lp) * (1 - lp) ** 0.6, 0.9 * Math.PI * leafClosed)
+          : Math.max(-1.3 * Math.sin(Math.PI * (1 - lp)) * lp ** 0.6, -0.9 * Math.PI * (1 - leafClosed))
+        // A leaf turned over to the cover's side goes wherever the cover
+        // goes (one still on the right stays put).
+        if (leafClosed < 1 && closed >= leafClosed) {
+          leafClosed = closed
+          leafCurl = curl
+        }
+        this.book!.setLeaf(j, leafClosed)
+        this.leafCurls[j]?.update(leaf, leafCurl)
+      })
     }
 
     const riseOf = (start: number) => {
       const k = clamp01((t - start) / RISE_SPAN)
       return opening ? (k >= 1 ? 1 : easeOutBack(k)) : smooth(k)
     }
-    // How far a spread's pop-ups stand while the page turns: the leaving
-    // spread folds front to back, the arriving one rises back to front.
+    // How far a spread's pop-ups stand while the pages turn: a spread being
+    // left folds front to back, one being reached rises back to front.
     const gate = (spread: number, order: number) => {
-      if (spread === 0) return 1 - smooth(clamp01((this.pageT - (1 - order) * 0.12) / (FOLD_END - 0.12)))
-      const k = clamp01((this.pageT - LAND - order * 0.12) / (1 - LAND - 0.12))
+      if (this.pageT >= spread) {
+        return 1 - smooth(clamp01((this.pageT - spread - (1 - order) * 0.12) / (FOLD_END - 0.12)))
+      }
+      const k = clamp01((this.pageT - (spread - 1) - LAND - order * 0.12) / (1 - LAND - 0.12))
       return forward && k < 1 ? easeOutBack(k) : smooth(k)
     }
-    // Only the spread that can be seen is drawn: the other is shut under
-    // the loose page.
-    const shown = (spread: number) => (spread === 0 ? this.pageT < LAND - 0.01 : this.pageT > FOLD_END + 0.01)
+    // Only a spread that can be seen is drawn: the others are shut under
+    // the loose leaves.
+    const shown = (spread: number) => this.pageT > spread - 1 + FOLD_END + 0.01 && this.pageT < spread + LAND - 0.01
 
     if (this.platform) {
       const k = clamp01((t - this.platform.start) / RISE_SPAN)
@@ -1065,7 +1079,7 @@ export class CityStage {
     this.controls.dispose()
     this.timer.dispose()
     this.curl?.dispose()
-    this.leafCurl?.dispose()
+    this.leafCurls.forEach((curl) => curl.dispose())
     this.weatherFx.dispose()
     this.book?.dispose()
     this.disposables.forEach((d) => d.dispose())

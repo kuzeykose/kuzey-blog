@@ -20,7 +20,7 @@ import type { Weather } from './scene/weather'
 
 type Status = 'loading' | 'ready' | 'error'
 
-const PAGES = ['Manhattan', 'Brooklyn']
+const PAGES = ['Manhattan', 'Brooklyn', 'Central Park']
 
 // The weather button steps through these.
 const WEATHER: { kind: Weather; name: string; Icon: typeof Sun }[] = [
@@ -130,6 +130,8 @@ export default function PopupCity() {
 
   if (!mounted) return null
 
+  // With a page either side, small screens show just the arrows.
+  const pageName = page > 0 && page < PAGES.length - 1 ? 'hidden sm:inline' : ''
   const sky = WEATHER[weather]
   const nextSky = WEATHER[(weather + 1) % WEATHER.length]
   const ink = night ? 'text-neutral-100' : 'text-neutral-800'
@@ -149,7 +151,7 @@ export default function PopupCity() {
         ref={host}
         className="absolute inset-0"
         role="img"
-        aria-label="A 3D pop-up book of New York City. Manhattan: the Empire State and Chrysler buildings, One World Trade Center, Times Square, the Flatiron, brownstones with water towers, a yellow cab, the Statue of Liberty and the Brooklyn Bridge. Turn the page for Brooklyn: DUMBO and the Manhattan Bridge, Barclays Center, Grand Army Plaza and the Botanic Garden's cherry blossoms, a carousel, and Coney Island's Wonder Wheel, Cyclone and Parachute Jump."
+        aria-label="A 3D pop-up book of New York City. Manhattan: the Empire State and Chrysler buildings, One World Trade Center, Times Square, the Flatiron, brownstones with water towers, a yellow cab, the Statue of Liberty and the Brooklyn Bridge. Turn the page for Brooklyn: DUMBO and the Manhattan Bridge, Barclays Center, Grand Army Plaza and the Botanic Garden's cherry blossoms, a carousel, and Coney Island's Wonder Wheel, Cyclone and Parachute Jump. Turn again for Central Park in autumn: Bethesda Terrace and its fountain, Bow Bridge over the Lake, Gapstow Bridge, Belvedere Castle and a horse and carriage, with the Plaza Hotel, the San Remo and the Guggenheim around the edges."
         onPointerDown={() => setHint(false)}
       />
       <div
@@ -199,23 +201,26 @@ export default function PopupCity() {
               {open ? <Book size={16} /> : <BookOpen size={16} />}
               {open ? 'Close the book' : 'Open the book'}
             </button>
-            {open && (
+            {open && page > 0 && (
               <button
                 type="button"
                 className={button}
-                onClick={() => stage.current?.setPage(page === 0 ? 1 : 0)}
+                aria-label={`Back to ${PAGES[page - 1]}`}
+                onClick={() => stage.current?.setPage(page - 1)}
               >
-                {page === 0 ? (
-                  <>
-                    {PAGES[1]}
-                    <ArrowRight size={16} />
-                  </>
-                ) : (
-                  <>
-                    <ArrowLeft size={16} />
-                    {PAGES[0]}
-                  </>
-                )}
+                <ArrowLeft size={16} />
+                <span className={pageName}>{PAGES[page - 1]}</span>
+              </button>
+            )}
+            {open && page < PAGES.length - 1 && (
+              <button
+                type="button"
+                className={button}
+                aria-label={`On to ${PAGES[page + 1]}`}
+                onClick={() => stage.current?.setPage(page + 1)}
+              >
+                <span className={pageName}>{PAGES[page + 1]}</span>
+                <ArrowRight size={16} />
               </button>
             )}
             <button

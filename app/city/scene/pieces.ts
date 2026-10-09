@@ -62,8 +62,10 @@ export type PieceDef = {
   // A point light at this art position after dark (warm unless coloured).
   lamp?: [number, number]
   lampColor?: string
-  // Poking it shakes petals loose from these art circles (x, y, radius).
+  // Poking it shakes petals (or leaves) loose from these art circles
+  // (x, y, radius), in these colours (cherry blossom unless given).
   petals?: [number, number, number][]
+  petalColors?: string[]
   // Sky paper (backdrops, clouds): greys under rain, never gathers snow.
   sky?: boolean
 }
