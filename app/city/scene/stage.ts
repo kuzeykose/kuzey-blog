@@ -6,6 +6,7 @@ import { BROOKLYN } from './pieces-brooklyn'
 import { PARK } from './pieces-park'
 import { TIMES } from './pieces-times'
 import { LOWER } from './pieces-lower'
+import { MIDTOWN } from './pieces-midtown'
 import { buildBook, Book } from './book'
 import { canvasTexture, groundMaterial, paperMaterials, shared } from './materials'
 import { PageCurl } from './bend'
@@ -16,6 +17,7 @@ import {
   curb,
   lowerManhattanSpread,
   manhattanSpread,
+  midtownSpread,
   roadTop,
   sidewalk,
   tableTop,
@@ -72,6 +74,9 @@ type Piece = {
   // Pieces that drop and come back (the New Year's ball): seconds since
   // let go, or -1 while waiting at the top.
   drop: { at: number } | null
+  // Pieces that twirl round on the spot (the skaters): how far round they
+  // are, and where they're turning to.
+  twirl: { x: number; to: number } | null
 }
 
 const OPEN_TIME = 4.4
@@ -93,6 +98,7 @@ const SPREADS = [
   { pieces: PARK, sheet: centralParkSpread },
   { pieces: TIMES, sheet: timesSquareSpread },
   { pieces: LOWER, sheet: lowerManhattanSpread },
+  { pieces: MIDTOWN, sheet: midtownSpread },
 ]
 
 const DAY = {
@@ -416,6 +422,7 @@ export class CityStage {
       spin: def.spin ? { angle: 0, vel: def.spin.idle } : null,
       petals: null,
       drop: def.drop ? { at: -1 } : null,
+      twirl: def.poke === 'twirl' ? { x: 0, to: 0 } : null,
     }
 
     for (const seg of segs) {
@@ -773,6 +780,9 @@ export class CityStage {
     if (p.petals && !p.drop) this.shed(p)
     if (p.drop) {
       if (p.drop.at < 0) p.drop.at = 0
+    } else if (p.twirl) {
+      // Two turns, showing the plain back of the paper as it goes round.
+      p.twirl.to += Math.PI * 4
     } else if (p.spin) {
       p.spin.vel += 2.4
     } else if (p.run) {
@@ -1015,6 +1025,12 @@ export class CityStage {
         for (const h of p.halves) h.bob.rotation.z = p.spin.angle
       }
       if (p.run) this.scurry(p, dt, time)
+      if (p.twirl) {
+        const tw = p.twirl
+        tw.x += (tw.to - tw.x) * Math.min(1, dt * 1.6)
+        if (Math.abs(tw.to - tw.x) < 0.002) tw.x = tw.to = 0
+        for (const h of p.halves) h.poke.rotation.y = tw.x
+      }
       if (p.drop) {
         const d = p.drop
         // Back to the top whenever its spread goes away.

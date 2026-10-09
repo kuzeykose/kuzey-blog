@@ -19,7 +19,7 @@ import {
   taxi,
 } from './art-street'
 
-export type Poke = 'tilt' | 'lift' | 'drive' | 'run' | 'spin' | 'drop'
+export type Poke = 'tilt' | 'lift' | 'drive' | 'run' | 'spin' | 'drop' | 'twirl'
 
 export type PieceDef = {
   id: string

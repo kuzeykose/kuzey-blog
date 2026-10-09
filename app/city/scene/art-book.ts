@@ -1082,6 +1082,76 @@ export function lowerManhattanSpread() {
 }
 
 // ---------------------------------------------------------------------------
+// Midtown, looking north up Fifth Avenue: Rockefeller Center and Radio City
+// on the left, St. Patrick's across the avenue, Grand Central on Park
+// Avenue and the library at 42nd Street.
+export function midtownSpread() {
+  const m = new MapSheet(71)
+  const { c } = m
+  const avenues: [number, string][] = [
+    [-5.3, 'AVENUE OF THE AMERICAS'],
+    [0.2, 'FIFTH AVENUE'],
+    [2.0, 'MADISON AVE'],
+    [3.9, 'PARK AVE'],
+    [6.0, 'LEXINGTON AVE'],
+  ]
+  const streets = [2.0, 0.9, -0.2, -1.3, -2.4, -3.5, -4.6]
+
+  c.fillStyle = C.land
+  c.fillRect(X0, Z0, X1 - X0, Z1 - Z0)
+  for (let i = 0; i < 640; i++) {
+    c.fillStyle = rgba(m.pick([C.brick, C.limestoneDark, C.slate, C.brownstone, C.limestone]), 0.25)
+    c.fillRect(m.r(X0, X1), m.r(Z0, Z1), m.r(0.15, 0.3), m.r(0.15, 0.3))
+  }
+  // Bryant Park behind the library, and Rockefeller Center's plaza and
+  // Channel Gardens.
+  c.fillStyle = '#b8cf98'
+  c.fillRect(-7.6, 1.2, 2.1, 1.1)
+  for (let i = 0; i < 40; i++) {
+    c.fillStyle = rgba(m.pick([C.greenDark, '#d98b3c', '#7fa860']), 0.6)
+    c.beginPath()
+    c.arc(m.r(-7.5, -5.6), m.r(1.25, 2.25), 0.06, 0, Math.PI * 2)
+    c.fill()
+  }
+  c.strokeStyle = rgba(INK, 0.4)
+  c.lineWidth = 0.015
+  c.strokeRect(-7.6, 1.2, 2.1, 1.1)
+  c.fillStyle = '#e3d6c8'
+  c.fillRect(-2.6, -2.6, 2.6, 1.8)
+  c.fillStyle = '#b8cf98'
+  c.fillRect(-1.5, -0.8, 0.4, 0.9)
+  c.strokeRect(-2.6, -2.6, 2.6, 1.8)
+
+  for (const z of streets) {
+    m.road(() => {
+      c.moveTo(X0 - 1, z)
+      c.lineTo(X1 + 1, z)
+    }, 0.14)
+  }
+  for (const [x] of avenues) {
+    m.road(() => {
+      c.moveTo(x, Z0 - 1)
+      c.lineTo(x, Z1 + 1)
+    }, x === 0.2 ? 0.3 : 0.22)
+  }
+  // Grand Central sits across Park Avenue; the viaduct wraps round it.
+  c.fillStyle = '#d6c8ad'
+  c.fillRect(2.8, -0.3, 2.2, 1.0)
+  c.strokeStyle = INK
+  c.lineWidth = 0.015
+  c.strokeRect(2.8, -0.3, 2.2, 1.0)
+
+  avenues.forEach(([x, name]) => m.label(name, x + 0.02, 3.6, 0.1, -Math.PI / 2, { color: rgba(INK, 0.7), spacing: 4 }))
+  streets.forEach((z, i) => m.label(`${42 + i * 2} ST`, 7.4, z + 0.04, 0.09, 0, { color: rgba(INK, 0.7), spacing: 3 }))
+  m.label('Bryant Park', -6.55, 2.55, 0.11, 0, { italic: true, spacing: 2 })
+  m.label('Rockefeller Center', -1.3, -0.45, 0.11, 0, { italic: true, spacing: 2 })
+  m.label('M I D T O W N', 2.4, 3.3, 0.22, 0, { spacing: 10 })
+  m.cartouche(-4.6, 4.5, 'Midtown', '· the heart of the city ·')
+  m.compass(6.6, 4.45)
+  return m.finish(['24', '25'])
+}
+
+// ---------------------------------------------------------------------------
 
 export function cloth(color: string, seed = 1) {
   const s = 512
