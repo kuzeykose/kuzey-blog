@@ -21,21 +21,22 @@ export default function Page() {
             </p>
 
             <p className="mb-8">
-                I like building things — especially the systems and tools that
-                make software easier to reason about. I&apos;m drawn to
-                multi-tenant platforms, developer tools, and the odd detour
-                into compilers when a problem asks for one.
+                I like building things — especially systems and tools
+                that make software easier to understand. I'm drawn to
+                multi-tenant platforms, developer tools, and the occasional
+                detour into compilers when a problem calls for one.
             </p>
 
-            <ul className="mb-8 space-y-2 text-neutral-700 dark:text-neutral-300">
+            <ul className="mb-8 space-y-8 text-neutral-700 dark:text-neutral-300">
                 <li>
                     These days I&apos;m building a high-scalability platform at
                     unPLUG, helping restaurants boost first-party revenue by unifying
                     digital ordering, loyalty, and payments to maximize guest
                     lifetime value.
                 </li>
+
                 <li>
-                    Every week I go live on{' '}
+                    Sometimes, I go live on{' '}
                     <a
                         href="https://www.youtube.com/@KuzeyK%C3%B6se/streams"
                         target="_blank"
