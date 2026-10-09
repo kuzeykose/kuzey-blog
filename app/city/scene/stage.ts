@@ -108,6 +108,10 @@ type Piece = {
   // Pieces that twirl round on the spot (the skaters): how far round they
   // are, and where they're turning to.
   twirl: { x: number; to: number } | null
+  // Flags: how far the ripple has rolled, what's left of a poke's gust, and
+  // each vertex's place on the cloth (0 at the pole, 1 at the fly end) and
+  // up the art (0 to 1).
+  wave: { at: number; gust: number; u: Float32Array; v: Float32Array } | null
 }
 
 const OPEN_TIME = 4.4
@@ -491,22 +495,36 @@ export class CityStage {
       petals: null,
       drop: def.drop ? { at: -1 } : null,
       twirl: def.poke === 'twirl' ? { x: 0, to: 0 } : null,
+      wave: null,
     }
     art.users.push(piece)
 
     for (const seg of segs) {
-      // Divided finely enough to follow the page as it curls.
+      // Divided finely enough to follow the page as it curls (and a flag
+      // finely enough to ripple).
+      const step = def.wave ? 0.08 : 0.4
       const geo = new THREE.PlaneGeometry(
         seg.x1 - seg.x0,
         H,
-        Math.max(1, Math.ceil((seg.x1 - seg.x0) / 0.4)),
-        Math.max(1, Math.ceil(H / 0.4))
+        Math.max(1, Math.ceil((seg.x1 - seg.x0) / step)),
+        Math.max(1, Math.ceil(H / (def.wave ? 0.16 : 0.4)))
       )
       const uv = geo.attributes.uv as THREE.BufferAttribute
       const u0 = (seg.x0 - left) / W
       const u1 = (seg.x1 - left) / W
       for (let i = 0; i < uv.count; i++) uv.setX(i, u0 + (u1 - u0) * uv.getX(i))
       this.disposables.push(geo)
+      if (def.wave && !piece.wave) {
+        const pos = geo.attributes.position as THREE.BufferAttribute
+        const u = new Float32Array(pos.count)
+        const v = new Float32Array(pos.count)
+        for (let i = 0; i < pos.count; i++) {
+          const ax = ((seg.x0 + seg.x1) / 2 + pos.getX(i) - left) / k - cut.pad
+          u[i] = clamp01((ax - def.wave.from) / (def.wave.to - def.wave.from))
+          v[i] = pos.getY(i) / H + 0.5
+        }
+        piece.wave = { at: 0, gust: 0, u, v }
+      }
       const mesh = new THREE.Mesh(geo, art.paper.front)
       const back = new THREE.Mesh(geo, art.paper.back)
       for (const m of [mesh, back]) {
@@ -947,6 +965,7 @@ export class CityStage {
 
   private poke(p: Piece) {
     const kind = p.def.poke ?? 'tilt'
+    if (p.wave) p.wave.gust = 1
     // (A dropping piece sheds when it lands instead.)
     if (p.petals && !p.drop) this.shed(p)
     if (p.drop) {
@@ -1004,6 +1023,26 @@ export class CityStage {
       landed: 0,
       phase: Math.random() * Math.PI * 2,
     }
+  }
+
+  // A flag in the wind: waves roll out from the pole, growing towards the
+  // fly end, and harder for a while after a poke.
+  private ripple(p: Piece, dt: number) {
+    const w = p.def.wave!
+    const g = p.wave!
+    g.gust = Math.max(0, g.gust - dt * 0.45)
+    g.at += dt * w.speed * (0.4 + 0.6 * this.calm) * (1 + 0.9 * g.gust)
+    // (Flat while it folds away, so it never ripples through the page.)
+    const amp = w.amp * (p.def.scale ?? 1) * (this.calm + 1.4 * g.gust) * clamp01(p.rise)
+    const geo = p.halves[0].mesh.geometry
+    const pos = geo.attributes.position as THREE.BufferAttribute
+    for (let i = 0; i < pos.count; i++) {
+      const u = g.u[i]
+      const ph = 2 * Math.PI * 1.15 * u - g.at + 0.8 * g.v[i]
+      pos.setZ(i, amp * Math.pow(u, 1.2) * (Math.sin(ph) + 0.3 * Math.sin(2.1 * ph + 1.3)))
+    }
+    pos.needsUpdate = true
+    geo.computeVertexNormals()
   }
 
   private flutter(p: Piece, dt: number, live: boolean) {
@@ -1249,6 +1288,7 @@ export class CityStage {
         const turn = Math.cos(time * p.def.whirl * (this.reduced ? 0.3 : 1))
         for (const h of p.halves) h.poke.scale.x = turn
       }
+      if (p.wave && visible && p.present > 0) this.ripple(p, dt)
       if (p.run) this.scurry(p, dt, time)
       if (p.twirl) {
         const tw = p.twirl

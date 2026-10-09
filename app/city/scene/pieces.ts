@@ -10,6 +10,7 @@ import {
   dogWalker,
   hotAirBalloon,
   hotDogCart,
+  knicksFlag,
   pizzaRat,
   pizzaSlice,
   readerAndKid,
@@ -85,6 +86,9 @@ export type PieceDef = {
   // Keeps turning about its upright axis (rad/s), squashed flat into the
   // paper like a rotor seen side on.
   whirl?: number
+  // A flag: the art between these x (the pole, then the fly end) ripples
+  // in the wind, more the further out it is. Poking it brings a gust.
+  wave?: { from: number; to: number; amp: number; speed: number }
   // Sky paper (backdrops, clouds): greys under rain, never gathers snow.
   sky?: boolean
 }
@@ -322,6 +326,22 @@ export const PIECES: PieceDef[] = [
     seed: 502,
     glow: true,
     poke: 'tilt',
+  },
+  {
+    // Up on the brownstone's roof.
+    id: 'knicks',
+    label: 'Knicks in 5',
+    art: knicksFlag,
+    w: 1.2,
+    h: 1.35,
+    x: -2.555,
+    z: 0,
+    parent: 'brown-left',
+    offset: [0.745, 2.06, 0.03],
+    order: 0.46,
+    seed: 531,
+    poke: 'tilt',
+    wave: { from: 0.12, to: 1.12, amp: 0.07, speed: 3.4 },
   },
   {
     id: 'subway',

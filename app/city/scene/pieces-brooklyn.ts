@@ -3,7 +3,7 @@ import { treeFall } from './season'
 import { C } from './palette'
 import { skyBackdrop } from './art-landmarks'
 import { brownstones, farSkyline, BROOKLYN_HOUSES } from './art-buildings'
-import { cloud } from './art-street'
+import { cloud, knicksFlag } from './art-street'
 import {
   CAROUSEL_POLES,
   GARDEN_BLOSSOMS,
@@ -251,6 +251,22 @@ export const BROOKLYN: PieceDef[] = [
     seed: 2207,
     glow: true,
     poke: 'tilt',
+  },
+  {
+    id: 'bk-knicks',
+    label: 'Knicks in 5, even in Brooklyn',
+    art: knicksFlag,
+    w: 1.2,
+    h: 1.35,
+    x: -4.875,
+    z: 0,
+    parent: 'bk-brown',
+    offset: [-1.025, 2.06, 0.03],
+    sameArtAs: 'knicks',
+    order: 0.46,
+    seed: 2231,
+    poke: 'tilt',
+    wave: { from: 0.12, to: 1.12, amp: 0.07, speed: 3.1 },
   },
   {
     id: 'bk-cup',

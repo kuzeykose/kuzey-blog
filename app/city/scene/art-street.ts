@@ -1049,3 +1049,55 @@ export function subwayEntrance(s: Sketch, o: { name?: string; lines?: [string, s
   }
   globes.forEach((g) => s.glow(g, '#8dff9f'))
 }
+
+// A Knicks flag on a rooftop pole, a basketball for a finial. The cloth
+// runs from x = 0.12 to 1.12; the stage makes it ripple.
+export function knicksFlag(s: Sketch) {
+  const blue = '#1f62ae'
+  const orange = '#f0822e'
+  const font = '"Helvetica Neue", Helvetica, Arial, sans-serif'
+  const top = 1.27
+  const pole = s.rect(0.082, 0, 0.036, top, 0.001)
+  const cloth = s.rect(0.12, 0.68, 1.0, 0.56, 0.006)
+  const ball = s.ellipse(0.1, top + 0.045, 0.055, 0.055)
+  // Shrunk to fit the cloth if the font runs wide.
+  const fit = (str: string, size: number, room: number) => {
+    const c = s.ctx
+    c.save()
+    c.font = `italic 900 100px ${font}`
+    const w = (c.measureText(str).width / 100) * size
+    c.restore()
+    return w > room ? (size * room) / w : size
+  }
+  paint(
+    s,
+    [
+      { shape: pole, color: '#9a968e', ink: 0.01 },
+      {
+        shape: cloth,
+        color: blue,
+        ink: 0.014,
+        detail: () => {
+          for (const y of [0.72, 1.155]) {
+            s.fill(s.rect(0.12, y, 1.0, 0.045, 0), orange)
+            s.fill(s.rect(0.12, y < 1 ? y + 0.045 : y - 0.014, 1.0, 0.014, 0), PAPER)
+          }
+          const big = fit('KNICKS', 0.19, 0.84)
+          s.text('KNICKS', 0.632, 0.968, big, { color: orange, font, weight: 'italic 900' })
+          s.text('KNICKS', 0.62, 0.98, big, { color: PAPER, font, weight: 'italic 900' })
+          s.text('IN 5', 0.62, 0.815, fit('IN 5', 0.17, 0.84), { color: orange, font, weight: 'italic 900' })
+        },
+      },
+      {
+        shape: ball,
+        color: orange,
+        ink: 0.008,
+        detail: () => {
+          s.line([[0.045, top + 0.045], [0.155, top + 0.045]], 0.006, INK, 0)
+          s.line([[0.1, top - 0.01], [0.1, top + 0.1]], 0.006, INK, 0)
+        },
+      },
+    ],
+    0.06
+  )
+}
