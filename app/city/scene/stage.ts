@@ -244,7 +244,11 @@ export class CityStage {
   private rainT = 0
   private snowT = 0
   private weatherFx = new WeatherFx()
+  // Visitors who ask for less motion still see the pop-ups' little
+  // animations (they're the point of the book), just smaller and slower:
+  // `calm` scales how far and how fast things sway.
   private reduced: boolean
+  private calm: number
 
   private hemi: THREE.HemisphereLight
   private key: THREE.DirectionalLight
@@ -265,6 +269,7 @@ export class CityStage {
     this.container = container
     this.events = o.events
     this.reduced = o.reducedMotion
+    this.calm = o.reducedMotion ? 0.5 : 1
     this.nightT = this.nightTarget = o.night ? 1 : 0
     // The book opens in its season's weather, snow already lying in winter.
     this.season = o.season
@@ -1071,7 +1076,7 @@ export class CityStage {
       // Waiting to be opened: the cover's free edge lifts and settles like
       // a page corner in a draught, and lifts further under the pointer.
       this.hoverLift += ((this.hoverCover ? 1 : 0) - this.hoverLift) * Math.min(1, dt * 6)
-      const breath = this.reduced ? 0 : 0.5 - 0.5 * Math.cos(time * 1.3)
+      const breath = (0.5 - 0.5 * Math.cos(time * 1.3)) * this.calm
       closed = 1
       curl = 0.08 * breath + 0.22 * this.hoverLift
     } else if (opening) {
@@ -1214,7 +1219,7 @@ export class CityStage {
       const flat = 1 - Math.min(1, p.rise)
       const fold = p.parent ? 0 : (Math.PI / 2) * (1 - p.rise)
       const mountY = p.def.mount && this.platform ? this.platform.top * Math.max(0, this.platform.rise) : 0
-      const bobAmp = p.def.bob && !this.reduced ? p.def.bob : null
+      const bobAmp = p.def.bob ?? null
       for (const h of p.halves) {
         h.anchor.visible = visible && p.present > 0
         h.hinge.rotation.x = fold
@@ -1223,20 +1228,21 @@ export class CityStage {
         h.poke.position.y = Math.max(-0.05, p.lift.x * 0.5)
         h.poke.position.x = p.drive.x * 0.6
         if (bobAmp) {
-          h.bob.position.y = bobAmp.amp * Math.sin(time * bobAmp.speed + p.phase) * Math.min(1, p.rise)
-          h.bob.rotation.z = (bobAmp.sway ?? 0) * Math.sin(time * bobAmp.speed * 0.7 + p.phase)
+          const speed = bobAmp.speed * (0.4 + 0.6 * this.calm)
+          h.bob.position.y = bobAmp.amp * this.calm * Math.sin(time * speed + p.phase) * Math.min(1, p.rise)
+          h.bob.rotation.z = (bobAmp.sway ?? 0) * this.calm * Math.sin(time * speed * 0.7 + p.phase)
         }
       }
       if (p.light) p.light.intensity = shared.uNight.value * 2.4 * clamp01(p.rise)
       if (p.spin) {
         // Coast back down to its idle turn after a spin.
-        const idle = this.reduced ? 0 : p.def.spin!.idle
+        const idle = p.def.spin!.idle * this.calm
         p.spin.vel += (idle - p.spin.vel) * Math.min(1, dt * 0.5)
         p.spin.angle += p.spin.vel * dt
         for (const h of p.halves) h.bob.rotation.z = p.spin.angle
       }
       if (p.def.whirl) {
-        const turn = this.reduced ? 1 : Math.cos(time * p.def.whirl)
+        const turn = Math.cos(time * p.def.whirl * (this.reduced ? 0.3 : 1))
         for (const h of p.halves) h.poke.scale.x = turn
       }
       if (p.run) this.scurry(p, dt, time)
@@ -1265,7 +1271,7 @@ export class CityStage {
         const live = visible && p.rise > 0.98 && this.openTarget === 1
         // In autumn the trees on show let their leaves go, one at a time.
         const tree = p.def.petals!.colors && !Array.isArray(p.def.petals!.colors)
-        if (live && tree && this.season === 'autumn' && !this.reduced && this.pageT === this.page) {
+        if (live && tree && this.season === 'autumn' && this.pageT === this.page) {
           if (this.clock >= p.dripAt) {
             if (p.dripAt) this.drip(p)
             p.dripAt = this.clock + 0.8 + Math.random() * 2.2
@@ -1287,7 +1293,7 @@ export class CityStage {
 
     // Each spread puts on its little show once it has fully risen.
     const isOpen = this.openTarget === 1 && this.openT === 1 && this.pageT === this.page
-    if (isOpen && !this.wasOpen && !this.reduced) this.showAt = time + 0.6
+    if (isOpen && !this.wasOpen) this.showAt = time + 0.6
     this.wasOpen = isOpen
     if (this.showAt && time >= this.showAt) {
       this.showAt = 0
