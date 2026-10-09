@@ -5,11 +5,22 @@ import { PIECES, PLATFORM, PieceDef } from './pieces'
 import { BROOKLYN } from './pieces-brooklyn'
 import { PARK } from './pieces-park'
 import { TIMES } from './pieces-times'
+import { LOWER } from './pieces-lower'
 import { buildBook, Book } from './book'
 import { canvasTexture, groundMaterial, paperMaterials, shared } from './materials'
 import { PageCurl } from './bend'
 import { Ground, Weather, WeatherFx } from './weather'
-import { brooklynSpread, centralParkSpread, curb, manhattanSpread, roadTop, sidewalk, tableTop, timesSquareSpread } from './art-book'
+import {
+  brooklynSpread,
+  centralParkSpread,
+  curb,
+  lowerManhattanSpread,
+  manhattanSpread,
+  roadTop,
+  sidewalk,
+  tableTop,
+  timesSquareSpread,
+} from './art-book'
 
 export type StageEvents = {
   onProgress?: (p: number) => void
@@ -81,6 +92,7 @@ const SPREADS = [
   { pieces: BROOKLYN, sheet: brooklynSpread },
   { pieces: PARK, sheet: centralParkSpread },
   { pieces: TIMES, sheet: timesSquareSpread },
+  { pieces: LOWER, sheet: lowerManhattanSpread },
 ]
 
 const DAY = {

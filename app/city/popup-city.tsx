@@ -20,7 +20,7 @@ import type { Weather } from './scene/weather'
 
 type Status = 'loading' | 'ready' | 'error'
 
-const PAGES = ['Manhattan', 'Brooklyn', 'Central Park', 'Times Square']
+const PAGES = ['Manhattan', 'Brooklyn', 'Central Park', 'Times Square', 'Lower Manhattan']
 
 // The weather button steps through these.
 const WEATHER: { kind: Weather; name: string; Icon: typeof Sun }[] = [
@@ -151,7 +151,7 @@ export default function PopupCity() {
         ref={host}
         className="absolute inset-0"
         role="img"
-        aria-label="A 3D pop-up book of New York City. Manhattan: the Empire State and Chrysler buildings, One World Trade Center, Times Square, the Flatiron, brownstones with water towers, a yellow cab, the Statue of Liberty and the Brooklyn Bridge. Turn the page for Brooklyn: DUMBO and the Manhattan Bridge, Barclays Center, Grand Army Plaza and the Botanic Garden's cherry blossoms, a carousel, and Coney Island's Wonder Wheel, Cyclone and Parachute Jump. Turn again for Central Park in autumn: Bethesda Terrace and its fountain, Bow Bridge over the Lake, Gapstow Bridge, Belvedere Castle and a horse and carriage, with the Plaza Hotel, the San Remo and the Guggenheim around the edges. The last page is Times Square: One Times Square with its news ticker and the New Year's Eve ball, the Paramount Building, billboards on every side, the red steps at Duffy Square, a Broadway theater, tourists and yellow cabs."
+        aria-label="A 3D pop-up book of New York City. Manhattan: the Empire State and Chrysler buildings, One World Trade Center, Times Square, the Flatiron, brownstones with water towers, a yellow cab, the Statue of Liberty and the Brooklyn Bridge. Turn the page for Brooklyn: DUMBO and the Manhattan Bridge, Barclays Center, Grand Army Plaza and the Botanic Garden's cherry blossoms, a carousel, and Coney Island's Wonder Wheel, Cyclone and Parachute Jump. Turn again for Central Park in autumn: Bethesda Terrace and its fountain, Bow Bridge over the Lake, Gapstow Bridge, Belvedere Castle and a horse and carriage, with the Plaza Hotel, the San Remo and the Guggenheim around the edges. Then Times Square: One Times Square with its news ticker and the New Year's Eve ball, the Paramount Building, billboards on every side, the red steps at Duffy Square, a Broadway theater, tourists and yellow cabs. The last page is Lower Manhattan from the harbor: One World Trade Center and the Oculus, Trinity Church, the Stock Exchange, the Woolworth Building and 8 Spruce Street, the Charging Bull facing Fearless Girl, Castle Clinton, a tall ship at the Seaport and the Staten Island Ferry."
         onPointerDown={() => setHint(false)}
       />
       <div

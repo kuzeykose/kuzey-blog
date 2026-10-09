@@ -950,6 +950,138 @@ export function timesSquareSpread() {
 }
 
 // ---------------------------------------------------------------------------
+// Lower Manhattan from the harbour: the island narrows to the Battery at the
+// front, the Hudson on the left, the East River on the right.
+export function lowerManhattanSpread() {
+  const m = new MapSheet(63)
+  const { c } = m
+  // The island: shores running front to back, curving in to the tip.
+  const island = new Path2D()
+  const west: Line = []
+  const east: Line = []
+  for (let z = Z0 - 0.2; z <= 2.9; z += 0.1) {
+    const t = Math.max(0, (z + 0.5) / 3.4)
+    west.push([-6.0 + 3.2 * t * t + Math.sin(z * 1.7) * 0.1, z])
+    east.push([6.1 - 6.0 * t * t + Math.sin(z * 1.3 + 1) * 0.12, z])
+  }
+  west.forEach(([x, z], i) => (i ? island.lineTo(x, z) : island.moveTo(x, z)))
+  for (let i = east.length - 1; i >= 0; i--) island.lineTo(east[i][0], east[i][1])
+  island.closePath()
+  const sea = new Path2D()
+  sea.rect(X0 - 1, Z0 - 1, X1 - X0 + 2, Z1 - Z0 + 2)
+  m.water(sea, [
+    [west, -1, 0],
+    [east, 1, 0],
+  ])
+  m.fill(island, C.land)
+  c.save()
+  c.clip(island)
+  c.strokeStyle = rgba(INK, 0.12)
+  c.lineWidth = 0.01
+  for (let x = X0 - 4; x < X1; x += 0.09) {
+    c.beginPath()
+    c.moveTo(x, Z0)
+    c.lineTo(x + 3, Z1)
+    c.stroke()
+  }
+  for (let i = 0; i < 420; i++) {
+    c.fillStyle = rgba(m.pick([C.brick, C.limestoneDark, C.slate, C.brownstone]), 0.22)
+    c.fillRect(m.r(-7, 7), m.r(Z0, 3), m.r(0.12, 0.24), m.r(0.14, 0.26))
+  }
+  // The old, crooked street plan.
+  const streets = () => {
+    // Broadway down the middle to Bowling Green, and West Street.
+    c.moveTo(-0.3, Z0 - 0.5)
+    c.bezierCurveTo(-0.5, -2, -0.8, 0.2, -1.1, 1.6)
+    c.moveTo(-5.7, Z0 - 0.5)
+    c.bezierCurveTo(-5.6, -1, -4.6, 1.6, -3.0, 2.6)
+    // Water Street along the East River.
+    c.moveTo(5.5, Z0 - 0.5)
+    c.bezierCurveTo(5.2, -1, 3.0, 1.8, 0.4, 2.6)
+    for (const z of [-3.9, -2.9, -1.9, -0.9]) {
+      c.moveTo(-5.8, z)
+      c.lineTo(5.8, z + 0.4)
+    }
+  }
+  m.road(streets, 0.12)
+  // Wall Street, from Trinity Church to the river.
+  m.road(() => {
+    c.moveTo(0.0, -1.5)
+    c.lineTo(5.6, -0.9)
+  }, 0.16)
+  // Parks: City Hall Park, Bowling Green, the Battery.
+  for (const [cx, cz, rx, rz] of [
+    [1.0, -4.7, 1.0, 0.5],
+    [-1.2, 1.7, 0.35, 0.22],
+    [-3.2, 2.5, 2.4, 0.75],
+  ]) {
+    c.fillStyle = '#b8cf98'
+    c.beginPath()
+    c.ellipse(cx, cz, rx, rz, 0, 0, Math.PI * 2)
+    c.fill()
+    c.strokeStyle = rgba(INK, 0.4)
+    c.lineWidth = 0.015
+    c.stroke()
+    for (let i = 0; i < rx * 30; i++) {
+      c.fillStyle = rgba(m.pick([C.greenDark, '#d98b3c', '#7fa860']), 0.6)
+      c.beginPath()
+      c.arc(cx + m.r(-rx, rx) * 0.8, cz + m.r(-rz, rz) * 0.7, 0.06, 0, Math.PI * 2)
+      c.fill()
+    }
+  }
+  // The memorial: two square pools where the towers stood.
+  for (const [x, z] of [
+    [-4.7, -2.7],
+    [-3.7, -3.6],
+  ]) {
+    c.fillStyle = '#5f7f92'
+    c.fillRect(x - 0.32, z - 0.32, 0.64, 0.64)
+    c.fillStyle = '#2f4a5a'
+    c.fillRect(x - 0.12, z - 0.12, 0.24, 0.24)
+    c.strokeStyle = INK
+    c.lineWidth = 0.015
+    c.strokeRect(x - 0.32, z - 0.32, 0.64, 0.64)
+  }
+  c.restore()
+  m.ink([west, east])
+  m.piers(east, 1, -4.6, 1.4, 0.9)
+  // The Brooklyn Bridge heading off over the East River.
+  m.road(() => {
+    c.moveTo(3.4, -4.5)
+    c.lineTo(X1 + 1, -3.4)
+  }, 0.2)
+  for (const x of [6.9, 7.8]) {
+    c.fillStyle = '#c9b791'
+    c.fillRect(x - 0.08, -3.95 + (x - 6.9) * 0.18 - 0.1, 0.16, 0.2)
+    c.strokeStyle = INK
+    c.lineWidth = 0.012
+    c.strokeRect(x - 0.08, -3.95 + (x - 6.9) * 0.18 - 0.1, 0.16, 0.2)
+  }
+  // The ferry's way out to Staten Island.
+  m.dotted(() => {
+    c.moveTo(0.4, 2.9)
+    c.quadraticCurveTo(1.6, 4.0, 2.2, Z1)
+  })
+  m.boat(-6.6, 1.2, 0.6, '#2f4566', '#f6f0e2', 1.4)
+  m.boat(5.3, 4.6, 0.5, C.red, '#f6f0e2', 0.3)
+
+  m.label('HUDSON  RIVER', -7.2, -1.4, 0.24, -Math.PI / 2, { color: rgba('#2f5468', 0.8) })
+  m.label('EAST  RIVER', 7.35, -0.6, 0.24, Math.PI / 2, { color: rgba('#2f5468', 0.8) })
+  m.label('UPPER  NEW  YORK  BAY', 3.6, 5.0, 0.18, 0, { color: rgba('#2f5468', 0.85), spacing: 8 })
+  m.label('F I N A N C I A L   D I S T R I C T', 1.2, 0.2, 0.18, -0.05, { spacing: 8 })
+  m.label('WALL ST', 3.4, -0.95, 0.11, 0.1, { color: rgba(INK, 0.7), spacing: 4 })
+  m.label('BROADWAY', -0.75, -0.6, 0.11, -1.4, { color: rgba(INK, 0.7), spacing: 4 })
+  m.label('Battery Park', -2.6, 2.9, 0.13, 0, { italic: true, spacing: 2 })
+  m.label('Bowling Green', -1.2, 2.05, 0.09, 0, { italic: true, spacing: 1 })
+  m.label('9/11 Memorial', -4.2, -2.15, 0.1, 0, { italic: true, spacing: 1 })
+  m.label('South Street Seaport', 5.0, 1.6, 0.1, -0.5, { italic: true, spacing: 1 })
+  m.label('to Staten Island', 2.6, 4.35, 0.09, 0, { italic: true, spacing: 1 })
+  m.cartouche(-4.6, 4.5, 'Lower Manhattan', '· where the city began ·')
+  m.compass(6.6, 4.45)
+  return m.finish(['22', '23'])
+}
+
+// ---------------------------------------------------------------------------
 
 export function cloth(color: string, seed = 1) {
   const s = 512
