@@ -314,10 +314,6 @@ export class CityStage {
     this.controls.maxPolarAngle = 1.36
     this.controls.minAzimuthAngle = -1.25
     this.controls.maxAzimuthAngle = 1.25
-    this.controls.addEventListener('start', () => {
-      this.glide = null
-      this.userMoved = true
-    })
 
     // Lights.
     this.hemi = new THREE.HemisphereLight(DAY.hemiSky, DAY.hemiGround, DAY.hemi)
@@ -372,6 +368,7 @@ export class CityStage {
     el.addEventListener('pointerdown', this.onPointerDown)
     el.addEventListener('pointerup', this.onPointerUp)
     el.addEventListener('pointerleave', this.onPointerLeave)
+    el.addEventListener('wheel', this.onWheel, { passive: true })
   }
 
   // ------------------------------------------------------------------ build
@@ -431,7 +428,10 @@ export class CityStage {
     this.renderer.compile(this.scene, this.camera)
     this.ready = true
     this.events.onReady?.()
-    if (this.pendingOpen) this.setOpen(true)
+    if (this.pendingOpen) {
+      this.pendingOpen = false
+      this.setOpen(true)
+    }
   }
 
   private buildPiece(def: PieceDef, aniso: number, parent: Piece | null, spread: number, twin: Piece | null): Piece {
@@ -791,6 +791,11 @@ export class CityStage {
     // The page turn plays even with reduced motion: it's the one thing the
     // visitor asked for by clicking. Ambient motion is what gets dropped.
     this.glideTo(open ? this.homeShot() : this.closedShot())
+    // (No cover left to open under the pointer.)
+    if (open && this.hoverCover) {
+      this.hoverCover = false
+      this.events.onHover?.(null)
+    }
     this.events.onOpenChange?.(open)
   }
 
@@ -916,20 +921,33 @@ export class CityStage {
   }
 
   private onPointerMove = (e: PointerEvent) => {
+    // Dragging takes the camera; a tap mid-glide (the book still opening,
+    // say) leaves it gliding on.
+    const d = this.down
+    if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 6) this.takeCamera()
     if (e.pointerType === 'touch') return
     this.setPointer(e)
     this.pointerDirty = true
   }
 
+  private onWheel = () => this.takeCamera()
+
+  private takeCamera() {
+    this.glide = null
+    this.userMoved = true
+  }
+
+  // (Timed by the events themselves, so a tap still counts while the page
+  // is busy cutting paper.)
   private onPointerDown = (e: PointerEvent) => {
-    this.down = { x: e.clientX, y: e.clientY, t: performance.now() }
+    this.down = { x: e.clientX, y: e.clientY, t: e.timeStamp }
   }
 
   private onPointerUp = (e: PointerEvent) => {
     const d = this.down
     this.down = null
     if (!d) return
-    if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 6 || performance.now() - d.t > 450) return
+    if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 6 || e.timeStamp - d.t > 450) return
     this.setPointer(e)
     const hit = this.pick()
     if (hit === 'cover') {
@@ -1454,6 +1472,7 @@ export class CityStage {
     el.removeEventListener('pointerdown', this.onPointerDown)
     el.removeEventListener('pointerup', this.onPointerUp)
     el.removeEventListener('pointerleave', this.onPointerLeave)
+    el.removeEventListener('wheel', this.onWheel)
     this.controls.dispose()
     this.timer.dispose()
     this.curl?.dispose()
