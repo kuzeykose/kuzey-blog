@@ -62,6 +62,7 @@ export const BROOKLYN: PieceDef[] = [
     order: 0,
     seed: 2101,
     glow: true,
+    sky: true,
   },
   {
     id: 'bk-cloud',
@@ -79,6 +80,7 @@ export const BROOKLYN: PieceDef[] = [
     padBottom: true,
     bob: { amp: 0.04, speed: 0.45 },
     poke: 'lift',
+    sky: true,
   },
   {
     id: 'bk-far',

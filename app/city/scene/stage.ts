@@ -4,8 +4,9 @@ import { Cutout, Sketch } from './sketch'
 import { PIECES, PLATFORM, PieceDef } from './pieces'
 import { BROOKLYN } from './pieces-brooklyn'
 import { buildBook, Book } from './book'
-import { canvasTexture, paperMaterials, shared } from './materials'
+import { canvasTexture, groundMaterial, paperMaterials, shared } from './materials'
 import { PageCurl } from './bend'
+import { Ground, Weather, WeatherFx } from './weather'
 import { curb, roadTop, sidewalk, tableTop } from './art-book'
 
 export type StageEvents = {
@@ -91,8 +92,25 @@ const NIGHT = {
   fill: 0.08,
   spot: 420,
 }
+// What rain and snow do to the light: the background they fade to (by day
+// and by night), and how much they scale each light.
+const RAIN = {
+  bg: [new THREE.Color('#c6c8c9'), new THREE.Color('#0f1117')],
+  key: 0.5,
+  hemi: 0.95,
+  fill: 1,
+}
+const SNOW = {
+  bg: [new THREE.Color('#e4e7ed'), new THREE.Color('#1a2030')],
+  key: 0.72,
+  hemi: 1.12,
+  fill: 1.4,
+}
+const OVERCAST = new THREE.Color('#dde3ec')
+const tmpColor = new THREE.Color()
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x))
+const approach = (x: number, to: number, step: number) => (x < to ? Math.min(to, x + step) : Math.max(to, x - step))
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
 const easeOutBack = (t: number) => {
   const c1 = 1.5
@@ -144,6 +162,10 @@ export class CityStage {
   private showAt = 0
   private nightT = 0
   private nightTarget = 0
+  private weather: Weather = 'clear'
+  private rainT = 0
+  private snowT = 0
+  private weatherFx = new WeatherFx()
   private reduced: boolean
 
   private hemi: THREE.HemisphereLight
@@ -243,8 +265,9 @@ export class CityStage {
     table.receiveShadow = true
     this.scene.add(table)
     this.disposables.push(tableTex, table.geometry, table.material as THREE.Material)
+    this.scene.add(this.weatherFx.root)
 
-    this.applyNight()
+    this.applyLight()
     this.resize()
     this.ro = new ResizeObserver(() => this.resize())
     this.ro.observe(container)
@@ -453,7 +476,8 @@ export class CityStage {
     }
     const map = canvasTexture(cut.canvas, { anisotropy: aniso })
     const glow = glowCanvas ? canvasTexture(glowCanvas, { anisotropy: aniso }) : null
-    const material = paperMaterials({ map, glow, night: nightTex })
+    const k = def.scale ?? 1
+    const material = paperMaterials({ map, glow, night: nightTex, size: [cut.width * k, cut.height * k], sky: def.sky })
     this.disposables.push(map, material.front, material.back)
     if (glow) this.disposables.push(glow)
     if (nightTex) this.disposables.push(nightTex)
@@ -468,8 +492,8 @@ export class CityStage {
     walk.wrapS = walk.wrapT = THREE.RepeatWrapping
     const road = canvasTexture(roadTop(), { anisotropy: aniso })
     const sideMat = new THREE.MeshStandardMaterial({ map: side, roughness: 0.95 })
-    const walkMat = new THREE.MeshStandardMaterial({ map: walk, roughness: 0.95 })
-    const roadMat = new THREE.MeshStandardMaterial({ map: road, roughness: 0.9 })
+    const walkMat = groundMaterial(new THREE.MeshStandardMaterial({ map: walk, roughness: 0.95 }))
+    const roadMat = groundMaterial(new THREE.MeshStandardMaterial({ map: road, roughness: 0.9 }))
     this.disposables.push(side, walk, road, sideMat, walkMat, roadMat)
 
     const groups: THREE.Group[] = []
@@ -544,14 +568,21 @@ export class CityStage {
     this.nightTarget = night ? 1 : 0
   }
 
+  setWeather(weather: Weather) {
+    this.weather = weather
+  }
+
   // Skip any running transition (handy from the dev console).
   settle() {
     this.openT = this.openTarget
     this.pageT = this.page
     this.nightT = this.nightTarget
+    this.rainT = this.weather === 'rain' ? 1 : 0
+    this.snowT = this.weather === 'snow' ? 1 : 0
+    shared.uSnow.value = this.snowT
     this.glide = null
     this.place(this.openTarget ? this.homeShot() : this.closedShot())
-    this.applyNight()
+    this.applyLight()
   }
 
   resetView() {
@@ -852,15 +883,18 @@ export class CityStage {
       }
     }
 
-    // Night.
-    if (this.nightT !== this.nightTarget) {
-      const step = dt / 1.4
-      this.nightT =
-        this.nightTarget > this.nightT
-          ? Math.min(this.nightTarget, this.nightT + step)
-          : Math.max(this.nightTarget, this.nightT - step)
-      this.applyNight()
+    // Night and weather ease in and out; snow builds up while it falls and
+    // melts away after.
+    const rainTo = this.weather === 'rain' ? 1 : 0
+    const snowTo = this.weather === 'snow' ? 1 : 0
+    if (this.nightT !== this.nightTarget || this.rainT !== rainTo || this.snowT !== snowTo) {
+      this.nightT = approach(this.nightT, this.nightTarget, dt / 1.4)
+      this.rainT = approach(this.rainT, rainTo, dt / 2.2)
+      this.snowT = approach(this.snowT, snowTo, dt / 2.2)
+      this.applyLight()
     }
+    const settling = this.weather === 'snow' && this.snowT > 0.3
+    shared.uSnow.value = approach(shared.uSnow.value, settling ? 1 : 0, dt / (settling ? 14 : 5))
 
     for (const p of this.pieces) {
       const springs = [p.tilt, p.lift, p.drive]
@@ -900,6 +934,14 @@ export class CityStage {
       if (p.run) this.scurry(p, dt, time)
       if (p.petals) this.flutter(p, dt, visible && p.rise > 0.98 && this.openTarget === 1)
     }
+
+    const ground: Ground = closed > 0.98 ? 'closed' : this.openT === 1 && this.pageT === this.page ? 'open' : 'moving'
+    this.weatherFx.update(dt, time, {
+      rain: smooth(this.rainT),
+      snow: smooth(this.snowT),
+      night: smooth(this.nightT),
+      ground,
+    })
 
     // Each spread puts on its little show once it has fully risen.
     const isOpen = this.openTarget === 1 && this.openT === 1 && this.pageT === this.page
@@ -982,19 +1024,33 @@ export class CityStage {
     }
   }
 
-  private applyNight() {
+  private applyLight() {
     const n = smooth(this.nightT)
+    const r = smooth(this.rainT)
+    const w = smooth(this.snowT)
+    const lerp = THREE.MathUtils.lerp
     shared.uNight.value = n
+    shared.uWet.value = r
+    shared.uGloom.value = Math.max(r * 0.8, w * 0.35)
     const bg = DAY.bg.clone().lerp(NIGHT.bg, n)
+    bg.lerp(tmpColor.copy(RAIN.bg[0]).lerp(RAIN.bg[1], n), r * 0.85)
+    bg.lerp(tmpColor.copy(SNOW.bg[0]).lerp(SNOW.bg[1], n), w * 0.8)
     ;(this.scene.background as THREE.Color).copy(bg)
-    ;(this.scene.fog as THREE.Fog).color.copy(bg)
-    this.hemi.color.copy(DAY.hemiSky).lerp(NIGHT.hemiSky, n)
+    const fog = this.scene.fog as THREE.Fog
+    fog.color.copy(bg)
+    // Bad weather closes in.
+    fog.near = 34 - 8 * r - 5 * w
+    fog.far = 90 - 24 * r - 14 * w
+    // Overcast: a flatter, cooler light and softer shadows.
+    const grey = Math.max(r, w) * (1 - n)
+    this.hemi.color.copy(DAY.hemiSky).lerp(NIGHT.hemiSky, n).lerp(OVERCAST, grey * 0.6)
     this.hemi.groundColor.copy(DAY.hemiGround).lerp(NIGHT.hemiGround, n)
-    this.hemi.intensity = THREE.MathUtils.lerp(DAY.hemi, NIGHT.hemi, n)
-    this.key.color.copy(DAY.key).lerp(NIGHT.key, n)
-    this.key.intensity = THREE.MathUtils.lerp(DAY.keyI, NIGHT.keyI, n)
-    this.fill.intensity = THREE.MathUtils.lerp(DAY.fill, NIGHT.fill, n)
-    this.spot.intensity = THREE.MathUtils.lerp(DAY.spot, NIGHT.spot, n)
+    this.hemi.intensity = lerp(DAY.hemi, NIGHT.hemi, n) * lerp(1, RAIN.hemi, r) * lerp(1, SNOW.hemi, w)
+    this.key.color.copy(DAY.key).lerp(NIGHT.key, n).lerp(OVERCAST, grey * 0.7)
+    this.key.intensity = lerp(DAY.keyI, NIGHT.keyI, n) * lerp(1, RAIN.key, r) * lerp(1, SNOW.key, w)
+    this.key.shadow.radius = 2.5 + 4.5 * Math.max(r, w * 0.6)
+    this.fill.intensity = lerp(DAY.fill, NIGHT.fill, n) * lerp(1, RAIN.fill, r) * lerp(1, SNOW.fill, w)
+    this.spot.intensity = lerp(DAY.spot, NIGHT.spot, n)
   }
 
   dispose() {
@@ -1010,6 +1066,7 @@ export class CityStage {
     this.timer.dispose()
     this.curl?.dispose()
     this.leafCurl?.dispose()
+    this.weatherFx.dispose()
     this.book?.dispose()
     this.disposables.forEach((d) => d.dispose())
     this.renderer.dispose()

@@ -64,6 +64,8 @@ export type PieceDef = {
   lampColor?: string
   // Poking it shakes petals loose from these art circles (x, y, radius).
   petals?: [number, number, number][]
+  // Sky paper (backdrops, clouds): greys under rain, never gathers snow.
+  sky?: boolean
 }
 
 // Where the ring-toss bagel rests on the Chrysler's crown.
@@ -82,6 +84,7 @@ export const PIECES: PieceDef[] = [
     order: 0,
     seed: 101,
     glow: true,
+    sky: true,
   },
   {
     id: 'balloon-left',
@@ -130,6 +133,7 @@ export const PIECES: PieceDef[] = [
     padBottom: true,
     bob: { amp: 0.04, speed: 0.45 },
     poke: 'lift',
+    sky: true,
   },
   {
     id: 'cloud-right',
@@ -146,6 +150,7 @@ export const PIECES: PieceDef[] = [
     padBottom: true,
     bob: { amp: 0.04, speed: 0.5 },
     poke: 'lift',
+    sky: true,
   },
   {
     id: 'blimp',

@@ -9,14 +9,25 @@ import {
   ArrowRight,
   BookOpen,
   Book,
+  CloudRain,
+  CloudSun,
   Moon,
+  Snowflake,
   Sun,
 } from '@phosphor-icons/react/dist/ssr'
 import type { CityStage } from './scene/stage'
+import type { Weather } from './scene/weather'
 
 type Status = 'loading' | 'ready' | 'error'
 
 const PAGES = ['Manhattan', 'Brooklyn']
+
+// The weather button steps through these.
+const WEATHER: { kind: Weather; name: string; Icon: typeof Sun }[] = [
+  { kind: 'clear', name: 'Clear', Icon: CloudSun },
+  { kind: 'rain', name: 'Rain', Icon: CloudRain },
+  { kind: 'snow', name: 'Snow', Icon: Snowflake },
+]
 
 function webglAvailable() {
   try {
@@ -34,6 +45,7 @@ export default function PopupCity() {
   const [open, setOpen] = useState(false)
   const [page, setPage] = useState(0)
   const [night, setNight] = useState(false)
+  const [weather, setWeather] = useState(0)
   const [label, setLabel] = useState<string | null>(null)
   const [hint, setHint] = useState(false)
   const host = useRef<HTMLDivElement>(null)
@@ -93,6 +105,11 @@ export default function PopupCity() {
     stage.current?.setNight(night)
   }, [night])
 
+  // (Re-sent once the stage is ready, in case it was picked while loading.)
+  useEffect(() => {
+    stage.current?.setWeather(WEATHER[weather].kind)
+  }, [weather, status])
+
   // Arrow keys turn the pages.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -113,6 +130,8 @@ export default function PopupCity() {
 
   if (!mounted) return null
 
+  const sky = WEATHER[weather]
+  const nextSky = WEATHER[(weather + 1) % WEATHER.length]
   const ink = night ? 'text-neutral-100' : 'text-neutral-800'
   const muted = night ? 'text-neutral-400' : 'text-neutral-500'
   const button = `inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-sm backdrop-blur transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 ${
@@ -130,7 +149,7 @@ export default function PopupCity() {
         ref={host}
         className="absolute inset-0"
         role="img"
-        aria-label="A 3D pop-up book of New York City. Manhattan: the Empire State and Chrysler buildings, One World Trade Center, Times Square, the Flatiron, brownstones with water towers, a yellow cab, the Statue of Liberty and the Brooklyn Bridge. Turn the page for Brooklyn: DUMBO and the Manhattan Bridge, a carousel, and Coney Island's Wonder Wheel, Cyclone and Parachute Jump."
+        aria-label="A 3D pop-up book of New York City. Manhattan: the Empire State and Chrysler buildings, One World Trade Center, Times Square, the Flatiron, brownstones with water towers, a yellow cab, the Statue of Liberty and the Brooklyn Bridge. Turn the page for Brooklyn: DUMBO and the Manhattan Bridge, Barclays Center, Grand Army Plaza and the Botanic Garden's cherry blossoms, a carousel, and Coney Island's Wonder Wheel, Cyclone and Parachute Jump."
         onPointerDown={() => setHint(false)}
       />
       <div
@@ -207,6 +226,15 @@ export default function PopupCity() {
             >
               {night ? <Sun size={16} /> : <Moon size={16} />}
               {night ? 'Day' : 'Night'}
+            </button>
+            <button
+              type="button"
+              className={button}
+              aria-label={`Weather: ${sky.name}. Change to ${nextSky.name.toLowerCase()}`}
+              onClick={() => setWeather((w) => (w + 1) % WEATHER.length)}
+            >
+              <sky.Icon size={16} />
+              {sky.name}
             </button>
             <button
               type="button"

@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { PAGE_D, PAGE_W, brooklynSpread, cloth, coverArt, manhattanSpread, pageEdges } from './art-book'
-import { canvasTexture } from './materials'
+import { canvasTexture, groundMaterial } from './materials'
 
 export const COVER_T = 0.1
 export const BLOCK_T = 0.3
@@ -56,8 +56,8 @@ export function buildBook(maxAnisotropy: number): Book {
   coverTex.rotation = Math.PI
   const coverMat = std({ map: coverTex, roughness: 0.75, metalness: 0.05 })
   const edgeMat = std({ map: tex(pageEdges()), roughness: 1 })
-  const leftArt = std({ map: tex(manhattan.left), roughness: 0.95 })
-  const rightArt = std({ map: tex(brooklyn.right), roughness: 0.95 })
+  const leftArt = groundMaterial(std({ map: tex(manhattan.left), roughness: 0.95 }), -PAGE_W / 2)
+  const rightArt = groundMaterial(std({ map: tex(brooklyn.right), roughness: 0.95 }), PAGE_W / 2)
 
   const root = new THREE.Group()
   const leftPivot = new THREE.Group()
@@ -134,7 +134,9 @@ export function buildBook(maxAnisotropy: number): Book {
       uv.setXY(i, up ? (x + PAGE_W) / PAGE_W : -x / PAGE_W, 0.5 - pos.getZ(i) / PAGE_D)
     }
     disposables.push(g)
-    const mesh = new THREE.Mesh(g, std({ map: tex(art), roughness: 0.95 }))
+    // (The front is seen mirrored once turned; shift its drifts well away
+    // from the left page's.)
+    const mesh = new THREE.Mesh(g, groundMaterial(std({ map: tex(art), roughness: 0.95 }), up ? 0 : 20))
     mesh.castShadow = true
     mesh.receiveShadow = true
     leafPivot.add(mesh)
