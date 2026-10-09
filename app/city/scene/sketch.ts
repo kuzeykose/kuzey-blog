@@ -1,3 +1,5 @@
+import type { Season } from './season'
+
 // A tiny "ink & watercolor" drawing kit on top of Canvas 2D.
 //
 // Every pop-up piece is painted into its own canvas. Coordinates are in world
@@ -108,6 +110,7 @@ export type SketchOptions = {
   w: number
   h: number
   seed: number
+  season?: Season
   pad?: number
   ppu?: number
   glow?: boolean
@@ -126,8 +129,18 @@ export class Sketch {
   readonly pad: number
   readonly ppu: number
   readonly bottom: number
+  private readonly time: Season
+  // Set once the art asks which season it is: it then gets painted again
+  // for each season.
+  seasonal = false
+
+  get season() {
+    this.seasonal = true
+    return this.time
+  }
 
   constructor(o: SketchOptions) {
+    this.time = o.season ?? 'autumn'
     this.w = o.w
     this.h = o.h
     this.pad = o.pad ?? 0.1

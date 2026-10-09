@@ -1,5 +1,6 @@
 import { INK, mulberry32, rgba, shade } from './sketch'
 import { C } from './palette'
+import type { Season } from './season'
 
 // Canvases for the book itself: the printed spread, cloth, page edges, the
 // table and the surfaces of the stepped platform.
@@ -695,7 +696,17 @@ export function brooklynSpread(first: number) {
 // Central Park, looking south: Central Park South along the back, Fifth
 // Avenue down the left, Central Park West down the right, and the
 // Reservoir at the front.
-export function centralParkSpread(first: number) {
+// The park's colours through the year: its lawns, the light patches on
+// them, and the leaves (or blossom, or bare twigs) dotted across.
+const PARK_YEAR: Record<Season, { lawn: string; bloom: string; leaves: string[] }> = {
+  spring: { lawn: '#b5d68f', bloom: 'rgba(222,240,180,0.5)', leaves: ['#7fa860', '#9cc96e', '#6f9a55', '#f6b3c9', '#fde6ee', '#e48aa9'] },
+  summer: { lawn: '#a3cc80', bloom: 'rgba(196,228,150,0.5)', leaves: ['#557f4b', '#6f9a55', '#4a7f3a', '#7fa860', '#3f6a35'] },
+  autumn: { lawn: '#c9c08a', bloom: 'rgba(226,206,146,0.5)', leaves: ['#d98b3c', '#c9583a', '#e6bb4c', '#e3923f', '#8a5a2c', '#a0662f', '#b8743a', '#7fa860'] },
+  winter: { lawn: '#e2e7e4', bloom: 'rgba(255,255,255,0.7)', leaves: ['#8a7a6a', '#9a8f84', '#6f665e', '#b9b4a8'] },
+}
+
+export function centralParkSpread(first: number, season: Season = 'autumn') {
+  const year = PARK_YEAR[season]
   const m = new MapSheet(91)
   const { c } = m
   const east = -7.0
@@ -734,16 +745,15 @@ export function centralParkSpread(first: number) {
   // The park itself.
   const park = new Path2D()
   park.rect(east + 0.16, south + 0.16, west - east - 0.32, Z1 - south)
-  m.fill(park, '#b8cf98')
+  m.fill(park, year.lawn)
   c.save()
   c.clip(park)
-  // Lawns, then trees in their October colours.
-  for (let i = 0; i < 14; i++) m.bloom(m.r(east, west), m.r(south, Z1), m.r(0.6, 1.4), 'rgba(214,230,170,0.5)')
-  const leaves = ['#6f9a55', '#557f4b', '#7fa860', '#d98b3c', '#c9583a', '#e6bb4c', '#e3923f']
+  // Lawns, then the trees in the season's colours (bare twigs in winter).
+  for (let i = 0; i < 14; i++) m.bloom(m.r(east, west), m.r(south, Z1), m.r(0.6, 1.4), year.bloom)
   for (let i = 0; i < 900; i++) {
-    c.fillStyle = rgba(m.pick(leaves), m.r(0.55, 0.85))
+    c.fillStyle = rgba(m.pick(year.leaves), m.r(0.55, 0.85) * (season === 'winter' ? 0.6 : 1))
     c.beginPath()
-    c.arc(m.r(east + 0.2, west - 0.2), m.r(south + 0.2, Z1), m.r(0.05, 0.11), 0, Math.PI * 2)
+    c.arc(m.r(east + 0.2, west - 0.2), m.r(south + 0.2, Z1), m.r(0.05, 0.11) * (season === 'winter' ? 0.6 : 1), 0, Math.PI * 2)
     c.fill()
   }
   // The drives looping round, and the Terrace Drive across.
@@ -784,7 +794,22 @@ export function centralParkSpread(first: number) {
   const ponds = [pond(-2.3, -2.5, 1.5, 0.55, 21), pond(3.8, 0.25, 3.0, 1.25, 22), pond(-2.4, 2.05, 0.9, 0.35, 23), pond(0.6, 4.7, 5.0, 1.1, 24)]
   const water = new Path2D()
   ponds.forEach((line) => line.forEach(([x, z], i) => (i ? water.lineTo(x, z) : water.moveTo(x, z))))
-  m.water(water, [])
+  // Frozen over in winter, with figure-of-eights skated into the Lake.
+  if (season === 'winter') {
+    m.water(water, [], '#d9eaf0', '#c3dae3')
+    c.save()
+    c.clip(water)
+    c.strokeStyle = 'rgba(255,255,255,0.85)'
+    c.lineWidth = 0.014
+    for (let i = 0; i < 22; i++) {
+      const x = m.r(1.4, 6.2)
+      const z = m.r(-0.6, 1.1)
+      c.beginPath()
+      c.ellipse(x, z, m.r(0.15, 0.4), m.r(0.06, 0.15), m.r(-0.4, 0.4), 0, Math.PI * 2)
+      c.stroke()
+    }
+    c.restore()
+  } else m.water(water, [])
   m.ink(ponds, 0.022)
   // The jogging track round the Reservoir.
   m.dotted(() => {

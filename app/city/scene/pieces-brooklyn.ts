@@ -1,4 +1,5 @@
 import { PieceDef } from './pieces'
+import { treeFall } from './season'
 import { C } from './palette'
 import { skyBackdrop } from './art-landmarks'
 import { brownstones, farSkyline, BROOKLYN_HOUSES } from './art-buildings'
@@ -19,6 +20,7 @@ import {
   grandArmyArch,
   iceCreamTruck,
   mural,
+  PARK_TREE_CROWN,
   parkTree,
   parachuteJump,
   seagull,
@@ -156,7 +158,7 @@ export const BROOKLYN: PieceDef[] = [
   {
     id: 'bk-park-tree-1',
     label: 'Prospect Park',
-    art: (s) => parkTree(s, '#9cbf6a', 'rgba(60,90,40,0.55)'),
+    art: (s) => parkTree(s, '#d98b3c', 'rgba(150,70,20,0.5)'),
     w: 1.5,
     h: 2.5,
     x: 0.8,
@@ -164,11 +166,12 @@ export const BROOKLYN: PieceDef[] = [
     order: 0.24,
     seed: 2217,
     poke: 'tilt',
+    petals: { from: PARK_TREE_CROWN, colors: treeFall(['#d98b3c', '#e6bb4c', '#c9673a']) },
   },
   {
     id: 'bk-park-tree-2',
     label: 'Prospect Park',
-    art: (s) => parkTree(s, '#7fae5e', 'rgba(50,80,35,0.55)'),
+    art: (s) => parkTree(s, '#c9583a', 'rgba(120,30,20,0.5)'),
     w: 1.5,
     h: 2.5,
     x: 3.9,
@@ -176,6 +179,7 @@ export const BROOKLYN: PieceDef[] = [
     order: 0.24,
     seed: 2218,
     poke: 'tilt',
+    petals: { from: PARK_TREE_CROWN, colors: treeFall(['#c9503a', '#e0703f', '#a8402e']) },
   },
   {
     id: 'bk-garden',
@@ -190,7 +194,7 @@ export const BROOKLYN: PieceDef[] = [
     seed: 2221,
     glow: true,
     poke: 'tilt',
-    petals: { from: GARDEN_BLOSSOMS },
+    petals: { from: GARDEN_BLOSSOMS, colors: { ...treeFall(['#d9603a', '#e0703f', '#f0b04c']), spring: ['#ef8fb0', '#fde6ee', '#f6b3c9'] } },
     pokeOnOpen: true,
   },
   {
@@ -338,6 +342,7 @@ export const BROOKLYN: PieceDef[] = [
     h: 1.3,
     x: 4.1,
     z: 3.15,
+    seasons: ['summer'],
     order: 0.8,
     seed: 2211,
     poke: 'tilt',
@@ -350,6 +355,7 @@ export const BROOKLYN: PieceDef[] = [
     h: 1.3,
     x: 6.2,
     z: 2.95,
+    seasons: ['summer'],
     order: 0.82,
     seed: 2212,
     poke: 'tilt',
@@ -363,6 +369,7 @@ export const BROOKLYN: PieceDef[] = [
     x: -0.9,
     z: 3.3,
     scale: 1.2,
+    seasons: ['summer'],
     order: 0.88,
     seed: 2213,
     poke: 'tilt',

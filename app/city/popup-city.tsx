@@ -9,25 +9,27 @@ import {
   ArrowRight,
   BookOpen,
   Book,
-  CloudRain,
+  FlowerTulip,
+  Leaf,
   ListBullets,
-  CloudSun,
   Moon,
   Snowflake,
   Sun,
+  Sunglasses,
 } from '@phosphor-icons/react/dist/ssr'
 import type { CityStage } from './scene/stage'
-import type { Weather } from './scene/weather'
+import { Season, seasonNow } from './scene/season'
 import { CHAPTERS, PAGES, pageNumber } from './contents'
 
 type Status = 'loading' | 'ready' | 'error'
 
 
-// The weather button steps through these.
-const WEATHER: { kind: Weather; name: string; Icon: typeof Sun }[] = [
-  { kind: 'clear', name: 'Clear', Icon: CloudSun },
-  { kind: 'rain', name: 'Rain', Icon: CloudRain },
-  { kind: 'snow', name: 'Snow', Icon: Snowflake },
+// The season button steps through the year.
+const SEASONS: { kind: Season; name: string; Icon: typeof Sun }[] = [
+  { kind: 'spring', name: 'Spring', Icon: FlowerTulip },
+  { kind: 'summer', name: 'Summer', Icon: Sunglasses },
+  { kind: 'autumn', name: 'Autumn', Icon: Leaf },
+  { kind: 'winter', name: 'Winter', Icon: Snowflake },
 ]
 
 function webglAvailable() {
@@ -46,7 +48,8 @@ export default function PopupCity() {
   const [open, setOpen] = useState(false)
   const [page, setPage] = useState(0)
   const [night, setNight] = useState(false)
-  const [weather, setWeather] = useState(0)
+  // Opens in the season it really is.
+  const [season, setSeason] = useState(() => SEASONS.findIndex((x) => x.kind === seasonNow()))
   const [contentsOpen, setContentsOpen] = useState(false)
   const contentsButton = useRef<HTMLButtonElement>(null)
   const contentsPanel = useRef<HTMLElement>(null)
@@ -80,6 +83,7 @@ export default function PopupCity() {
         if (cancelled || !host.current) return
         const s = new CityStage(host.current, {
           night: prefersDark,
+          season: SEASONS[season].kind,
           reducedMotion,
           events: {
             onProgress: setProgress,
@@ -111,8 +115,8 @@ export default function PopupCity() {
 
   // (Re-sent once the stage is ready, in case it was picked while loading.)
   useEffect(() => {
-    stage.current?.setWeather(WEATHER[weather].kind)
-  }, [weather, status])
+    stage.current?.setSeason(SEASONS[season].kind)
+  }, [season, status])
 
   // Arrow keys turn the pages.
   useEffect(() => {
@@ -183,8 +187,8 @@ export default function PopupCity() {
 
   // With a page either side, small screens show just the arrows.
   const pageName = page > 0 && page < PAGES.length - 1 ? 'hidden sm:inline' : ''
-  const sky = WEATHER[weather]
-  const nextSky = WEATHER[(weather + 1) % WEATHER.length]
+  const time = SEASONS[season]
+  const nextTime = SEASONS[(season + 1) % SEASONS.length]
   const ink = night ? 'text-neutral-100' : 'text-neutral-800'
   const muted = night ? 'text-neutral-400' : 'text-neutral-500'
   const chip = `inline-flex items-center justify-center gap-2 rounded-full border text-sm backdrop-blur transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 ${
@@ -207,7 +211,7 @@ export default function PopupCity() {
         ref={host}
         className="absolute inset-0"
         role="img"
-        aria-label="A 3D pop-up book of New York City. Manhattan: the Empire State and Chrysler buildings, One World Trade Center, Times Square, the Flatiron, brownstones with water towers, a yellow cab, the Statue of Liberty and the Brooklyn Bridge. Then Manhattan up close: Lower Manhattan from the harbor, with a helicopter overhead, the Oculus and the 9/11 Memorial, Trinity Church, the Stock Exchange and its stock board, and the Charging Bull facing Fearless Girl; Midtown up Fifth Avenue, with the Empire State Building, Rockefeller Center's rink, Radio City, St. Patrick's, Grand Central, the library lions, office workers at lunch in Bryant Park (and a squirrel) and Madison Square Garden; Times Square, with the New Year's Eve ball, the news ticker, billboards and the red steps; and Central Park in autumn, with the Met, Bethesda Terrace, Bow Bridge, Belvedere Castle, runners on the Reservoir, a Citi Bike and a horse and carriage. Last, Brooklyn: DUMBO and the Manhattan Bridge, Barclays Center, Grand Army Plaza and the Botanic Garden's cherry blossoms, a carousel, and Coney Island's Wonder Wheel, Cyclone and Parachute Jump; then DUMBO's waterfront between the Brooklyn and Manhattan bridges, with Brooklyn Bridge Park, Jane's Carousel, the Clock Tower, Empire Stores and Time Out Market, a ferry, a wedding shoot, a selfie, and the lines for pizza and ice cream."
+        aria-label="A 3D pop-up book of New York City, through the seasons: spring showers and blossom, summer evenings, autumn leaves and winter snow. Manhattan: the Empire State and Chrysler buildings, One World Trade Center, Times Square, the Flatiron, brownstones with water towers, a yellow cab, the Statue of Liberty and the Brooklyn Bridge. Then Manhattan up close: Lower Manhattan from the harbor, with a helicopter overhead, the Oculus and the 9/11 Memorial, Trinity Church, the Stock Exchange and its stock board, and the Charging Bull facing Fearless Girl; Midtown up Fifth Avenue, with the Empire State Building, Rockefeller Center's rink, Radio City, St. Patrick's, Grand Central, the library lions, office workers at lunch in Bryant Park (and a squirrel) and Madison Square Garden, with the Christmas tree up in winter; Times Square, with the New Year's Eve ball, the news ticker, billboards and the red steps; and Central Park, with the Met, Bethesda Terrace, Bow Bridge, Belvedere Castle, runners on the Reservoir, a Citi Bike, a horse and carriage, and skaters at Wollman Rink in winter. Last, Brooklyn: DUMBO and the Manhattan Bridge, Barclays Center, Grand Army Plaza and the Botanic Garden's cherry blossoms, a carousel, and Coney Island's Wonder Wheel, Cyclone and Parachute Jump; then DUMBO's waterfront between the Brooklyn and Manhattan bridges, with Brooklyn Bridge Park, Jane's Carousel, the Clock Tower, Empire Stores and Time Out Market, a ferry, a wedding shoot, a selfie, the lines for pizza and ice cream, and an outdoor film on summer evenings."
         onPointerDown={() => setHint(false)}
       />
       <div
@@ -243,11 +247,11 @@ export default function PopupCity() {
             <button
               type="button"
               className={roundUntilSm}
-              aria-label={`Weather: ${sky.name}. Change to ${nextSky.name.toLowerCase()}`}
-              onClick={() => setWeather((w) => (w + 1) % WEATHER.length)}
+              aria-label={`Season: ${time.name}. Change to ${nextTime.name.toLowerCase()}`}
+              onClick={() => setSeason((i) => (i + 1) % SEASONS.length)}
             >
-              <sky.Icon size={16} />
-              <span className={wordsFromSm}>{sky.name}</span>
+              <time.Icon size={16} />
+              <span className={wordsFromSm}>{time.name}</span>
             </button>
             <button
               type="button"

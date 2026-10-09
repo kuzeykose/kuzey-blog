@@ -13,6 +13,7 @@ import { PAGES, pageNumber } from '../contents'
 import { canvasTexture, groundMaterial, paperMaterials, shared } from './materials'
 import { PageCurl } from './bend'
 import { Ground, Weather, WeatherFx } from './weather'
+import { SKY, Season } from './season'
 import {
   brooklynSpread,
   centralParkSpread,
@@ -48,16 +49,36 @@ type Half = {
 
 type Paper = { front: THREE.Material; back: THREE.Material }
 
+// A piece's painted art, shared with every piece that borrows it. Art that
+// changes with the seasons keeps a cutout for each season (painted the
+// first time it's needed) and shows one at a time.
+type Art = {
+  def: PieceDef
+  paper: Paper
+  map: THREE.Texture
+  glow: THREE.Texture | null
+  cuts: Partial<Record<Season, Cutout>>
+  seasonal: boolean
+  showing: Season
+  users: Piece[]
+}
+
 // A loose petal, in its piece's anchor space. `landed` is the age it
 // settled on the page at (0 while still falling).
 type Petal = { pos: THREE.Vector3; vel: THREE.Vector3; rot: THREE.Euler; spin: THREE.Vector3; age: number; landed: number; phase: number }
 
 type Piece = {
   def: PieceDef
-  paper: Paper
+  art: Art
   // Which spread it belongs to: 0 = Manhattan, 1 = Brooklyn.
   spread: number
+  // The cutout showing now (for picking).
   cut: Cutout
+  // How far it stands for the season: it folds down to change its art, or
+  // to go away until its season comes round.
+  present: number
+  // When it next drops a leaf by itself (autumn).
+  dripAt: number
   halves: Half[]
   start: number
   rise: number
@@ -95,12 +116,12 @@ const PAGE_TIME = 4.2
 const FOLD_END = 0.3
 const LAND = 0.7
 // Each place's pop-ups and printed map; the contents decide the order.
-const PLACES: Record<string, { pieces: PieceDef[]; sheet: (first: number) => Sheet }> = {
+const PLACES: Record<string, { pieces: PieceDef[]; sheet: (first: number, season: Season) => Sheet; seasonal?: boolean }> = {
   Manhattan: { pieces: PIECES, sheet: manhattanSpread },
   'Lower Manhattan': { pieces: LOWER, sheet: lowerManhattanSpread },
   Midtown: { pieces: MIDTOWN, sheet: midtownSpread },
   'Times Square': { pieces: TIMES, sheet: timesSquareSpread },
-  'Central Park': { pieces: PARK, sheet: centralParkSpread },
+  'Central Park': { pieces: PARK, sheet: centralParkSpread, seasonal: true },
   Brooklyn: { pieces: BROOKLYN, sheet: brooklynSpread },
   DUMBO: { pieces: DUMBO, sheet: dumboSpread },
 }
@@ -206,6 +227,14 @@ export class CityStage {
   private nightT = 0
   private nightTarget = 0
   private weather: Weather = 'clear'
+  private season: Season
+  // When the season last changed, every art waiting to be painted for it,
+  // and each spread's printed map: the season it shows and those cut so far.
+  private seasonAt = 0
+  private clock = 0
+  private arts: Art[] = []
+  private aniso = 1
+  private sheets: { showing: Season; cuts: Partial<Record<Season, Sheet>> }[] = []
   private rainT = 0
   private snowT = 0
   private weatherFx = new WeatherFx()
@@ -226,11 +255,16 @@ export class CityStage {
   // Set once the user orbits/zooms; until then resizes refit the view.
   private userMoved = false
 
-  constructor(container: HTMLElement, o: { night: boolean; reducedMotion: boolean; events: StageEvents }) {
+  constructor(container: HTMLElement, o: { night: boolean; season: Season; reducedMotion: boolean; events: StageEvents }) {
     this.container = container
     this.events = o.events
     this.reduced = o.reducedMotion
     this.nightT = this.nightTarget = o.night ? 1 : 0
+    // The book opens in its season's weather, snow already lying in winter.
+    this.season = o.season
+    this.weather = SKY[o.season]
+    this.rainT = this.weather === 'rain' ? 1 : 0
+    this.snowT = shared.uSnow.value = this.weather === 'snow' ? 1 : 0
     this.timer.connect(document)
 
     const small = Math.min(window.innerWidth, window.innerHeight) < 700
@@ -326,7 +360,10 @@ export class CityStage {
 
   async build() {
     const aniso = Math.min(8, this.renderer.capabilities.getMaxAnisotropy())
-    this.book = buildBook(aniso, SPREADS.map((sp, i) => sp.sheet(pageNumber(i))))
+    this.aniso = aniso
+    const sheets = SPREADS.map((sp, i) => sp.sheet(pageNumber(i), this.season))
+    this.sheets = sheets.map((sheet) => ({ showing: this.season, cuts: { [this.season]: sheet } }))
+    this.book = buildBook(aniso, sheets)
     this.book.root.traverse((o) => {
       if ((o as THREE.Mesh).isMesh) this.pickables.push(o)
     })
@@ -380,7 +417,8 @@ export class CityStage {
   }
 
   private buildPiece(def: PieceDef, aniso: number, parent: Piece | null, spread: number, twin: Piece | null): Piece {
-    const { cut, material } = twin ? { cut: twin.cut, material: twin.paper } : this.paint(def, aniso)
+    const art = twin ? twin.art : this.paint(def, aniso)
+    const cut = art.cuts[art.showing]!
     const k = def.scale ?? 1
     const W = cut.width * k
     const H = cut.height * k
@@ -419,9 +457,11 @@ export class CityStage {
     const start = riseStart(def.order)
     const piece: Piece = {
       def,
-      paper: material,
+      art,
       spread,
       cut,
+      present: !def.seasons || def.seasons.includes(this.season) ? 1 : 0,
+      dripAt: 0,
       halves: [],
       start,
       rise: 0,
@@ -438,6 +478,7 @@ export class CityStage {
       drop: def.drop ? { at: -1 } : null,
       twirl: def.poke === 'twirl' ? { x: 0, to: 0 } : null,
     }
+    art.users.push(piece)
 
     for (const seg of segs) {
       // Divided finely enough to follow the page as it curls.
@@ -452,8 +493,8 @@ export class CityStage {
       const u1 = (seg.x1 - left) / W
       for (let i = 0; i < uv.count; i++) uv.setX(i, u0 + (u1 - u0) * uv.getX(i))
       this.disposables.push(geo)
-      const mesh = new THREE.Mesh(geo, material.front)
-      const back = new THREE.Mesh(geo, material.back)
+      const mesh = new THREE.Mesh(geo, art.paper.front)
+      const back = new THREE.Mesh(geo, art.paper.back)
       for (const m of [mesh, back]) {
         m.castShadow = true
         m.receiveShadow = true
@@ -504,13 +545,12 @@ export class CityStage {
       // Under the anchor, so they fall free of the paper's wobble.
       const size = def.petals.count ?? PETALS
       const mesh = new THREE.InstancedMesh(def.petals.confetti ? this.petalKit.confetti : this.petalKit.petal, this.petalKit.mat, size)
-      const tones = (def.petals.colors ?? ['#ef8fb0', '#fde6ee', '#f6b3c9']).map((c) => new THREE.Color(c))
-      for (let i = 0; i < size; i++) mesh.setColorAt(i, tones[i % tones.length])
       mesh.count = 0
       mesh.frustumCulled = false
       mesh.visible = false
       piece.halves[0].anchor.add(mesh)
       piece.petals = { mesh, items: [], size }
+      this.tintPetals(piece)
     }
     if (def.ticker) this.addTicker(piece)
     return piece
@@ -558,14 +598,14 @@ export class CityStage {
   }
 
   // Paint a piece's art into textures and paper materials.
-  private paint(def: PieceDef, aniso: number): { cut: Cutout; material: Paper } {
-    const sketch = new Sketch({ w: def.w, h: def.h, seed: def.seed, glow: def.glow, padBottom: def.padBottom })
+  private paint(def: PieceDef, aniso: number): Art {
+    const sketch = new Sketch({ w: def.w, h: def.h, seed: def.seed, glow: def.glow, padBottom: def.padBottom, season: this.season })
     def.art(sketch)
     const cut = sketch.finish()
     let nightTex: THREE.Texture | null = null
     let glowCanvas = cut.glow
     if (def.nightArt) {
-      const ns = new Sketch({ w: def.w, h: def.h, seed: def.seed, glow: true, padBottom: def.padBottom })
+      const ns = new Sketch({ w: def.w, h: def.h, seed: def.seed, glow: true, padBottom: def.padBottom, season: this.season })
       def.nightArt(ns)
       const nc = ns.finish()
       nightTex = canvasTexture(nc.canvas, { anisotropy: aniso })
@@ -574,11 +614,79 @@ export class CityStage {
     const map = canvasTexture(cut.canvas, { anisotropy: aniso })
     const glow = glowCanvas ? canvasTexture(glowCanvas, { anisotropy: aniso }) : null
     const k = def.scale ?? 1
-    const material = paperMaterials({ map, glow, night: nightTex, size: [cut.width * k, cut.height * k], sky: def.sky })
-    this.disposables.push(map, material.front, material.back)
+    const paper = paperMaterials({ map, glow, night: nightTex, size: [cut.width * k, cut.height * k], sky: def.sky })
+    this.disposables.push(map, paper.front, paper.back)
     if (glow) this.disposables.push(glow)
     if (nightTex) this.disposables.push(nightTex)
-    return { cut, material }
+    const art: Art = { def, paper, map, glow, cuts: { [this.season]: cut }, seasonal: sketch.seasonal, showing: this.season, users: [] }
+    this.arts.push(art)
+    return art
+  }
+
+  // Cut an art again for another season.
+  private cutFor(art: Art, season: Season) {
+    const { def } = art
+    if (!art.cuts[season]) {
+      const sketch = new Sketch({ w: def.w, h: def.h, seed: def.seed, glow: def.glow, padBottom: def.padBottom, season })
+      def.art(sketch)
+      art.cuts[season] = sketch.finish()
+    }
+    return art.cuts[season]!
+  }
+
+  // Show an art's cutout for the current season.
+  private reseason(art: Art) {
+    const cut = this.cutFor(art, this.season)
+    art.map.image = cut.canvas
+    art.map.needsUpdate = true
+    if (art.glow && cut.glow) {
+      art.glow.image = cut.glow
+      art.glow.needsUpdate = true
+    }
+    art.showing = this.season
+    for (const p of art.users) p.cut = cut
+  }
+
+  // A spread's printed map for the current season.
+  private resheet(spread: number) {
+    const entry = this.sheets[spread]
+    const sheet = (entry.cuts[this.season] ??= SPREADS[spread].sheet(pageNumber(spread), this.season))
+    const pages = this.book!.pages[spread]
+    pages.left.image = sheet.left
+    pages.right.image = sheet.right
+    pages.left.needsUpdate = pages.right.needsUpdate = true
+    entry.showing = this.season
+  }
+
+  // Cut what the new season still needs, a little each frame within a few
+  // milliseconds: the spread on show (its pop-ups, then its map) first.
+  private catchUp(budget: number) {
+    const t0 = performance.now()
+    const inSeason = (a: Art) => a.users.some((p) => !p.def.seasons || p.def.seasons.includes(this.season))
+    const due = this.arts.filter((a) => a.seasonal && !a.cuts[this.season] && inSeason(a))
+    const jobs: (() => void)[] = []
+    for (const near of [true, false]) {
+      for (const art of due) if (art.users.some((p) => p.spread === this.page) === near) jobs.push(() => this.cutFor(art, this.season))
+      this.sheets.forEach((entry, i) => {
+        if (SPREADS[i].seasonal && !entry.cuts[this.season] && (i === this.page) === near) {
+          jobs.push(() => (entry.cuts[this.season] = SPREADS[i].sheet(pageNumber(i), this.season)))
+        }
+      })
+    }
+    for (const job of jobs) {
+      if (performance.now() - t0 > budget) return
+      job()
+    }
+  }
+
+  // Petal colours for the season (a tree's own, or the art's fixed ones).
+  private tintPetals(p: Piece) {
+    const { colors } = p.def.petals!
+    const list = !colors ? ['#ef8fb0', '#fde6ee', '#f6b3c9'] : Array.isArray(colors) ? colors : colors[this.season]
+    const tones = list.map((c) => new THREE.Color(c))
+    const { mesh, size } = p.petals!
+    for (let i = 0; i < size; i++) mesh.setColorAt(i, tones[i % tones.length])
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
   }
 
   private buildPlatform(aniso: number) {
@@ -681,8 +789,14 @@ export class CityStage {
     this.nightTarget = night ? 1 : 0
   }
 
-  setWeather(weather: Weather) {
-    this.weather = weather
+  // A new season brings its weather, and the pop-ups that change fold down
+  // and come back up dressed for it.
+  setSeason(season: Season) {
+    if (season === this.season) return
+    this.season = season
+    this.weather = SKY[season]
+    this.seasonAt = this.clock
+    for (const p of this.pieces) if (p.petals) this.tintPetals(p)
   }
 
   // Skip any running transition (handy from the dev console).
@@ -693,6 +807,11 @@ export class CityStage {
     this.rainT = this.weather === 'rain' ? 1 : 0
     this.snowT = this.weather === 'snow' ? 1 : 0
     shared.uSnow.value = this.snowT
+    for (const art of this.arts) if (art.seasonal && art.showing !== this.season) this.reseason(art)
+    for (const p of this.pieces) p.present = !p.def.seasons || p.def.seasons.includes(this.season) ? 1 : 0
+    this.sheets.forEach((entry, i) => {
+      if (SPREADS[i].seasonal && entry.showing !== this.season) this.resheet(i)
+    })
     this.glide = null
     this.place(this.openTarget ? this.homeShot() : this.closedShot())
     this.applyLight()
@@ -838,24 +957,35 @@ export class CityStage {
 
   // Shake a flurry of petals loose from the piece's blossoms.
   private shed(p: Piece) {
-    const k = p.def.scale ?? 1
-    const circles = p.def.petals!.from
     const { items, size } = p.petals!
     items.length = 0
-    for (let i = 0; i < size; i++) {
-      const [cx, cy, r] = circles[i % circles.length]
-      const a = Math.random() * Math.PI * 2
-      const d = Math.sqrt(Math.random()) * r
-      items.push({
-        pos: new THREE.Vector3((cx + Math.cos(a) * d - p.def.w / 2) * k, (cy + Math.sin(a) * d) * k, 0.04 + Math.random() * 0.1),
-        vel: new THREE.Vector3(-0.15 + Math.random() * 0.45, Math.random() * 0.3, 0.25 + Math.random() * 0.4),
-        rot: new THREE.Euler(Math.random() * 6, Math.random() * 6, Math.random() * 6),
-        spin: new THREE.Vector3(2 + Math.random() * 4, 1 + Math.random() * 3, Math.random() * 2),
-        // Staggered, so they let go a few at a time.
-        age: -Math.random() * 0.8,
-        landed: 0,
-        phase: Math.random() * Math.PI * 2,
-      })
+    // Staggered, so they let go a few at a time.
+    for (let i = 0; i < size; i++) items.push(this.petal(p, p.def.petals!.from[i % p.def.petals!.from.length], -Math.random() * 0.8))
+  }
+
+  // A single leaf letting go by itself, in a slot that's free.
+  private drip(p: Piece) {
+    const { items, size } = p.petals!
+    const free = items.findIndex((it) => it.landed > 0 && it.age - it.landed > 2.6)
+    if (free < 0 && items.length >= size) return
+    const from = p.def.petals!.from
+    const leaf = this.petal(p, from[Math.floor(Math.random() * from.length)], 0)
+    if (free < 0) items.push(leaf)
+    else items[free] = leaf
+  }
+
+  private petal(p: Piece, [cx, cy, r]: [number, number, number], age: number): Petal {
+    const k = p.def.scale ?? 1
+    const a = Math.random() * Math.PI * 2
+    const d = Math.sqrt(Math.random()) * r
+    return {
+      pos: new THREE.Vector3((cx + Math.cos(a) * d - p.def.w / 2) * k, (cy + Math.sin(a) * d) * k, 0.04 + Math.random() * 0.1),
+      vel: new THREE.Vector3(-0.15 + Math.random() * 0.45, Math.random() * 0.3, 0.25 + Math.random() * 0.4),
+      rot: new THREE.Euler(Math.random() * 6, Math.random() * 6, Math.random() * 6),
+      spin: new THREE.Vector3(2 + Math.random() * 4, 1 + Math.random() * 3, Math.random() * 2),
+      age,
+      landed: 0,
+      phase: Math.random() * Math.PI * 2,
     }
   }
 
@@ -913,6 +1043,7 @@ export class CityStage {
   }
 
   private update(dt: number) {
+    this.clock += dt
     // Open / close timeline.
     if (this.openT !== this.openTarget) {
       const speed = this.openTarget > this.openT ? 1 / OPEN_TIME : 1 / CLOSE_TIME
@@ -1032,6 +1163,15 @@ export class CityStage {
       this.snowT = approach(this.snowT, snowTo, dt / 2.2)
       this.applyLight()
     }
+    // The new season's art gets cut a little at a time; a spread's map
+    // changes out of sight, or once its pop-ups have folded down.
+    if (this.ready) {
+      this.catchUp(6)
+      this.sheets.forEach((entry, i) => {
+        if (!SPREADS[i].seasonal || entry.showing === this.season || !entry.cuts[this.season]) return
+        if (!shown(i) || this.clock - this.seasonAt > 0.4) this.resheet(i)
+      })
+    }
     const settling = this.weather === 'snow' && this.snowT > 0.3
     shared.uSnow.value = approach(shared.uSnow.value, settling ? 1 : 0, dt / (settling ? 14 : 5))
 
@@ -1043,15 +1183,31 @@ export class CityStage {
         s.v += (-k[i] * s.x - c[i] * s.v) * dt
         s.x += s.v * dt
       })
+      const visible = shown(p.spread)
+      // In season, and dressed for it? Out of sight it changes at once; in
+      // view it folds down first, changes, and pops back up. Art shared
+      // with a piece in view waits until that one is down too.
+      const here = !p.def.seasons || p.def.seasons.includes(this.season)
+      const stale = p.art.seasonal && p.art.showing !== this.season
+      const down = () => p.art.users.every((q) => q.parent || !shown(q.spread) || q.present === 0)
+      if (!visible || p.parent || !this.ready) {
+        if (stale && here && (p.art.cuts[this.season] || p.parent) && down()) this.reseason(p.art)
+        p.present = here ? 1 : 0
+      } else {
+        // (Whatever comes up waits for the rest to fold down first.)
+        const want = here && !stale ? 1 : 0
+        if (!want || this.clock - this.seasonAt > 0.4) p.present = approach(p.present, want, dt / (want ? 0.6 : 0.4))
+        if (p.present === 0 && stale && here && down()) this.reseason(p.art)
+      }
+      const standing = p.present === 1 ? 1 : p.present > 0 && here && !stale ? easeOutBack(p.present) : smooth(p.present)
       // Glued pieces ride along with their parent and only bob.
-      p.rise = p.parent ? p.parent.rise : riseOf(p.start) * gate(p.spread, p.def.order)
+      p.rise = p.parent ? p.parent.rise : riseOf(p.start) * gate(p.spread, p.def.order) * standing
       const flat = 1 - Math.min(1, p.rise)
       const fold = p.parent ? 0 : (Math.PI / 2) * (1 - p.rise)
       const mountY = p.def.mount && this.platform ? this.platform.top * Math.max(0, this.platform.rise) : 0
       const bobAmp = p.def.bob && !this.reduced ? p.def.bob : null
-      const visible = shown(p.spread)
       for (const h of p.halves) {
-        h.anchor.visible = visible
+        h.anchor.visible = visible && p.present > 0
         h.hinge.rotation.x = fold
         if (!p.parent) h.anchor.position.y = p.eps * flat + mountY + 0.001
         h.poke.rotation.x = p.tilt.x * 0.35
@@ -1096,7 +1252,18 @@ export class CityStage {
           a < 0 ? 0 : a < DROP_FALL ? easeInOut(a / DROP_FALL) : a < DROP_FALL + DROP_HOLD ? 1 : 1 - smooth((a - DROP_FALL - DROP_HOLD) / DROP_RISE)
         for (const h of p.halves) h.bob.position.y = -p.def.drop! * (p.def.scale ?? 1) * down
       }
-      if (p.petals) this.flutter(p, dt, visible && p.rise > 0.98 && this.openTarget === 1)
+      if (p.petals) {
+        const live = visible && p.rise > 0.98 && this.openTarget === 1
+        // In autumn the trees on show let their leaves go, one at a time.
+        const tree = p.def.petals!.colors && !Array.isArray(p.def.petals!.colors)
+        if (live && tree && this.season === 'autumn' && !this.reduced && this.pageT === this.page) {
+          if (this.clock >= p.dripAt) {
+            if (p.dripAt) this.drip(p)
+            p.dripAt = this.clock + 0.8 + Math.random() * 2.2
+          }
+        }
+        this.flutter(p, dt, live)
+      }
     }
 
     const ground: Ground = closed > 0.98 ? 'closed' : this.openT === 1 && this.pageT === this.page ? 'open' : 'moving'

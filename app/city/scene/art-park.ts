@@ -1,7 +1,7 @@
 import { INK, Pt, Shape, Sketch, rgba, shade, tint } from './sketch'
 import { C } from './palette'
 import { Part, paint, pts } from './art-common'
-import { blobs, person } from './art-street'
+import { blobs, crown, person } from './art-street'
 
 // Art for the Central Park spread, seen looking south across the park
 // towards Midtown.
@@ -300,9 +300,10 @@ export function bethesdaTerrace(s: Sketch) {
       pts(cx - 0.24, 0, cx + 0.24, 0.96)
     )
   })
-  // Autumn trees on the drive above.
-  blobs(s, [[0.9, 2.0, 0.32], [1.3, 2.15, 0.3], [W - 1.0, 2.05, 0.34], [W - 1.4, 2.2, 0.26]], '#d98b3c', 'rgba(150,70,20,0.5)', 0.02)
-  blobs(s, [[W / 2 - 0.2, 2.05, 0.26], [W / 2 + 0.2, 2.12, 0.24]], '#c9583a', 'rgba(120,30,20,0.5)', 0.02)
+  // Trees on the drive above.
+  crown(s, [[0.9, 2.0, 0.32], [1.3, 2.15, 0.3]], ['#d98b3c', 'rgba(150,70,20,0.5)'], { inkW: 0.02 })
+  crown(s, [[W - 1.0, 2.05, 0.34], [W - 1.4, 2.2, 0.26]], ['#d98b3c', 'rgba(150,70,20,0.5)'], { inkW: 0.02 })
+  crown(s, [[W / 2 - 0.2, 2.05, 0.26], [W / 2 + 0.2, 2.12, 0.24]], ['#c9583a', 'rgba(120,30,20,0.5)'], { inkW: 0.02 })
   paint(s, [
     {
       shape: wall,
@@ -491,7 +492,7 @@ export function bowBridge(s: Sketch) {
     s.border([pot], 0.03)
     s.fill(pot, iron)
     s.ink(pot, 0.008)
-    blobs(s, [[x, deck(x) + 0.45, 0.06]], '#d98b3c', 'rgba(150,70,20,0.4)', 0.01)
+    if (s.season !== 'winter') crown(s, [[x, deck(x) + 0.45, 0.06]], ['#d98b3c', 'rgba(150,70,20,0.4)'], { inkW: 0.01 })
   }
   // Stone abutments either end.
   const ends = [0, W - a - 0.05].map((x) => s.rect(x, 0, a + 0.05, 0.95, 0.003))
@@ -735,8 +736,9 @@ export function belvedereCastle(s: Sketch) {
       hatch: { angle: 0.5, gap: 0.04, alpha: 0.3 },
     },
   ])
-  // Autumn shrubs on the rock, and the flag on the tower.
-  blobs(s, [[0.3, 0.55, 0.16], [0.5, 0.5, 0.13], [W - 0.25, 0.48, 0.15]], '#d98b3c', 'rgba(150,70,20,0.45)', 0.014)
+  // Shrubs on the rock, and the flag on the tower.
+  crown(s, [[0.3, 0.55, 0.16], [0.5, 0.5, 0.13]], ['#d98b3c', 'rgba(150,70,20,0.45)'], { inkW: 0.014 })
+  crown(s, [[W - 0.25, 0.48, 0.15]], ['#d98b3c', 'rgba(150,70,20,0.45)'], { inkW: 0.014 })
   s.strip([[1.6, 2.3], [1.6, 2.62]], 0.014, 0.025)
   const flag = s.poly(pts(1.6, 2.62, 1.86, 2.56, 1.6, 2.48), 0)
   s.fill(flag, C.red)
@@ -998,6 +1000,9 @@ function limb(s: Sketch, a: Pt, b: Pt, w0: number, w1 = w0): Shape {
 }
 
 function runner(s: Sketch, x: number, H: number, o: Runner): Part[] {
+  // Winter running gear: long sleeves, tights and a beanie.
+  const winter = s.season === 'winter'
+  if (winter) o = { ...o, shorts: undefined, band: undefined, pony: false }
   const P = (dx: number, y: number): Pt => [x + dx * H, y * H]
   const hip = P(0, 0.5)
   const sh = P(0.07, 0.8)
@@ -1011,8 +1016,10 @@ function runner(s: Sketch, x: number, H: number, o: Runner): Part[] {
     parts.push({ shape: s.ellipse(foot[0] + 0.03 * H, foot[1] - 0.005 * H, 0.055 * H, 0.025 * H, Math.atan2(foot[1] - knee[1], foot[0] - knee[0]) + Math.PI / 2), color: o.shoes, ink: 0.008 })
   }
   const arm = (elbow: Pt, hand: Pt, shade_: number) => {
-    parts.push({ shape: limb(s, sh, elbow, 0.03 * H, 0.026 * H), color: tint(o.skin, shade_), ink: 0.01 })
-    parts.push({ shape: limb(s, elbow, hand, 0.026 * H, 0.022 * H), color: tint(o.skin, shade_), ink: 0.01 })
+    const sleeve = winter ? o.top : o.skin
+    parts.push({ shape: limb(s, sh, elbow, 0.03 * H, 0.026 * H), color: tint(sleeve, shade_), ink: 0.01 })
+    parts.push({ shape: limb(s, elbow, hand, 0.026 * H, 0.022 * H), color: tint(sleeve, shade_), ink: 0.01 })
+    if (winter) parts.push({ shape: s.ellipse(hand[0], hand[1], 0.026 * H, 0.026 * H), color: o.skin, ink: 0.008 })
   }
   // Far side first: the back arm and the kicking leg.
   arm(P(-0.09, 0.64), P(-0.02, 0.56), -0.12)
@@ -1059,6 +1066,11 @@ function runner(s: Sketch, x: number, H: number, o: Runner): Part[] {
     ink: 0.01,
   })
   if (o.band) parts.push({ shape: limb(s, P(0.04, 0.955), P(0.18, 0.965), 0.012 * H), color: o.band, ink: 0.006 })
+  if (winter) {
+    const [hx, hy] = P(0.11, 0.95)
+    parts.push({ shape: s.custom((p) => p.arc(hx, hy, 0.084 * H, -0.1, Math.PI + 0.1, false), [P(0.02, 0.95), P(0.2, 1.04)]), color: o.top, ink: 0.01 })
+    parts.push({ shape: s.ellipse(hx, hy + 0.085 * H, 0.02 * H, 0.02 * H), color: '#f4f1ea', ink: 0.006 })
+  }
   return parts
 }
 
@@ -1142,7 +1154,9 @@ export function citiBike(s: Sketch) {
     { shape: thigh, color: '#2f4566', ink: 0.01 },
     { shape: shin, color: '#2f4566', ink: 0.01 },
     { shape: s.ellipse(0.77, 0.29, 0.06, 0.025), color: '#2b2522', ink: 0.008 },
-    { shape: arm, color: tint('#e2a03c', -0.08), ink: 0.01 },
+    { shape: arm, color: s.season === 'summer' ? C.skin : tint('#e2a03c', -0.08), ink: 0.01 },
+    ...(s.season === 'summer' ? [{ shape: limb(s, [0.74, 1.15], [0.84, 1.08], 0.038, 0.034), color: tint('#e2a03c', -0.08), ink: 0.01 }] : []),
+    ...(s.season === 'winter' ? [{ shape: s.poly(pts(0.66, 1.17, 0.84, 1.19, 0.86, 1.25, 0.66, 1.24), 0.001), color: '#c8202f', ink: 0.008 }] : []),
     { shape: s.ellipse(1.08, 0.92, 0.025, 0.025), color: C.skin, ink: 0.008 },
     {
       shape: headShape,
@@ -1155,4 +1169,50 @@ export function citiBike(s: Sketch) {
     },
     { shape: helmet, color: '#f4f1ea', ink: 0.01, detail: () => s.fill(s.rect(0.7, 1.36, 0.16, 0.02, 0), blue) },
   ])
+}
+
+// ---------------------------------------------------------------------------
+// Wollman Rink in winter: the boards round the ice, its sign on posts hung
+// with lights, and skaters going round behind (separate pieces).
+
+export function wollmanRink(s: Sketch) {
+  const W = s.w
+  const boards = s.rect(0.05, 0, W - 0.1, 0.3, 0.002)
+  const sign = s.rect(W / 2 - 0.62, 0.52, 1.24, 0.2, 0.001)
+  for (const x of [W / 2 - 0.5, W / 2 + 0.5]) s.strip([[x, 0.25], [x, 0.54]], 0.03, 0.03, '#2f3a33')
+  paint(s, [
+    {
+      shape: boards,
+      color: '#f4f1ea',
+      ink: 0.018,
+      detail: () => {
+        s.fill(s.rect(0.05, 0.25, W - 0.1, 0.05, 0), '#2f4f8a')
+        s.fill(s.rect(0.05, 0.0, W - 0.1, 0.04, 0), '#c8202f')
+        for (let x = 0.4; x < W - 0.2; x += 0.45) s.line([[x, 0.04], [x, 0.25]], 0.006, rgba(INK, 0.35), 0)
+      },
+    },
+    {
+      shape: sign,
+      color: '#2f4f8a',
+      flat: true,
+      ink: 0.012,
+      detail: () => {
+        s.glow(sign, '#1a2a4a')
+        s.text('WOLLMAN RINK', W / 2, 0.58, 0.09, { color: '#f4f1ea', glow: '#e8eef8', font: 'Helvetica, Arial, sans-serif', spacing: 3 })
+      },
+    },
+  ])
+  // Lights strung along the boards and up to the sign.
+  const bulbs: Pt[] = []
+  for (let k = 0; k <= 20; k++) {
+    const t = k / 20
+    bulbs.push([0.1 + t * (W - 0.2), 0.36 + Math.abs(Math.sin(t * Math.PI * 4)) * 0.06])
+  }
+  s.line(bulbs, 0.006, rgba(INK, 0.6), 0)
+  bulbs.forEach(([x, y], k) => {
+    const bulb = s.ellipse(x, y - 0.012, 0.016, 0.016)
+    const color = ['#ffd27a', '#ff6b6b', '#7fd0ff', '#9be38a'][k % 4]
+    s.fill(bulb, color)
+    s.glow(bulb, color)
+  })
 }

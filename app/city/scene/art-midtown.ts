@@ -1,7 +1,7 @@
 import { INK, Pt, Shape, Sketch, rgba, shade, tint } from './sketch'
 import { C } from './palette'
 import { Part, paint, pts } from './art-common'
-import { blobs, person } from './art-street'
+import { blobs, crown, person } from './art-street'
 
 // Art for the Midtown spread, looking north up Fifth Avenue.
 
@@ -637,7 +637,7 @@ export function bryantPark(s: Sketch) {
     s.strip([[x, 0.72], [x + 0.24, 0.98]], 0.035, 0.035, '#8a836c')
   }
   for (const [x, y, r] of BRYANT_CROWNS) {
-    blobs(
+    crown(
       s,
       [
         [x, y, r * 0.75],
@@ -646,8 +646,8 @@ export function bryantPark(s: Sketch) {
         [x - r * 0.2, y + r * 0.55, r * 0.55],
         [x + r * 0.28, y + r * 0.5, r * 0.5],
       ],
-      '#7fa860',
-      'rgba(40,80,30,0.5)'
+      ['#d9a03c', 'rgba(140,90,20,0.5)'],
+      { bark: '#8a836c' }
     )
   }
   // A park lamp between the trees.
@@ -703,6 +703,8 @@ function bistroChair(s: Sketch, x: number, seat: number): Part[] {
 }
 
 function sitter(s: Sketch, x: number, o: Sitter): Part[] {
+  const winter = s.season === 'winter'
+  const summer = s.season === 'summer'
   const skin = o.skin ?? C.skin
   const seat = 0.34
   const sh = seat + 0.4
@@ -735,7 +737,8 @@ function sitter(s: Sketch, x: number, o: Sitter): Part[] {
     [x - 0.11, lh],
     [x + 0.11, rh],
   ] as [number, Pt][]) {
-    parts.push({ shape: s.poly(pts(ax - 0.025, sh - 0.03, ax + 0.025, sh - 0.03, h[0] + 0.02, h[1], h[0] - 0.02, h[1]), 0.001), color: tint(o.top, -0.08), ink: 0.01 })
+    parts.push({ shape: s.poly(pts(ax - 0.025, sh - 0.03, ax + 0.025, sh - 0.03, h[0] + 0.02, h[1], h[0] - 0.02, h[1]), 0.001), color: summer ? skin : tint(o.top, -0.08), ink: 0.01 })
+    if (summer) parts.push({ shape: s.poly(pts(ax - 0.028, sh - 0.03, ax + 0.028, sh - 0.03, ax + (h[0] - ax) * 0.35 + 0.024, sh - 0.03 + (h[1] - sh + 0.03) * 0.35, ax + (h[0] - ax) * 0.35 - 0.024, sh - 0.03 + (h[1] - sh + 0.03) * 0.35), 0.001), color: tint(o.top, -0.08), ink: 0.01 })
     parts.push({ shape: s.ellipse(h[0], h[1], 0.024, 0.024), color: skin, ink: 0.008 })
   }
   if (o.food === 'salad') {
@@ -787,6 +790,10 @@ function sitter(s: Sketch, x: number, o: Sitter): Part[] {
     color: o.hair,
     ink: 0.01,
   })
+  if (winter) {
+    parts.push({ shape: s.rect(x - 0.08, sh - 0.03, 0.16, 0.05, 0.001), color: '#c8202f', ink: 0.01 })
+    parts.push({ shape: s.custom((p) => p.arc(x, hy + 0.02, 0.083, 0, Math.PI, false), pts(x - 0.083, hy, x + 0.083, hy + 0.1)), color: '#2f4f8a', ink: 0.01 })
+  }
   return parts
 }
 
@@ -834,7 +841,7 @@ export function lunchBreak(s: Sketch) {
       ...sitter(s, 0.3, { top: '#b9b0d6', pants: '#2f3b55', hair: '#2d2420', skirt: true, food: 'salad' }),
       ...sitter(s, 0.98, { top: '#f4f1ea', pants: '#3a3a48', hair: '#3b2a24', skin: '#c99772', tie: '#2f4566', food: 'sandwich' }),
       ...person(s, 1.38, 0, 1.0, { coat: '#2f3b55', legs: '#2f3b55', tie: C.red, hold: 'phone', hair: '#8a5a32' }),
-      ...person(s, 1.72, 0, 0.96, { coat: '#6d7078', skirt: true, hold: 'coffee', hair: '#7a3d22', skin: '#8d5a3c' }),
+      ...person(s, 1.72, 0, 0.96, { coat: '#6d7078', skirt: true, hold: 'coffee', hair: '#7a3d22', skin: '#8d5a3c', rainy: true }),
       ...pigeon(s, 0.5, -1),
     ],
     0.045
@@ -942,4 +949,50 @@ export function madisonSquareGarden(s: Sketch) {
   s.ink(sign, 0.01)
   s.glow(sign, '#2a3550')
   s.text('PENN STATION', W - 0.29, 0.39, 0.045, { color: '#f4f1ea', glow: '#c8c4bb', font: SANS })
+}
+
+// ---------------------------------------------------------------------------
+// The Rockefeller Center Christmas tree, over the rink in winter: a tall
+// Norway spruce in coloured lights under its star.
+
+export function christmasTree(s: Sketch) {
+  const W = s.w
+  const cx = W / 2
+  const tiers = 6
+  const shapes: Shape[] = []
+  for (let k = 0; k < tiers; k++) {
+    const y0 = 0.2 + k * 0.45
+    const half = 0.78 - k * 0.12
+    shapes.push(s.poly(pts(cx - half, y0, cx + half, y0, cx + half * 0.35, y0 + 0.62, cx - half * 0.35, y0 + 0.62), 0.004))
+  }
+  const top = s.poly(pts(cx - 0.18, 2.75, cx + 0.18, 2.75, cx, 3.1), 0.002)
+  const trunk = s.rect(cx - 0.07, 0, 0.14, 0.25, 0)
+  paint(s, [
+    { shape: trunk, color: '#6e4f3a', ink: 0.012 },
+    ...shapes.map((shape) => ({ shape, color: '#2f6a45', ink: 0.016, hatch: { angle: 1.0, gap: 0.04, alpha: 0.25 } })),
+    { shape: top, color: '#2f6a45', ink: 0.014 },
+  ])
+  // Strands of coloured lights, lit up after dark.
+  const colors = ['#ffd27a', '#ff6b6b', '#7fd0ff', '#9be38a', '#f7a8d8']
+  for (let k = 0; k < 90; k++) {
+    const y = s.r(0.3, 2.9)
+    const half = Math.max(0.05, 0.75 - (y / 3) * 0.66) * s.r(0.15, 0.95)
+    const x = cx + (s.rnd() < 0.5 ? -1 : 1) * half
+    const bulb = s.ellipse(x, y, 0.025, 0.025)
+    const c = colors[k % colors.length]
+    s.fill(bulb, c)
+    s.glow(bulb, c)
+  }
+  // The star.
+  const star: Pt[] = []
+  for (let i = 0; i < 10; i++) {
+    const a = Math.PI / 2 + (i * Math.PI) / 5
+    const r = i % 2 ? 0.07 : 0.17
+    star.push([cx + Math.cos(a) * r, 3.18 + Math.sin(a) * r])
+  }
+  const starShape = s.poly(star, 0)
+  s.border([starShape], 0.04)
+  s.fill(starShape, '#f7d36a')
+  s.ink(starShape, 0.01)
+  s.glow(starShape, '#ffe9a8')
 }

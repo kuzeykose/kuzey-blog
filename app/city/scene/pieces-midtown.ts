@@ -1,10 +1,12 @@
 import { PieceDef } from './pieces'
+import { treeFall } from './season'
 import { chrysler, empireState, skyBackdrop } from './art-landmarks'
 import { cloud, streetLamp, taxi } from './art-street'
 import { squirrel } from './art-park'
 import {
   BRYANT_CROWNS,
   bryantPark,
+  christmasTree,
   grandCentral,
   libraryLion,
   lunchBreak,
@@ -164,6 +166,20 @@ export const MIDTOWN: PieceDef[] = [
     poke: 'tilt',
   },
   {
+    id: 'md-xmas',
+    label: 'The Rockefeller Center Christmas tree',
+    art: christmasTree,
+    w: 1.7,
+    h: 3.4,
+    x: -1.2,
+    z: -2.65,
+    seasons: ['winter'],
+    order: 0.2,
+    seed: 6218,
+    glow: true,
+    poke: 'tilt',
+  },
+  {
     id: 'md-rink',
     label: 'The rink at Rockefeller Center',
     art: rockRink,
@@ -218,14 +234,14 @@ export const MIDTOWN: PieceDef[] = [
     seed: 6214,
     glow: true,
     poke: 'tilt',
-    petals: { from: BRYANT_CROWNS, colors: ['#7fa860', '#557f4b', '#a9c76a'] },
+    petals: { from: BRYANT_CROWNS, colors: treeFall(['#d9a03c', '#e6bb4c', '#c9783a']) },
   },
   {
     id: 'md-lunch',
     label: 'Lunch break in Bryant Park',
     art: lunchBreak,
     w: 1.9,
-    h: 1.1,
+    h: 1.3,
     x: -6.75,
     z: 2.75,
     scale: 1.1,

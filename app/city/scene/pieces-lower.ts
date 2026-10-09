@@ -277,7 +277,7 @@ export const LOWER: PieceDef[] = [
     label: 'Wall Street, at lunch',
     art: commuters,
     w: 1.6,
-    h: 1.35,
+    h: 1.62,
     x: 3.6,
     z: 1.2,
     scale: 1.3,

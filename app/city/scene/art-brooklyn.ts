@@ -1,7 +1,7 @@
 import { INK, Pt, Sketch, rgba, shade } from './sketch'
 import { C } from './palette'
 import { Part, paint, pts, waterTower } from './art-common'
-import { blobs, person } from './art-street'
+import { blobs, crown, person } from './art-street'
 
 // Art for the Brooklyn spread.
 
@@ -831,6 +831,14 @@ export function grandArmyArch(s: Sketch) {
 }
 
 // A big round park tree in late-afternoon light.
+// Where a park tree's crown is (art units, for a 1.5-wide tree), so its
+// leaves can fall from it.
+export const PARK_TREE_CROWN: [number, number, number][] = [
+  [0.75, 1.45, 0.5],
+  [0.75, 1.9, 0.35],
+]
+
+// `leaf` and `shadow` are its autumn colours.
 export function parkTree(s: Sketch, leaf: string, shadow: string) {
   const W = s.w
   const trunk = s.poly(pts(W / 2 - 0.09, 0, W / 2 + 0.09, 0, W / 2 + 0.06, 0.9, W / 2 - 0.06, 0.9), 0.003)
@@ -840,7 +848,7 @@ export function parkTree(s: Sketch, leaf: string, shadow: string) {
   s.strip([[W / 2, 0.75], [W / 2 - 0.3, 1.1]], 0.04, 0.04, '#6e4f3a')
   s.strip([[W / 2, 0.65], [W / 2 + 0.32, 1.0]], 0.04, 0.04, '#6e4f3a')
   const r = W / 2 - 0.1
-  blobs(
+  crown(
     s,
     [
       [W / 2, 1.2, r * 0.62],
@@ -850,9 +858,10 @@ export function parkTree(s: Sketch, leaf: string, shadow: string) {
       [W / 2 + r * 0.3, 1.85, r * 0.55],
       [W / 2, 2.15, r * 0.45],
     ],
-    leaf,
-    shadow
+    [leaf, shadow],
+    { bark: '#6e4f3a' }
   )
+  if (s.season === 'winter') return
   const c = s.ctx
   c.save()
   for (let i = 0; i < 30; i++) {
@@ -1075,6 +1084,8 @@ export function cyclist(s: Sketch) {
     { shape: head, color: C.skin, ink: 0.012, detail: () => s.fill(s.ellipse(1.04, 1.37, 0.01, 0.012), INK) },
     { shape: beard, color: '#5b3a24', ink: 0.008 },
     { shape: beanie, color: '#e2a03c', ink: 0.01 },
+    // A scarf in winter.
+    ...(s.season === 'winter' ? [{ shape: s.poly(pts(0.84, 1.17, 0.98, 1.2, 0.98, 1.26, 0.84, 1.24), 0.001), color: '#2f4f8a', ink: 0.008 }] : []),
   ])
 }
 
@@ -1246,21 +1257,8 @@ function cherryTree(s: Sketch, x: number, base: number, top: number, r: number, 
     [x + r * 0.55, top + r * 1.95, r * 0.82],
     [x, top + r * 2.6, r * 0.68],
   ]
-  blobs(s, circles, color, BLOSSOM_SHADOW, 0.022)
-  // Clusters of blossom, darker pink and near-white.
-  const c = s.ctx
-  c.save()
-  for (const [cx, cy, cr] of circles) {
-    for (let i = 0; i < 14; i++) {
-      const a = s.r(0, Math.PI * 2)
-      const d = Math.sqrt(s.rnd()) * cr * 0.85
-      c.fillStyle = s.rnd() < 0.5 ? '#e48aa9' : '#fff1f5'
-      c.beginPath()
-      c.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d, s.r(0.018, 0.034), 0, Math.PI * 2)
-      c.fill()
-    }
-  }
-  c.restore()
+  // In blossom in spring; green, then flame-red, then bare.
+  crown(s, circles, ['#d9603a', 'rgba(130,40,20,0.5)'], { blossom: [color, BLOSSOM_SHADOW], inkW: 0.022, bark: '#5a3d33' })
 }
 
 // The garden's blossom canopies, where its petals fall from.

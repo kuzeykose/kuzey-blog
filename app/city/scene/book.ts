@@ -33,6 +33,8 @@ export type Book = {
   flapLength: number
   leafLength: number
   // 0 = lying open on the left, 1 = lying on the right.
+  // Each spread's printed pages, to repaint for the seasons.
+  pages: { left: THREE.Texture; right: THREE.Texture }[]
   setAngle: (closed: number) => void
   setLeaf: (leaf: number, closed: number) => void
   dispose: () => void
@@ -62,8 +64,11 @@ export function buildBook(maxAnisotropy: number, sheets: Sheet[]): Book {
   coverTex.rotation = Math.PI
   const coverMat = std({ map: coverTex, roughness: 0.75, metalness: 0.05 })
   const edgeMat = std({ map: tex(pageEdges()), roughness: 1 })
-  const leftArt = groundMaterial(std({ map: tex(sheets[0].left), roughness: 0.95 }), -PAGE_W / 2)
-  const rightArt = groundMaterial(std({ map: tex(sheets[count - 1].right), roughness: 0.95 }), PAGE_W / 2)
+  const pages = sheets.map(() => ({}) as { left: THREE.Texture; right: THREE.Texture })
+  pages[0].left = tex(sheets[0].left)
+  pages[count - 1].right = tex(sheets[count - 1].right)
+  const leftArt = groundMaterial(std({ map: pages[0].left, roughness: 0.95 }), -PAGE_W / 2)
+  const rightArt = groundMaterial(std({ map: pages[count - 1].right, roughness: 0.95 }), PAGE_W / 2)
 
   const root = new THREE.Group()
   const leftPivot = new THREE.Group()
@@ -131,7 +136,7 @@ export function buildBook(maxAnisotropy: number, sheets: Sheet[]): Book {
   for (let j = 0; j < count - 1; j++) {
     const pivot = new THREE.Group()
     root.add(pivot)
-    const face = (up: boolean, art: HTMLCanvasElement, shiftX: number) => {
+    const face = (up: boolean, art: HTMLCanvasElement, shiftX: number): THREE.Texture => {
       const g = new THREE.PlaneGeometry(PAGE_W, PAGE_D, 40, 1)
       g.rotateX(up ? -Math.PI / 2 : Math.PI / 2)
       g.translate(-PAGE_W / 2, LEAF_LIFT, 0)
@@ -145,13 +150,15 @@ export function buildBook(maxAnisotropy: number, sheets: Sheet[]): Book {
       }
       disposables.push(g)
       // (Each face gets its own patch of snow drifts.)
-      const mesh = new THREE.Mesh(g, groundMaterial(std({ map: tex(art), roughness: 0.95 }), shiftX))
+      const map = tex(art)
+      const mesh = new THREE.Mesh(g, groundMaterial(std({ map, roughness: 0.95 }), shiftX))
       mesh.castShadow = true
       mesh.receiveShadow = true
       pivot.add(mesh)
+      return map
     }
-    face(false, sheets[j].right, 20 + 40 * j)
-    face(true, sheets[j + 1].left, 40 * (j + 1))
+    pages[j].right = face(false, sheets[j].right, 20 + 40 * j)
+    pages[j + 1].left = face(true, sheets[j + 1].left, 40 * (j + 1))
     const front = spreads[j].right
     front.position.y = LEAF_LIFT
     front.rotation.z = Math.PI
@@ -188,6 +195,7 @@ export function buildBook(maxAnisotropy: number, sheets: Sheet[]): Book {
     leaves,
     flapLength: coverW,
     leafLength: PAGE_W,
+    pages,
     setAngle,
     setLeaf,
     dispose: () => disposables.forEach((d) => d.dispose()),

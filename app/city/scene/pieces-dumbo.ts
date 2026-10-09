@@ -1,4 +1,5 @@
 import { PieceDef } from './pieces'
+import { treeFall } from './season'
 import { brooklynBridge, skyBackdrop } from './art-landmarks'
 import { farSkyline } from './art-buildings'
 import { cloud, dogWalker, readerAndKid, streetLamp } from './art-street'
@@ -13,6 +14,7 @@ import {
   iceCreamQueue,
   janesCarousel,
   manhattanBridge,
+  outdoorCinema,
   pizzeria,
   riverFerry,
   selfieTourists,
@@ -168,10 +170,27 @@ export const DUMBO: PieceDef[] = [
     x: 4.6,
     z: -1.75,
     scale: 1.3,
+    // Summer evenings it's a cinema instead.
+    seasons: ['spring', 'autumn', 'winter'],
     order: 0.3,
     seed: 8115,
     poke: 'tilt',
-    petals: { from: PARK_CROWNS, colors: ['#6f9a55', '#8dbb6c', '#557f4b'] },
+    petals: { from: PARK_CROWNS, colors: treeFall(['#e0a040', '#d98b3c', '#c9583a']) },
+  },
+  {
+    id: 'du-cinema',
+    label: 'Movies With A View, out on the lawn',
+    art: outdoorCinema,
+    w: 2.7,
+    h: 1.3,
+    x: 4.6,
+    z: -1.75,
+    scale: 1.3,
+    seasons: ['summer'],
+    order: 0.3,
+    seed: 8120,
+    glow: true,
+    poke: 'tilt',
   },
   {
     id: 'du-carousel',

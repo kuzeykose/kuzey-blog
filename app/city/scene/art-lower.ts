@@ -1,7 +1,7 @@
 import { INK, Pt, Shape, Sketch, rgba, shade } from './sketch'
 import { C } from './palette'
 import { Part, paint, pts } from './art-common'
-import { blobs } from './art-street'
+import { crown } from './art-street'
 
 // Art for the Lower Manhattan spread, seen from the harbour looking north.
 
@@ -791,7 +791,7 @@ export function memorial(s: Sketch) {
     [1.74, 0.8, 0.15],
   ] as [number, number, number][]) {
     s.strip([[x, 0.3], [x, top - r * 0.5]], 0.03, 0.04, '#5a4434')
-    blobs(s, [[x, top, r], [x - r * 0.62, top - r * 0.38, r * 0.68], [x + r * 0.62, top - r * 0.32, r * 0.7]], '#6f9a55', 'rgba(40,70,30,0.5)', 0.02)
+    crown(s, [[x, top, r], [x - r * 0.62, top - r * 0.38, r * 0.68], [x + r * 0.62, top - r * 0.32, r * 0.7]], ['#c9783a', 'rgba(120,50,20,0.5)'], { inkW: 0.02 })
   }
   const glowLine = (a: Pt, b: Pt, color: string) => {
     const g = s.glowCtx

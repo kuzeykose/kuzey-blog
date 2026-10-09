@@ -1,7 +1,7 @@
 import { INK, Pt, Sketch, rgba, shade } from './sketch'
 import { C } from './palette'
 import { Part, awning, paint, pts } from './art-common'
-import { blobs, person } from './art-street'
+import { crown, person } from './art-street'
 
 // Art for the DUMBO spread: the waterfront between the two bridges,
 // looking across the East River to Manhattan.
@@ -314,15 +314,17 @@ export function pizzeria(s: Sketch) {
   paint(s, parts)
   // The queue, down the block.
   const coats = ['#3f6fb0', '#f7c948', '#18a558', '#7b2fbf', '#e8364f']
-  const queue = coats.flatMap((coat, k) => person(s, 0.18 + k * 0.3, 0, 0.95 + (k % 2) * 0.1, { coat, hat: k === 2 ? 'beanie' : undefined, hold: k === 4 ? 'coffee' : undefined }))
+  const queue = coats.flatMap((coat, k) =>
+    person(s, 0.18 + k * 0.3, 0, 0.95 + (k % 2) * 0.1, { coat, hat: k === 2 ? 'beanie' : undefined, hold: k === 4 ? 'coffee' : undefined, rainy: k === 1 || k === 4 })
+  )
   paint(s, queue, 0.04)
   // Silhouetted against the lit window after dark.
   queue.forEach((part) => s.glow(part.shape, '#000'))
 }
 
 export function weddingShoot(s: Sketch) {
-  const groom = person(s, 0.55, 0, 1.15, { coat: '#1f1c22', legs: '#1f1c22' })
-  const bride = person(s, 0.85, 0, 1.05, { coat: '#fbf8f0', legs: '#fbf8f0', skirt: true, hair: '#6b4a2c' })
+  const groom = person(s, 0.55, 0, 1.15, { coat: '#1f1c22', legs: '#1f1c22', keep: true })
+  const bride = person(s, 0.85, 0, 1.05, { coat: '#fbf8f0', legs: '#fbf8f0', skirt: true, hair: '#6b4a2c', keep: true })
   paint(s, [...groom, ...bride], 0.05)
   // Her dress spreads to the ground, a veil behind.
   const dress = s.poly(pts(0.72, 0.02, 0.98, 0.02, 0.92, 0.45, 0.78, 0.45), 0.002)
@@ -366,7 +368,7 @@ export function bridgePark(s: Sketch) {
   const W = s.w
   for (const [x, y, r] of PARK_CROWNS) {
     s.strip([[x, 0.1], [x, y - r * 0.5]], 0.07, 0.04, '#6e4f3a')
-    blobs(
+    crown(
       s,
       [
         [x, y, r * 0.8],
@@ -374,32 +376,34 @@ export function bridgePark(s: Sketch) {
         [x + r * 0.6, y - r * 0.1, r * 0.62],
         [x - r * 0.15, y + r * 0.55, r * 0.55],
       ],
-      '#6f9a55',
-      'rgba(40,80,30,0.5)'
+      ['#e0a040', 'rgba(140,80,20,0.5)']
     )
   }
-  // The kite, high on its string.
-  const kx = 1.95
-  const ky = 1.05
-  s.strip([[1.71, 0.52], [1.84, 0.8], [kx, ky - 0.08]], 0.006, 0.025)
-  const kite = s.poly(pts(kx, ky + 0.12, kx + 0.09, ky, kx, ky - 0.1, kx - 0.09, ky), 0.001)
-  s.strip([[kx, ky - 0.1], [kx - 0.05, ky - 0.2], [kx + 0.02, ky - 0.28], [kx - 0.04, ky - 0.36]], 0.006, 0.025)
-  paint(
-    s,
-    [
-      {
-        shape: kite,
-        color: '#e8364f',
-        ink: 0.01,
-        detail: () => {
-          s.fill(s.poly(pts(kx, ky + 0.12, kx + 0.09, ky, kx, ky), 0), '#f7c948')
-          s.fill(s.poly(pts(kx, ky, kx - 0.09, ky, kx, ky - 0.1), 0), '#3f6fb0')
+  const season = s.season
+  // The kite, high on its string (not in winter).
+  if (season !== 'winter') {
+    const kx = 1.95
+    const ky = 1.05
+    s.strip([[1.71, 0.52], [1.84, 0.8], [kx, ky - 0.08]], 0.006, 0.025)
+    const kite = s.poly(pts(kx, ky + 0.12, kx + 0.09, ky, kx, ky - 0.1, kx - 0.09, ky), 0.001)
+    s.strip([[kx, ky - 0.1], [kx - 0.05, ky - 0.2], [kx + 0.02, ky - 0.28], [kx - 0.04, ky - 0.36]], 0.006, 0.025)
+    paint(
+      s,
+      [
+        {
+          shape: kite,
+          color: '#e8364f',
+          ink: 0.01,
+          detail: () => {
+            s.fill(s.poly(pts(kx, ky + 0.12, kx + 0.09, ky, kx, ky), 0), '#f7c948')
+            s.fill(s.poly(pts(kx, ky, kx - 0.09, ky, kx, ky - 0.1), 0), '#3f6fb0')
+          },
         },
-      },
-      ...[0.16, 0.26].map((dy, k) => ({ shape: s.ellipse(kx - 0.03 + k * 0.04, ky - dy - 0.04, 0.025, 0.014), color: k ? '#3f6fb0' : '#f7c948', ink: 0.006 })),
-    ],
-    0.03
-  )
+        ...[0.16, 0.26].map((dy, k) => ({ shape: s.ellipse(kx - 0.03 + k * 0.04, ky - dy - 0.04, 0.025, 0.014), color: k ? '#3f6fb0' : '#f7c948', ink: 0.006 })),
+      ],
+      0.03
+    )
+  }
   const lawn = s.custom(
     (p) => {
       p.moveTo(0.02, 0)
@@ -412,6 +416,7 @@ export function bridgePark(s: Sketch) {
   )
   const sign = s.rect(0.38, 0.4, 0.66, 0.15, 0.001)
   const blanket = s.poly(pts(0.95, 0.12, 1.5, 0.12, 1.46, 0.22, 0.99, 0.22), 0.001)
+  const picnic = season === 'autumn'
   paint(s, [
     ...[0.48, 0.94].map((x) => ({ shape: s.rect(x - 0.015, 0.12, 0.03, 0.3, 0), color: '#6e4f3a', ink: 0.008 })),
     {
@@ -432,15 +437,19 @@ export function bridgePark(s: Sketch) {
         }
       },
     },
-    {
-      shape: blanket,
-      color: '#d24a3a',
-      ink: 0.01,
-      detail: () => {
-        for (let x = 1.0; x < 1.48; x += 0.08) s.fill(s.rect(x, 0.12, 0.04, 0.1, 0), 'rgba(255,255,255,0.65)')
-        s.fill(s.rect(0.97, 0.155, 0.52, 0.03, 0), 'rgba(255,255,255,0.5)')
-      },
-    },
+    ...(picnic
+      ? [
+          {
+            shape: blanket,
+            color: '#d24a3a',
+            ink: 0.01,
+            detail: () => {
+              for (let x = 1.0; x < 1.48; x += 0.08) s.fill(s.rect(x, 0.12, 0.04, 0.1, 0), 'rgba(255,255,255,0.65)')
+              s.fill(s.rect(0.97, 0.155, 0.52, 0.03, 0), 'rgba(255,255,255,0.5)')
+            },
+          },
+        ]
+      : []),
   ])
   // A couple on the blanket, and the kid holding the kite string.
   const seated = (x: number, top: string, hair: string, skin: string): Part[] => {
@@ -452,11 +461,32 @@ export function bridgePark(s: Sketch) {
       { shape: s.custom((p) => p.arc(x, 0.5, 0.066, -0.2, Math.PI + 0.2, false), pts(x - 0.066, 0.5, x + 0.066, 0.57)), color: hair, ink: 0.008 },
     ]
   }
+  if (season === 'winter') {
+    // Too cold for a picnic: a snowman instead, and the kid who built it.
+    const balls: [number, number, number][] = [
+      [1.2, 0.26, 0.15],
+      [1.2, 0.5, 0.11],
+      [1.2, 0.68, 0.075],
+    ]
+    for (const [x, y] of [[1.08, 0.52], [1.32, 0.52]] as Pt[]) s.strip([[x < 1.2 ? 1.12 : 1.28, 0.52], [x + (x < 1.2 ? -0.1 : 0.1), y + 0.1]], 0.012, 0.025, '#5a4434')
+    paint(s, [
+      ...balls.map(([x, y, r]) => ({ shape: s.ellipse(x, y, r, r * 0.95), color: '#fbfbf8', ink: 0.012 })),
+      { shape: s.poly(pts(1.21, 0.69, 1.21, 0.66, 1.32, 0.67), 0), color: '#e0703f', ink: 0.006 },
+      { shape: s.rect(1.14, 0.6, 0.12, 0.035, 0.001), color: '#c8202f', ink: 0.008 },
+      { shape: s.rect(1.15, 0.74, 0.1, 0.09, 0.001), color: '#1f1c22', ink: 0.008 },
+      ...person(s, 1.55, 0.12, 0.55, { coat: '#18a558', wave: true }),
+    ], 0.035)
+    for (const [x, y] of [[1.18, 0.7], [1.23, 0.7], [1.2, 0.5], [1.2, 0.44]] as Pt[]) s.fill(s.ellipse(x, y, 0.009, 0.009), INK)
+    return
+  }
   paint(
     s,
+    // A couple on the blanket in autumn, sharing an umbrella in spring; the
+    // kid holds the kite string.
     [
-      ...seated(1.12, '#f7c948', '#3b2a24', C.skin),
-      ...seated(1.32, '#3f6fb0', '#7a3d22', '#c99772'),
+      ...(picnic
+        ? [...seated(1.12, '#f7c948', '#3b2a24', C.skin), ...seated(1.32, '#3f6fb0', '#7a3d22', '#c99772')]
+        : [...person(s, 1.08, 0.12, 0.72, { coat: '#f7c948', hair: '#3b2a24' }), ...person(s, 1.28, 0.12, 0.76, { coat: '#3f6fb0', hair: '#7a3d22', skin: '#c99772', hold: 'umbrella', brolly: '#2f4566' })]),
       ...person(s, 1.6, 0.12, 0.55, { coat: '#18a558', hold: 'balloon', hat: 'beanie' }),
     ],
     0.035
@@ -577,7 +607,7 @@ export function iceCreamQueue(s: Sketch) {
     person(s, 0.18, 0, 0.62, { coat: '#f7c948', hold: 'icecream', skin: '#c99772', hat: 'beanie' }),
     person(s, 0.5, 0, 1.0, { coat: '#4f8a8b', hold: 'icecream', hair: '#c9a26b', skirt: true }),
     person(s, 0.84, 0, 1.06, { coat: '#f4f1ea', hold: 'phone', skin: '#8d5a3c', hair: '#1f1a18' }),
-    person(s, 1.14, 0, 0.97, { coat: '#e8587a', skirt: true, hair: '#7a3d22' }),
+    person(s, 1.14, 0, 0.97, { coat: '#e8587a', skirt: true, hair: '#7a3d22', rainy: true }),
     person(s, 1.44, 0, 1.03, { coat: '#7b2fbf', hat: 'fedora' }),
   ]
   paint(s, queue.flat(), 0.04)
@@ -611,4 +641,112 @@ export function selfieTourists(s: Sketch) {
   const flash = s.ellipse(phone[0] + 0.02, phone[1] + 0.1, 0.014, 0.014)
   s.fill(flash, '#fff8d0')
   s.glow(flash, '#ffffff')
+}
+
+// ---------------------------------------------------------------------------
+// Summer evenings in Brooklyn Bridge Park: an outdoor film on a big screen,
+// the audience on the lawn, and popcorn.
+
+export function outdoorCinema(s: Sketch) {
+  const W = s.w
+  const sx = 1.55
+  const screen = s.rect(sx - 0.62, 0.42, 1.24, 0.78, 0.001)
+  for (const x of [sx - 0.56, sx + 0.56]) s.strip([[x, 0.1], [x, 0.44]], 0.035, 0.035, '#2f3a33')
+  const lawn = s.custom(
+    (p) => {
+      p.moveTo(0.02, 0)
+      p.lineTo(W - 0.02, 0)
+      p.lineTo(W - 0.02, 0.12)
+      p.quadraticCurveTo(W * 0.5, 0.24, 0.02, 0.12)
+      p.closePath()
+    },
+    pts(0.02, 0, W - 0.02, 0.18)
+  )
+  paint(s, [
+    {
+      shape: screen,
+      color: '#f4f1ea',
+      flat: true,
+      ink: 0.016,
+      detail: () => {
+        // Tonight's picture: a great ape on top of the Empire State.
+        const pic = s.rect(sx - 0.56, 0.47, 1.12, 0.68, 0)
+        s.fill(pic, '#c9c4ba')
+        s.glow(pic, '#8a8478')
+        const tower: Pt[] = [
+          [sx - 0.13, 0.47], [sx + 0.13, 0.47], [sx + 0.13, 0.7], [sx + 0.08, 0.7], [sx + 0.08, 0.8], [sx + 0.04, 0.8],
+          [sx + 0.02, 0.86], [sx + 0.008, 0.93], [sx - 0.008, 0.93], [sx - 0.02, 0.86], [sx - 0.04, 0.8], [sx - 0.08, 0.8], [sx - 0.08, 0.7], [sx - 0.13, 0.7],
+        ]
+        const t = s.poly(tower, 0)
+        s.fill(t, '#4a4740')
+        s.glow(t, '#1a1916')
+        // The ape clinging to the spire, one arm up at the planes.
+        const ape = s.custom(
+          (p) => {
+            p.ellipse(sx - 0.01, 0.9, 0.075, 0.065, -0.3, 0, Math.PI * 2)
+            p.ellipse(sx + 0.05, 0.98, 0.04, 0.04, 0, 0, Math.PI * 2)
+          },
+          pts(sx - 0.09, 0.83, sx + 0.09, 1.02)
+        )
+        s.fill(ape, '#2a2620')
+        s.glow(ape, '#000')
+        s.line([[sx + 0.04, 0.93], [sx + 0.11, 1.0], [sx + 0.13, 1.07]], 0.03, '#2a2620', 0)
+        s.line([[sx - 0.06, 0.87], [sx - 0.02, 0.82]], 0.025, '#2a2620', 0)
+        for (const [x, y, d] of [[sx - 0.34, 1.02, 1], [sx + 0.33, 0.94, -1]] as [number, number, number][]) {
+          s.line([[x - 0.08 * d, y], [x + 0.08 * d, y + 0.01]], 0.02, '#2a2620', 0)
+          s.line([[x, y - 0.035], [x + 0.01 * d, y + 0.045]], 0.016, '#2a2620', 0)
+          s.line([[x - 0.08 * d, y], [x - 0.09 * d, y + 0.03]], 0.012, '#2a2620', 0)
+        }
+        s.fill(s.rect(sx - 0.62, 1.12, 1.24, 0.08, 0), '#1d1c24')
+        s.text('MOVIES WITH A VIEW', sx, 1.14, 0.05, { color: '#f7c948', glow: '#f7c948', font: SANS, spacing: 2 })
+      },
+    },
+    { shape: lawn, color: '#8dbb6c', ink: 0.016 },
+  ])
+  // The audience from behind: heads and shoulders in rows, blankets and a
+  // couple of folding chairs.
+  const crowd: Part[] = []
+  const coats = ['#3f6fb0', '#f7c948', '#18a558', '#e8587a', '#7b2fbf', '#f4f1ea', '#e0703f', '#2f4566']
+  let k = 0
+  for (const [y, x0, x1, h] of [
+    [0.16, 0.25, 2.5, 0.22],
+    [0.05, 0.15, 2.6, 0.25],
+  ] as [number, number, number, number][]) {
+    for (let x = x0; x < x1; x += s.r(0.17, 0.26)) {
+      const body = s.custom(
+        (p) => {
+          p.moveTo(x - 0.07, y)
+          p.lineTo(x + 0.07, y)
+          p.quadraticCurveTo(x + 0.08, y + h * 0.75, x, y + h * 0.8)
+          p.quadraticCurveTo(x - 0.08, y + h * 0.75, x - 0.07, y)
+          p.closePath()
+        },
+        pts(x - 0.08, y, x + 0.08, y + h)
+      )
+      crowd.push({ shape: body, color: coats[k++ % coats.length], ink: 0.008, detail: () => s.glow(body, '#000') })
+      const head = s.ellipse(x, y + h, 0.045, 0.05)
+      crowd.push({ shape: head, color: s.pick(['#3b2a24', '#7a3d22', '#1f1a18', '#c9a26b']), ink: 0.008, detail: () => s.glow(head, '#000') })
+    }
+  }
+  paint(s, crowd, 0.03)
+  // Popcorn.
+  const cart = s.rect(2.25, 0.1, 0.3, 0.32, 0.001)
+  const glass = s.rect(2.28, 0.25, 0.24, 0.14, 0)
+  paint(
+    s,
+    [
+      {
+        shape: cart,
+        color: '#c8202f',
+        ink: 0.012,
+        detail: () => {
+          s.fill(glass, '#fff3cf')
+          s.glow(glass, '#ffd27a')
+          for (let i = 0; i < 9; i++) s.fill(s.ellipse(s.r(2.3, 2.5), s.r(0.26, 0.31), 0.012, 0.012), '#f7e7b0')
+          s.text('POPCORN', 2.4, 0.15, 0.04, { color: '#f4f1ea', font: SANS })
+        },
+      },
+    ],
+    0.035
+  )
 }

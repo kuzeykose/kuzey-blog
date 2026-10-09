@@ -58,6 +58,51 @@ export function blobs(s: Sketch, circles: [number, number, number][], color: str
   return { path, pts: [], minX, minY, maxX, maxY } as Shape
 }
 
+// A tree's crown through the year: fresh green dusted with blossom in
+// spring (or all blossom, for a cherry), deep green in summer, its own
+// colours in autumn ([leaf, shadow]) and bare branches in winter.
+export const AUTUMN: [string, string] = ['#e3923f', 'rgba(150,60,20,0.5)']
+
+export function crown(
+  s: Sketch,
+  circles: [number, number, number][],
+  autumn: [string, string] = AUTUMN,
+  o: { inkW?: number; blossom?: [string, string]; bark?: string } = {}
+) {
+  const season = s.season
+  if (season === 'winter') {
+    // Boughs from the top of the trunk out to each clump, twigs beyond.
+    const bark = o.bark ?? '#5a4434'
+    const mx = circles.reduce((a, [x]) => a + x, 0) / circles.length
+    const low = Math.min(...circles.map(([, y, r]) => y - r * 0.6))
+    const w = Math.max(...circles.map(([, , r]) => r)) * 0.09
+    for (const [x, y, r] of circles) {
+      s.strip([[mx, low], [(mx + x) / 2, (low + y) / 2 + r * 0.1], [x, y]], w, 0.03, bark)
+      for (const a of [-0.8, 0, 0.8]) s.strip([[x, y], [x + Math.sin(a) * r * 0.8, y + Math.cos(a) * r * 0.75]], w * 0.55, 0.025, bark)
+    }
+    return
+  }
+  const [leaf, shadow] =
+    season === 'spring' ? o.blossom ?? ['#a9cf7a', 'rgba(70,110,40,0.45)'] : season === 'summer' ? (['#5f9a48', 'rgba(30,70,25,0.5)'] as [string, string]) : autumn
+  blobs(s, circles, leaf, shadow, o.inkW)
+  if (season === 'spring') {
+    // Blossom: clusters in darker pink and near-white.
+    const c = s.ctx
+    c.save()
+    for (const [cx, cy, cr] of circles) {
+      for (let i = 0; i < (o.blossom ? 14 : 6); i++) {
+        const a = s.r(0, Math.PI * 2)
+        const d = Math.sqrt(s.rnd()) * cr * 0.85
+        c.fillStyle = s.rnd() < 0.5 ? '#e48aa9' : '#fff1f5'
+        c.beginPath()
+        c.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d, cr * s.r(0.05, 0.1), 0, Math.PI * 2)
+        c.fill()
+      }
+    }
+    c.restore()
+  }
+}
+
 // ---------------------------------------------------------------------------
 
 export function taxi(s: Sketch) {
@@ -291,6 +336,15 @@ export function streetLamp(s: Sketch) {
 
 // ---------------------------------------------------------------------------
 
+export const STREET_CROWN: [number, number, number][] = [
+  [0.65, 0.95, 0.32],
+  [0.38, 1.1, 0.28],
+  [0.92, 1.12, 0.29],
+  [0.55, 1.38, 0.3],
+  [0.85, 1.42, 0.27],
+  [0.68, 1.62, 0.22],
+]
+
 export function streetTree(s: Sketch) {
   const trunk = s.poly(pts(0.58, 0, 0.72, 0, 0.69, 0.75, 0.61, 0.75), 0.003)
   const guard = s.rect(0.38, 0, 0.54, 0.18, 0)
@@ -299,19 +353,8 @@ export function streetTree(s: Sketch) {
   s.ink(trunk, 0.016)
   s.strip([[0.38, 0.18], [0.92, 0.18]], 0.014, 0.04)
   for (let x = 0.38; x <= 0.93; x += 0.09) s.strip([[x, 0], [x, 0.18]], 0.01, 0.03)
-  blobs(
-    s,
-    [
-      [0.65, 0.95, 0.32],
-      [0.38, 1.1, 0.28],
-      [0.92, 1.12, 0.29],
-      [0.55, 1.38, 0.3],
-      [0.85, 1.42, 0.27],
-      [0.68, 1.62, 0.22],
-    ],
-    C.leaf,
-    'rgba(50,90,50,0.55)'
-  )
+  crown(s, STREET_CROWN, ['#e6a53c', 'rgba(150,90,20,0.5)'])
+  if (s.season === 'winter') return
   const c = s.ctx
   c.save()
   for (let i = 0; i < 26; i++) {
@@ -342,11 +385,37 @@ type PersonOpts = {
   tie?: string
   // The free hand up: a wave, or a peace sign for a photo.
   wave?: boolean
+  // Puts an umbrella up when it rains (in this colour).
+  rainy?: boolean
+  brolly?: string
+  // Dressed for the occasion whatever the weather (a bride, a costume).
+  keep?: boolean
 }
 
+const WOOL = ['#c8202f', '#2f4f8a', '#e6bb4c', '#4f8a8b', '#7b2fbf', '#e0703f']
+const BROLLIES = ['#d24a3a', '#2f4566', '#e6bb4c', '#1f1c22', '#4f8a8b']
+
 export function person(s: Sketch, x: number, y: number, H: number, o: PersonOpts): Part[] {
+  // Dressed for the season: scarves and beanies in winter, sleeves rolled
+  // up in summer, umbrellas up only when it rains in spring. (The same
+  // figure always picks the same colours.)
+  const season = s.season
+  const id = Math.abs(Math.sin(x * 12.9898 + y * 4.1 + H * 78.233) * 43758.5453) % 1
+  const keep = o.keep ?? false
+  const winter = season === 'winter' && !keep
+  const summer = season === 'summer' && !keep
+  const raining = season === 'spring'
+  o = {
+    ...o,
+    scarf: winter ? o.scarf ?? WOOL[Math.floor(id * WOOL.length)] : summer ? undefined : o.scarf,
+    hat: winter ? (o.hat === 'fedora' ? 'fedora' : 'beanie') : summer && o.hat === 'beanie' ? undefined : o.hat,
+    hold: o.hold === 'umbrella' ? (raining ? 'umbrella' : undefined) : raining && o.rainy ? 'umbrella' : o.hold,
+  }
+  const beanie = o.hat === 'beanie' && winter ? WOOL[Math.floor(id * 7) % WOOL.length] : C.taxi
   const skin = o.skin ?? C.skin
   const legs = o.legs ?? '#3a3a48'
+  // Bare legs under a skirt, but tights in winter.
+  const shins = o.skirt && !winter ? skin : o.skirt ? '#3a3440' : legs
   const sh = y + H * 0.78
   const hip = y + H * 0.4
   const hem = y + H * (o.skirt ? 0.3 : 0.28)
@@ -357,7 +426,7 @@ export function person(s: Sketch, x: number, y: number, H: number, o: PersonOpts
     const lx = x + d * H * 0.05
     parts.push({
       shape: s.poly(pts(lx - H * 0.035, y + H * 0.03, lx + H * 0.035, y + H * 0.03, lx + H * 0.04, hip, lx - H * 0.04, hip), 0.002),
-      color: o.skirt ? skin : legs,
+      color: shins,
       ink: 0.012,
     })
     parts.push({ shape: s.ellipse(lx + d * H * 0.02, y + H * 0.025, H * 0.055, H * 0.028), color: '#2b2522', ink: 0.01 })
@@ -404,19 +473,23 @@ export function person(s: Sketch, x: number, y: number, H: number, o: PersonOpts
     const ny = hx - ax
     const l = Math.hypot(nx, ny) || 1
     const w = H * 0.035
-    parts.push({
-      shape: s.poly(
+    const quad = (t0: number, t1: number) =>
+      s.poly(
         [
-          [ax + (nx / l) * w, ay + (ny / l) * w],
-          [hx + (nx / l) * w * 0.8, hy + (ny / l) * w * 0.8],
-          [hx - (nx / l) * w * 0.8, hy - (ny / l) * w * 0.8],
-          [ax - (nx / l) * w, ay - (ny / l) * w],
+          [ax + (hx - ax) * t0 + (nx / l) * w * (1 - 0.2 * t0), ay + (hy - ay) * t0 + (ny / l) * w * (1 - 0.2 * t0)],
+          [ax + (hx - ax) * t1 + (nx / l) * w * (1 - 0.2 * t1), ay + (hy - ay) * t1 + (ny / l) * w * (1 - 0.2 * t1)],
+          [ax + (hx - ax) * t1 - (nx / l) * w * (1 - 0.2 * t1), ay + (hy - ay) * t1 - (ny / l) * w * (1 - 0.2 * t1)],
+          [ax + (hx - ax) * t0 - (nx / l) * w * (1 - 0.2 * t0), ay + (hy - ay) * t0 - (ny / l) * w * (1 - 0.2 * t0)],
         ],
         0.001
-      ),
-      color: shade(o.coat, -0.08),
-      ink: 0.012,
-    })
+      )
+    // Short sleeves in summer.
+    if (summer) {
+      parts.push({ shape: quad(0, 1), color: skin, ink: 0.012 })
+      parts.push({ shape: quad(0, 0.38), color: shade(o.coat, -0.08), ink: 0.01 })
+    } else {
+      parts.push({ shape: quad(0, 1), color: shade(o.coat, -0.08), ink: 0.012 })
+    }
     parts.push({ shape: s.ellipse(hx, hy, H * 0.028, H * 0.028), color: skin, ink: 0.008 })
   }
   const hold = o.hold
@@ -450,6 +523,11 @@ export function person(s: Sketch, x: number, y: number, H: number, o: PersonOpts
       s.fill(s.ellipse(x - r * 0.55, hy - r * 0.35, r * 0.2, r * 0.12), '#e48f7c', 0.5)
       s.fill(s.ellipse(x + r * 0.55, hy - r * 0.35, r * 0.2, r * 0.12), '#e48f7c', 0.5)
       s.line([[x - r * 0.2, hy - r * 0.45], [x, hy - r * 0.55], [x + r * 0.2, hy - r * 0.45]], 0.006, INK, 0)
+      // Sunglasses for some in summer.
+      if (summer && id < 0.45) {
+        for (const d of [-1, 1]) s.fill(s.ellipse(x + d * r * 0.36, hy + r * 0.02, r * 0.3, r * 0.22), '#1d1c24')
+        s.line([[x - r * 0.1, hy + r * 0.06], [x + r * 0.1, hy + r * 0.06]], 0.006, '#1d1c24', 0)
+      }
     },
   })
   if (o.hat === 'fedora') {
@@ -458,7 +536,7 @@ export function person(s: Sketch, x: number, y: number, H: number, o: PersonOpts
   } else if (o.hat === 'beret') {
     parts.push({ shape: s.ellipse(x + r * 0.2, hy + r * 0.85, r * 1.15, r * 0.45, -0.15), color: C.red, ink: 0.01 })
   } else if (o.hat === 'beanie') {
-    parts.push({ shape: s.custom((p) => p.arc(x, hy + r * 0.3, r * 1.02, 0, Math.PI, false), pts(x - r, hy, x + r, hy + r * 1.4)), color: C.taxi, ink: 0.01 })
+    parts.push({ shape: s.custom((p) => p.arc(x, hy + r * 0.3, r * 1.02, 0, Math.PI, false), pts(x - r, hy, x + r, hy + r * 1.4)), color: beanie, ink: 0.01 })
     parts.push({ shape: s.ellipse(x, hy + r * 1.38, r * 0.25, r * 0.25), color: '#f7f1e3', ink: 0.008 })
   } else {
     parts.push({
@@ -499,6 +577,36 @@ export function person(s: Sketch, x: number, y: number, H: number, o: PersonOpts
   } else if (hold === 'paper') {
     parts.push({ shape: s.rect(left[0] - H * 0.1, left[1] - H * 0.06, H * 0.18, H * 0.2, 0.001), color: '#f2ede0', ink: 0.01, detail: () => { for (let k = 0; k < 5; k++) s.line([[left[0] - H * 0.08, left[1] + H * (0.1 - k * 0.03)], [left[0] + H * 0.06, left[1] + H * (0.1 - k * 0.03)]], 0.005, rgba(INK, 0.5), 0) } })
   }
+  if (hold === 'umbrella') {
+    // Up over their head, on its shaft from the hand.
+    const ux = right[0]
+    const uy = y + H * 1.12
+    const R = H * 0.34
+    const color = o.brolly ?? BROLLIES[Math.floor(id * 11) % BROLLIES.length]
+    parts.push({ shape: s.rect(ux - H * 0.008, right[1], H * 0.016, uy + H * 0.16 - right[1], 0), color: '#2c2a30', ink: false })
+    const canopy = s.custom(
+      (p) => {
+        p.moveTo(ux - R, uy)
+        p.quadraticCurveTo(ux, uy + R * 1.07, ux + R, uy)
+        const n = 5
+        for (let i = n; i > 0; i--) {
+          const x1 = ux + R - (2 * R * i) / n
+          const x0 = ux + R - (2 * R * (i - 1)) / n
+          p.quadraticCurveTo((x0 + x1) / 2, uy + R * 0.17, x1, uy)
+        }
+        p.closePath()
+      },
+      pts(ux - R, uy, ux + R, uy + R * 0.6)
+    )
+    parts.push({
+      shape: canopy,
+      color,
+      ink: 0.018,
+      detail: () => {
+        for (let i = 1; i < 5; i++) s.line([[ux, uy + R * 0.52], [ux - R + (2 * R * i) / 5, uy + R * 0.07]], 0.008, rgba(INK, 0.6))
+      },
+    })
+  }
   if (o.wave) {
     // Two fingers up.
     for (const d of [-1, 1]) parts.push({ shape: s.rect(left[0] + d * H * 0.012 - H * 0.008, left[1], H * 0.016, H * 0.05, 0), color: skin, ink: 0.006 })
@@ -508,7 +616,7 @@ export function person(s: Sketch, x: number, y: number, H: number, o: PersonOpts
 
 export function commuters(s: Sketch) {
   paint(s, [
-    ...person(s, 0.42, 0, 1.2, { coat: '#6d7a8c', hat: 'fedora', hold: 'briefcase', scarf: C.red }),
+    ...person(s, 0.42, 0, 1.2, { coat: '#6d7a8c', hat: 'fedora', hold: 'briefcase', scarf: C.red, rainy: true, brolly: '#1f1c22' }),
     ...person(s, 1.12, 0, 1.12, { coat: C.ochre, hat: 'beret', hold: 'coffee', skirt: true, hair: '#7a3d22' }),
   ])
 }
@@ -544,23 +652,6 @@ export function readerAndKid(s: Sketch) {
 export function dogWalker(s: Sketch) {
   const H = 1.22
   const x = 1.15
-  // Umbrella.
-  const ux = x + H * 0.2
-  const uy = H * 1.12
-  const canopy = s.custom(
-    (p) => {
-      p.moveTo(ux - 0.42, uy)
-      p.quadraticCurveTo(ux, uy + 0.45, ux + 0.42, uy)
-      const n = 5
-      for (let i = n; i > 0; i--) {
-        const x1 = ux + 0.42 - (0.84 * i) / n
-        const x0 = ux + 0.42 - (0.84 * (i - 1)) / n
-        p.quadraticCurveTo((x0 + x1) / 2, uy + 0.07, x1, uy)
-      }
-      p.closePath()
-    },
-    pts(ux - 0.42, uy, ux + 0.42, uy + 0.25)
-  )
   // Dachshund trotting ahead on its leash, facing left.
   const dx = 0.42
   const X = (a: number) => dx - a
@@ -582,20 +673,9 @@ export function dogWalker(s: Sketch) {
     },
     pts(X(0.29), 0.04, X(-0.22), 0.3)
   )
-  s.strip([[ux, H * 0.72], [ux, uy + 0.2]], 0.014, 0.04)
+  // (Her umbrella only goes up when it rains.)
   paint(s, [
-    ...person(s, x, 0, H, { coat: '#b9b0d6', hold: 'umbrella', skirt: true, hair: '#2d2420', scarf: '#ffffff' }),
-    {
-      shape: canopy,
-      color: C.red,
-      ink: 0.018,
-      detail: () => {
-        for (let i = 1; i < 5; i++) {
-          const xx = ux - 0.42 + (0.84 * i) / 5
-          s.line([[ux, uy + 0.22], [xx, uy + 0.03]], 0.008, rgba(INK, 0.6))
-        }
-      },
-    },
+    ...person(s, x, 0, H, { coat: '#b9b0d6', hold: 'umbrella', brolly: C.red, skirt: true, hair: '#2d2420', scarf: '#ffffff' }),
     {
       shape: dog,
       color: '#9a5b37',
@@ -604,6 +684,8 @@ export function dogWalker(s: Sketch) {
         s.fill(s.ellipse(X(0.22), 0.26, 0.012, 0.012), INK)
         s.fill(s.ellipse(X(0.15), 0.22, 0.04, 0.05, -0.4), shade('#9a5b37', -0.3))
         s.fill(s.rect(X(0.12), 0.2, 0.05, 0.03, 0), C.red)
+        // A little coat for the dog in winter.
+        if (s.season === 'winter') s.fill(s.poly(pts(X(0.1), 0.13, X(-0.12), 0.13, X(-0.12), 0.23, X(0.1), 0.23), 0), '#c8202f', 0.85)
       },
     },
   ])

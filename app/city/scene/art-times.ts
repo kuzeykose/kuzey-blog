@@ -568,8 +568,8 @@ export function theaterMarquee(s: Sketch) {
 export function tourists(s: Sketch) {
   const parts: Part[] = [
     ...person(s, 0.35, 0, 1.15, { coat: '#3f6fb0', hold: 'balloon', legs: '#2f4566' }),
-    ...person(s, 0.9, 0, 1.3, { coat: '#f7c948', hat: 'beanie', hold: 'paper' }),
-    ...person(s, 1.75, 0, 1.25, { coat: '#7fb59f', skin: '#8fc4a8', legs: '#7fb59f', skirt: true }),
+    ...person(s, 0.9, 0, 1.3, { coat: '#f7c948', hat: 'beanie', hold: 'paper', rainy: true }),
+    ...person(s, 1.75, 0, 1.25, { coat: '#7fb59f', skin: '#8fc4a8', legs: '#7fb59f', skirt: true, keep: true }),
     ...person(s, 2.3, 0, 1.05, { coat: '#e8364f', hair: '#a0522d', skirt: true, hold: 'icecream' }),
   ]
   paint(s, parts, 0.05)

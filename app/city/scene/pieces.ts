@@ -1,4 +1,5 @@
 import { Sketch } from './sketch'
+import { Season, treeFall } from './season'
 import { C } from './palette'
 import { skyBackdrop, empireState, chrysler, liberty, brooklynBridge, oneWorldTrade, spireBagel } from './art-landmarks'
 import { LEFT_HOUSES, RIGHT_HOUSES, brownstones, farSkyline, flatiron, midriseRow, timesSquare } from './art-buildings'
@@ -14,6 +15,7 @@ import {
   readerAndKid,
   steamStack,
   streetLamp,
+  STREET_CROWN,
   streetTree,
   subwayEntrance,
   taxi,
@@ -63,8 +65,17 @@ export type PieceDef = {
   lamp?: [number, number]
   lampColor?: string
   // Poking it shakes petals (or leaves, or confetti) loose from these art
-  // circles (x, y, radius), in these colours (cherry blossom unless given).
-  petals?: { from: [number, number, number][]; colors?: string[]; count?: number; confetti?: boolean }
+  // circles (x, y, radius), in these colours (cherry blossom unless given),
+  // or in each season's (see treeFall). Trees drop leaves by themselves in
+  // autumn.
+  petals?: {
+    from: [number, number, number][]
+    colors?: string[] | Record<Season, string[]>
+    count?: number
+    confetti?: boolean
+  }
+  // Only stands in these seasons (folding away for the others).
+  seasons?: Season[]
   // For 'drop': slides down this far (art units) and back up again,
   // shaking its petals loose when it lands.
   drop?: number
@@ -338,6 +349,7 @@ export const PIECES: PieceDef[] = [
     order: 0.54,
     seed: 601,
     poke: 'tilt',
+    petals: { from: STREET_CROWN, colors: treeFall(['#e6a53c', '#f0cf6a', '#d98b3c']) },
   },
   {
     id: 'tree-right',
@@ -350,6 +362,7 @@ export const PIECES: PieceDef[] = [
     order: 0.54,
     seed: 602,
     poke: 'tilt',
+    petals: { from: STREET_CROWN, colors: treeFall(['#e6a53c', '#f0cf6a', '#d98b3c']) },
   },
   {
     id: 'lamp-left',
@@ -497,9 +510,9 @@ export const PIECES: PieceDef[] = [
     label: 'New Yorkers',
     art: commuters,
     w: 1.6,
-    h: 1.35,
+    h: 1.62,
     x: -1.8,
-    z: 3.45,
+    z: 3.15,
     scale: 1.3,
     order: 0.86,
     seed: 1001,

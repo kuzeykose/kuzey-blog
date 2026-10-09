@@ -229,7 +229,7 @@ export const TIMES: PieceDef[] = [
     label: 'Tourists (and a Lady Liberty)',
     art: tourists,
     w: 2.6,
-    h: 1.5,
+    h: 1.75,
     x: -3.6,
     z: 1.8,
     order: 0.7,

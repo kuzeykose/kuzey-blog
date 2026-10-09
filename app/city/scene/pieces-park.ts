@@ -1,7 +1,9 @@
 import { PieceDef } from './pieces'
+import { treeFall } from './season'
 import { skyBackdrop } from './art-landmarks'
 import { cloud, streetLamp } from './art-street'
-import { parkTree } from './art-brooklyn'
+import { PARK_TREE_CROWN, parkTree } from './art-brooklyn'
+import { skater } from './art-midtown'
 import {
   belvedereCastle,
   bethesdaFountain,
@@ -19,14 +21,8 @@ import {
   runners,
   sanRemo,
   squirrel,
+  wollmanRink,
 } from './art-park'
-
-// Where a park tree's crown is (art units, for a 1.5-wide tree), so its
-// leaves can fall from it.
-const CROWN: [number, number, number][] = [
-  [0.75, 1.45, 0.5],
-  [0.75, 1.9, 0.35],
-]
 
 const autumnTree = (id: string, x: number, z: number, leaf: string, shadow: string, fall: string[], seed: number, order: number): PieceDef => ({
   id,
@@ -39,7 +35,7 @@ const autumnTree = (id: string, x: number, z: number, leaf: string, shadow: stri
   order,
   seed,
   poke: 'tilt',
-  petals: { from: CROWN, colors: fall },
+  petals: { from: PARK_TREE_CROWN, colors: treeFall(fall) },
 })
 
 const GOLD = ['#e6bb4c', '#f0cf6a', '#d99a35']
@@ -209,6 +205,8 @@ export const PARK: PieceDef[] = [
     x: 3.0,
     z: 0.8,
     scale: 1.2,
+    // The Lake freezes over in winter.
+    seasons: ['spring', 'summer', 'autumn'],
     order: 0.6,
     seed: 3210,
     bob: { amp: 0.03, speed: 1.3, sway: 0.03 },
@@ -222,6 +220,8 @@ export const PARK: PieceDef[] = [
     h: 0.4,
     x: 5.5,
     z: 1.1,
+    // The Lake freezes over in winter.
+    seasons: ['spring', 'summer', 'autumn'],
     order: 0.62,
     seed: 3211,
     bob: { amp: 0.02, speed: 1.7 },
@@ -278,6 +278,48 @@ export const PARK: PieceDef[] = [
       face: 1,
     },
     pokeOnOpen: true,
+  },
+  {
+    id: 'cp-rink',
+    label: 'Skating at Wollman Rink',
+    art: wollmanRink,
+    w: 3.2,
+    h: 0.8,
+    x: 3.6,
+    z: 1.05,
+    seasons: ['winter'],
+    order: 0.6,
+    seed: 3316,
+    glow: true,
+    poke: 'tilt',
+  },
+  {
+    id: 'cp-skater-1',
+    label: 'A skater going round',
+    art: (s) => skater(s, '#c8202f', '#f7c948'),
+    w: 0.6,
+    h: 1.0,
+    x: 2.7,
+    z: 0.5,
+    sameArtAs: 'md-skater-1',
+    seasons: ['winter'],
+    order: 0.58,
+    seed: 3317,
+    poke: 'twirl',
+  },
+  {
+    id: 'cp-skater-2',
+    label: 'A skater going round',
+    art: (s) => skater(s, '#2a4fb0', '#f4f1ea'),
+    w: 0.6,
+    h: 1.0,
+    x: 4.6,
+    z: 0.6,
+    sameArtAs: 'md-skater-2',
+    seasons: ['winter'],
+    order: 0.58,
+    seed: 3318,
+    poke: 'twirl',
   },
   {
     id: 'cp-bike',
