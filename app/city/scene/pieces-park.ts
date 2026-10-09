@@ -36,8 +36,7 @@ const autumnTree = (id: string, x: number, z: number, leaf: string, shadow: stri
   order,
   seed,
   poke: 'tilt',
-  petals: CROWN,
-  petalColors: fall,
+  petals: { from: CROWN, colors: fall },
 })
 
 const GOLD = ['#e6bb4c', '#f0cf6a', '#d99a35']

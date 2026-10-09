@@ -4,11 +4,12 @@ import { Cutout, Sketch } from './sketch'
 import { PIECES, PLATFORM, PieceDef } from './pieces'
 import { BROOKLYN } from './pieces-brooklyn'
 import { PARK } from './pieces-park'
+import { TIMES } from './pieces-times'
 import { buildBook, Book } from './book'
 import { canvasTexture, groundMaterial, paperMaterials, shared } from './materials'
 import { PageCurl } from './bend'
 import { Ground, Weather, WeatherFx } from './weather'
-import { brooklynSpread, centralParkSpread, curb, manhattanSpread, roadTop, sidewalk, tableTop } from './art-book'
+import { brooklynSpread, centralParkSpread, curb, manhattanSpread, roadTop, sidewalk, tableTop, timesSquareSpread } from './art-book'
 
 export type StageEvents = {
   onProgress?: (p: number) => void
@@ -56,7 +57,10 @@ type Piece = {
   run: { s: number; target: number; dir: number; wait: number; cum: number[]; len: number } | null
   // Pieces that turn about a point (the Wonder Wheel).
   spin: { angle: number; vel: number } | null
-  petals: { mesh: THREE.InstancedMesh; items: Petal[] } | null
+  petals: { mesh: THREE.InstancedMesh; items: Petal[]; size: number } | null
+  // Pieces that drop and come back (the New Year's ball): seconds since
+  // let go, or -1 while waiting at the top.
+  drop: { at: number } | null
 }
 
 const OPEN_TIME = 4.4
@@ -76,6 +80,7 @@ const SPREADS = [
   { pieces: PIECES, sheet: manhattanSpread },
   { pieces: BROOKLYN, sheet: brooklynSpread },
   { pieces: PARK, sheet: centralParkSpread },
+  { pieces: TIMES, sheet: timesSquareSpread },
 ]
 
 const DAY = {
@@ -125,6 +130,10 @@ const easeOutBack = (t: number) => {
 }
 const smooth = (t: number) => t * t * (3 - 2 * t)
 const PETALS = 48
+// The ball drop: down, a pause at the bottom, back up.
+const DROP_FALL = 2.6
+const DROP_HOLD = 2.4
+const DROP_RISE = 3.2
 const dummy = new THREE.Object3D()
 const nextFrame = () => new Promise<void>((r) => setTimeout(r, 0))
 
@@ -143,7 +152,8 @@ export class CityStage {
   private leafCurls: PageCurl[] = []
   private pieces: Piece[] = []
   private pickables: THREE.Object3D[] = []
-  private petalKit: { geo: THREE.BufferGeometry; mat: THREE.Material } | null = null
+  private petalKit: { petal: THREE.BufferGeometry; confetti: THREE.BufferGeometry; mat: THREE.Material } | null = null
+  private tickers: { map: THREE.Texture; speed: number }[] = []
   private platform: { groups: THREE.Group[]; rise: number; start: number; eps: number; top: number } | null = null
   // Which spread is showing (target) and how far the turn between them is.
   private page = 0
@@ -393,6 +403,7 @@ export class CityStage {
       run: def.run ? runState(def.run) : null,
       spin: def.spin ? { angle: 0, vel: def.spin.idle } : null,
       petals: null,
+      drop: def.drop ? { at: -1 } : null,
     }
 
     for (const seg of segs) {
@@ -451,22 +462,61 @@ export class CityStage {
     if (def.petals) {
       if (!this.petalKit) {
         this.petalKit = {
-          geo: new THREE.CircleGeometry(0.075, 7),
+          petal: new THREE.CircleGeometry(0.075, 7),
+          confetti: new THREE.PlaneGeometry(0.1, 0.07),
           mat: new THREE.MeshStandardMaterial({ roughness: 0.8, side: THREE.DoubleSide }),
         }
-        this.disposables.push(this.petalKit.geo, this.petalKit.mat)
+        this.disposables.push(this.petalKit.petal, this.petalKit.confetti, this.petalKit.mat)
       }
       // Under the anchor, so they fall free of the paper's wobble.
-      const mesh = new THREE.InstancedMesh(this.petalKit.geo, this.petalKit.mat, PETALS)
-      const tones = (def.petalColors ?? ['#ef8fb0', '#fde6ee', '#f6b3c9']).map((c) => new THREE.Color(c))
-      for (let i = 0; i < PETALS; i++) mesh.setColorAt(i, tones[i % tones.length])
+      const size = def.petals.count ?? PETALS
+      const mesh = new THREE.InstancedMesh(def.petals.confetti ? this.petalKit.confetti : this.petalKit.petal, this.petalKit.mat, size)
+      const tones = (def.petals.colors ?? ['#ef8fb0', '#fde6ee', '#f6b3c9']).map((c) => new THREE.Color(c))
+      for (let i = 0; i < size; i++) mesh.setColorAt(i, tones[i % tones.length])
       mesh.count = 0
       mesh.frustumCulled = false
       mesh.visible = false
       piece.halves[0].anchor.add(mesh)
-      piece.petals = { mesh, items: [] }
+      piece.petals = { mesh, items: [], size }
     }
+    if (def.ticker) this.addTicker(piece)
     return piece
+  }
+
+  // A self-lit strip of news that scrolls over a band of the art.
+  private addTicker(p: Piece) {
+    const t = p.def.ticker!
+    const k = p.def.scale ?? 1
+    const cv = document.createElement('canvas')
+    const ctx = cv.getContext('2d')!
+    const font = 'bold 44px Helvetica, Arial, sans-serif'
+    ctx.font = font
+    const text = `${t.text}   `
+    cv.width = Math.min(4096, Math.ceil(ctx.measureText(text).width))
+    cv.height = 64
+    ctx.fillStyle = '#14141a'
+    ctx.fillRect(0, 0, cv.width, cv.height)
+    ctx.font = font
+    ctx.fillStyle = '#ffb347'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(text, 0, 34)
+    const map = new THREE.CanvasTexture(cv)
+    map.colorSpace = THREE.SRGBColorSpace
+    map.wrapS = THREE.RepeatWrapping
+    // As much of the strip as fits the band at its own aspect.
+    const length = (t.h * k * cv.width) / cv.height
+    map.repeat.x = (t.w * k) / length
+    const mat = new THREE.MeshBasicMaterial({ map })
+    const geo = new THREE.PlaneGeometry(t.w * k, t.h * k)
+    this.disposables.push(map, mat, geo)
+    const mesh = new THREE.Mesh(geo, mat)
+    // On the half of a split piece that the band's middle is over.
+    const x = p.def.x + (t.at[0] - p.def.w / 2) * k
+    const idx = p.halves.length > 1 && x >= 0 ? 1 : 0
+    const anchorX = p.halves.length > 1 ? 0 : p.def.x
+    mesh.position.set(x - anchorX, t.at[1] * k, 0.012)
+    p.halves[idx].bob.add(mesh)
+    this.tickers.push({ map, speed: (0.35 * k) / length })
   }
 
   // Paint a piece's art into textures and paper materials.
@@ -707,8 +757,11 @@ export class CityStage {
 
   private poke(p: Piece) {
     const kind = p.def.poke ?? 'tilt'
-    if (p.petals) this.shed(p)
-    if (p.spin) {
+    // (A dropping piece sheds when it lands instead.)
+    if (p.petals && !p.drop) this.shed(p)
+    if (p.drop) {
+      if (p.drop.at < 0) p.drop.at = 0
+    } else if (p.spin) {
       p.spin.vel += 2.4
     } else if (p.run) {
       // Out of hiding, or straight back into it.
@@ -721,16 +774,17 @@ export class CityStage {
     if (p.def.startles) {
       const q = this.pieces.find((o) => o.def.id === p.def.startles)
       if (q?.run && q.run.s === 0) q.run.target = q.run.len
+      if (q?.drop && q.drop.at < 0) q.drop.at = 0
     }
   }
 
   // Shake a flurry of petals loose from the piece's blossoms.
   private shed(p: Piece) {
     const k = p.def.scale ?? 1
-    const circles = p.def.petals!
-    const items = p.petals!.items
+    const circles = p.def.petals!.from
+    const { items, size } = p.petals!
     items.length = 0
-    for (let i = 0; i < PETALS; i++) {
+    for (let i = 0; i < size; i++) {
       const [cx, cy, r] = circles[i % circles.length]
       const a = Math.random() * Math.PI * 2
       const d = Math.sqrt(Math.random()) * r
@@ -750,6 +804,9 @@ export class CityStage {
   private flutter(p: Piece, dt: number, live: boolean) {
     const { mesh, items } = p.petals!
     if (!live) items.length = 0
+    // Pieces glued up on another piece shed from up there: the page is
+    // further down.
+    const floor = 0.006 - (p.parent ? p.def.offset?.[1] ?? 0 : 0)
     let busy = false
     // Each petal keeps its own instance (and so its colour); ones not yet
     // released or already gone are drawn at zero size.
@@ -765,8 +822,8 @@ export class CityStage {
         it.rot.x += it.spin.x * dt
         it.rot.y += it.spin.y * dt
         it.rot.z += it.spin.z * dt
-        if (it.pos.y <= 0.006) {
-          it.pos.y = 0.006
+        if (it.pos.y <= floor) {
+          it.pos.y = floor
           it.landed = it.age
           it.rot.set(-Math.PI / 2, 0, it.phase)
         }
@@ -946,6 +1003,21 @@ export class CityStage {
         for (const h of p.halves) h.bob.rotation.z = p.spin.angle
       }
       if (p.run) this.scurry(p, dt, time)
+      if (p.drop) {
+        const d = p.drop
+        // Back to the top whenever its spread goes away.
+        if (!visible || this.openTarget === 0) d.at = -1
+        if (d.at >= 0) {
+          const was = d.at
+          d.at += dt
+          if (was < DROP_FALL && d.at >= DROP_FALL && p.petals) this.shed(p)
+          if (d.at > DROP_FALL + DROP_HOLD + DROP_RISE) d.at = -1
+        }
+        const a = d.at
+        const down =
+          a < 0 ? 0 : a < DROP_FALL ? easeInOut(a / DROP_FALL) : a < DROP_FALL + DROP_HOLD ? 1 : 1 - smooth((a - DROP_FALL - DROP_HOLD) / DROP_RISE)
+        for (const h of p.halves) h.bob.position.y = -p.def.drop! * (p.def.scale ?? 1) * down
+      }
       if (p.petals) this.flutter(p, dt, visible && p.rise > 0.98 && this.openTarget === 1)
     }
 
@@ -956,6 +1028,8 @@ export class CityStage {
       night: smooth(this.nightT),
       ground,
     })
+
+    for (const t of this.tickers) t.map.offset.x = (t.map.offset.x + dt * t.speed) % 1
 
     // Each spread puts on its little show once it has fully risen.
     const isOpen = this.openTarget === 1 && this.openT === 1 && this.pageT === this.page

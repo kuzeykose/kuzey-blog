@@ -19,7 +19,7 @@ import {
   taxi,
 } from './art-street'
 
-export type Poke = 'tilt' | 'lift' | 'drive' | 'run' | 'spin'
+export type Poke = 'tilt' | 'lift' | 'drive' | 'run' | 'spin' | 'drop'
 
 export type PieceDef = {
   id: string
@@ -62,10 +62,14 @@ export type PieceDef = {
   // A point light at this art position after dark (warm unless coloured).
   lamp?: [number, number]
   lampColor?: string
-  // Poking it shakes petals (or leaves) loose from these art circles
-  // (x, y, radius), in these colours (cherry blossom unless given).
-  petals?: [number, number, number][]
-  petalColors?: string[]
+  // Poking it shakes petals (or leaves, or confetti) loose from these art
+  // circles (x, y, radius), in these colours (cherry blossom unless given).
+  petals?: { from: [number, number, number][]; colors?: string[]; count?: number; confetti?: boolean }
+  // For 'drop': slides down this far (art units) and back up again,
+  // shaking its petals loose when it lands.
+  drop?: number
+  // A scrolling news ticker over this band of the art (centre x, y; size).
+  ticker?: { text: string; at: [number, number]; w: number; h: number }
   // Sky paper (backdrops, clouds): greys under rain, never gathers snow.
   sky?: boolean
 }

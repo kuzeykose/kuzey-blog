@@ -190,7 +190,7 @@ export const BROOKLYN: PieceDef[] = [
     seed: 2221,
     glow: true,
     poke: 'tilt',
-    petals: GARDEN_BLOSSOMS,
+    petals: { from: GARDEN_BLOSSOMS },
     pokeOnOpen: true,
   },
   {

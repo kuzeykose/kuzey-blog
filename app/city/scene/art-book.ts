@@ -838,6 +838,118 @@ export function centralParkSpread() {
 }
 
 // ---------------------------------------------------------------------------
+// Times Square, looking south: Broadway and Seventh Avenue cross in a
+// bowtie of plazas between 42nd Street at the back and Duffy Square at the
+// front.
+export function timesSquareSpread() {
+  const m = new MapSheet(57)
+  const { c } = m
+  const sixth = -7.0
+  const eighth = 7.0
+  const streets = [-4.0, -2.75, -1.5, -0.25, 1.0, 2.25, 3.5, 4.75]
+  // Broadway runs back-left to front-right, Seventh Avenue the other way.
+  const broadway = (z: number) => -2.8 + ((z - Z0) / PAGE_D) * 5.8
+  const seventh = (z: number) => 2.2 - ((z - Z0) / PAGE_D) * 5.6
+
+  // Blocks crammed with buildings, and their signs.
+  c.fillStyle = C.land
+  c.fillRect(X0, Z0, X1 - X0, Z1 - Z0)
+  for (let i = 0; i < 700; i++) {
+    c.fillStyle = rgba(m.pick([C.brick, C.brownstone, C.slate, C.limestoneDark, C.terracotta]), 0.28)
+    c.fillRect(m.r(X0, X1), m.r(Z0, Z1), m.r(0.15, 0.32), m.r(0.18, 0.34))
+  }
+  for (let i = 0; i < 260; i++) {
+    c.fillStyle = rgba(m.pick(['#ff4f8b', '#ffd23f', '#3fc1ff', '#7cff6b', '#ff8a3d', '#b48cff']), 0.55)
+    c.fillRect(m.r(X0, X1), m.r(Z0, Z1), m.r(0.06, 0.16), 0.05)
+  }
+  for (const z of streets) {
+    m.road(() => {
+      c.moveTo(X0 - 1, z)
+      c.lineTo(X1 + 1, z)
+    }, 0.16)
+  }
+  for (const x of [sixth, eighth]) {
+    m.road(() => {
+      c.moveTo(x, Z0 - 1)
+      c.lineTo(x, Z1 + 1)
+    }, 0.24)
+  }
+  // The bowtie: everything between the two avenues becomes plaza.
+  const plaza = new Path2D()
+  plaza.moveTo(broadway(Z0), Z0)
+  plaza.lineTo(seventh(Z0), Z0)
+  plaza.lineTo(seventh(Z1), Z1)
+  plaza.lineTo(broadway(Z1), Z1)
+  plaza.closePath()
+  m.fill(plaza, '#e3d3cb')
+  c.save()
+  c.clip(plaza)
+  c.strokeStyle = rgba(INK, 0.1)
+  c.lineWidth = 0.008
+  for (let x = X0; x < X1; x += 0.12) {
+    c.beginPath()
+    c.moveTo(x, Z0)
+    c.lineTo(x + 2, Z1)
+    c.stroke()
+  }
+  // Red tables and chairs out in the plazas.
+  for (let i = 0; i < 70; i++) {
+    c.fillStyle = rgba(C.red, 0.75)
+    c.beginPath()
+    c.arc(m.r(-3, 3), m.r(Z0, Z1), 0.05, 0, Math.PI * 2)
+    c.fill()
+  }
+  c.restore()
+  for (const f of [broadway, seventh]) {
+    m.road(() => {
+      c.moveTo(f(Z0 - 1), Z0 - 1)
+      c.lineTo(f(Z1 + 1), Z1 + 1)
+    }, 0.28)
+  }
+  // Duffy Square's red steps, printed small at the front.
+  c.fillStyle = rgba(C.red, 0.8)
+  c.fillRect(-0.9, 3.75, 1.6, 0.5)
+  c.strokeStyle = INK
+  c.lineWidth = 0.012
+  c.strokeRect(-0.9, 3.75, 1.6, 0.5)
+
+  // The subway: 42 St – Times Sq and its lines.
+  const lines: [string, string][] = [
+    ['N', '#fccc0a'],
+    ['Q', '#fccc0a'],
+    ['R', '#fccc0a'],
+    ['W', '#fccc0a'],
+    ['1', '#ee352e'],
+    ['2', '#ee352e'],
+    ['3', '#ee352e'],
+    ['7', '#b933ad'],
+    ['S', '#808183'],
+  ]
+  lines.forEach(([name, col], i) => {
+    const x = -6.2 + i * 0.3
+    c.fillStyle = col
+    c.beginPath()
+    c.arc(x, -3.4, 0.12, 0, Math.PI * 2)
+    c.fill()
+    m.label(name, x, -3.36, 0.12, 0, { color: col === '#fccc0a' ? INK : '#ffffff', spacing: 0 })
+  })
+  m.label('42 St – Times Sq', -5.0, -3.05, 0.12, 0, { spacing: 2 })
+
+  const angle = (f: (z: number) => number) => Math.atan2(1, f(1) - f(0)) - Math.PI / 2
+  m.label('B R O A D W A Y', broadway(3.0) + 0.22, 3.0, 0.15, angle(broadway), { spacing: 6 })
+  m.label('7 T H   A V E N U E', seventh(3.0) - 0.22, 3.0, 0.15, angle(seventh), { spacing: 6 })
+  m.label('6TH AVE', sixth, 0.4, 0.12, -Math.PI / 2, { color: rgba(INK, 0.7), spacing: 6 })
+  m.label('8TH AVE', eighth, 0.4, 0.12, Math.PI / 2, { color: rgba(INK, 0.7), spacing: 6 })
+  streets.slice(0, 7).forEach((z, i) => m.label(`W ${42 + i} ST`, -5.4, z + 0.05, 0.1, 0, { color: rgba(INK, 0.7), spacing: 3 }))
+  m.label('T I M E S   S Q U A R E', 0.0, 2.85, 0.2, 0, { spacing: 10 })
+  m.label('Duffy Square', -0.1, 4.45, 0.11, 0, { italic: true, spacing: 2 })
+  m.label('Theater District', 4.6, 2.9, 0.14, 0, { italic: true, spacing: 2 })
+  m.cartouche(-4.6, 4.5, 'Times Square', '· the crossroads of the world ·')
+  m.compass(6.6, 4.45, Math.PI)
+  return m.finish(['20', '21'])
+}
+
+// ---------------------------------------------------------------------------
 
 export function cloth(color: string, seed = 1) {
   const s = 512
