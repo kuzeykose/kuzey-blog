@@ -187,11 +187,16 @@ export default function PopupCity() {
   const nextSky = WEATHER[(weather + 1) % WEATHER.length]
   const ink = night ? 'text-neutral-100' : 'text-neutral-800'
   const muted = night ? 'text-neutral-400' : 'text-neutral-500'
-  const button = `inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-sm backdrop-blur transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 ${
+  const chip = `inline-flex items-center justify-center gap-2 rounded-full border text-sm backdrop-blur transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 ${
     night
       ? 'border-neutral-700 bg-neutral-900/70 text-neutral-100 hover:border-orange-600'
       : 'border-neutral-300 bg-white/70 text-neutral-800 hover:border-orange-600'
   }`
+  const button = `${chip} px-3.5 py-2`
+  const round = `${chip} p-2.5`
+  // Just the icon on small screens; the words stay for screen readers.
+  const roundUntilSm = `${chip} p-2.5 sm:px-3.5 sm:py-2`
+  const wordsFromSm = 'sr-only sm:not-sr-only'
 
   return createPortal(
     <div
@@ -215,7 +220,7 @@ export default function PopupCity() {
         }}
       />
 
-      <header className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-4 sm:p-6">
+      <header className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-4 p-4 sm:p-6">
         <div className="pointer-events-auto">
           <Link
             href="/"
@@ -229,6 +234,32 @@ export default function PopupCity() {
           </h1>
           <p className={`text-sm ${muted}`}>a pop-up city · {PAGES[page]}</p>
         </div>
+        {status !== 'error' && (
+          <div className="pointer-events-auto flex shrink-0 gap-2">
+            <button type="button" className={roundUntilSm} aria-pressed={night} onClick={() => setNight((n) => !n)}>
+              {night ? <Sun size={16} /> : <Moon size={16} />}
+              <span className={wordsFromSm}>{night ? 'Day' : 'Night'}</span>
+            </button>
+            <button
+              type="button"
+              className={roundUntilSm}
+              aria-label={`Weather: ${sky.name}. Change to ${nextSky.name.toLowerCase()}`}
+              onClick={() => setWeather((w) => (w + 1) % WEATHER.length)}
+            >
+              <sky.Icon size={16} />
+              <span className={wordsFromSm}>{sky.name}</span>
+            </button>
+            <button
+              type="button"
+              className={round}
+              aria-label={open ? 'Close the book' : 'Open the book'}
+              title={open ? 'Close the book' : 'Open the book'}
+              onClick={() => stage.current?.setOpen(!open)}
+            >
+              {open ? <Book size={16} /> : <BookOpen size={16} />}
+            </button>
+          </div>
+        )}
       </header>
 
       {status === 'error' && (
@@ -274,13 +305,6 @@ export default function PopupCity() {
                 </ol>
               </nav>
             )}
-            <button type="button" className={button} onClick={() => stage.current?.setOpen(!open)}>
-              {open ? <Book size={16} /> : <BookOpen size={16} />}
-              <span>
-                {open ? 'Close' : 'Open'}
-                <span className="hidden sm:inline"> the book</span>
-              </span>
-            </button>
             <button
               type="button"
               ref={contentsButton}
@@ -321,26 +345,9 @@ export default function PopupCity() {
             )}
             <button
               type="button"
-              className={button}
-              aria-pressed={night}
-              onClick={() => setNight((n) => !n)}
-            >
-              {night ? <Sun size={16} /> : <Moon size={16} />}
-              {night ? 'Day' : 'Night'}
-            </button>
-            <button
-              type="button"
-              className={button}
-              aria-label={`Weather: ${sky.name}. Change to ${nextSky.name.toLowerCase()}`}
-              onClick={() => setWeather((w) => (w + 1) % WEATHER.length)}
-            >
-              <sky.Icon size={16} />
-              {sky.name}
-            </button>
-            <button
-              type="button"
-              className={button}
+              className={round}
               aria-label="Reset view"
+              title="Reset view"
               onClick={() => stage.current?.resetView()}
             >
               <ArrowCounterClockwise size={16} />
