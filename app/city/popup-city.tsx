@@ -10,6 +10,7 @@ import {
   BookOpen,
   Book,
   CloudRain,
+  ListBullets,
   CloudSun,
   Moon,
   Snowflake,
@@ -17,10 +18,10 @@ import {
 } from '@phosphor-icons/react/dist/ssr'
 import type { CityStage } from './scene/stage'
 import type { Weather } from './scene/weather'
+import { CHAPTERS, PAGES, pageNumber } from './contents'
 
 type Status = 'loading' | 'ready' | 'error'
 
-const PAGES = ['Manhattan', 'Brooklyn', 'Central Park', 'Times Square', 'Lower Manhattan', 'Midtown']
 
 // The weather button steps through these.
 const WEATHER: { kind: Weather; name: string; Icon: typeof Sun }[] = [
@@ -46,6 +47,9 @@ export default function PopupCity() {
   const [page, setPage] = useState(0)
   const [night, setNight] = useState(false)
   const [weather, setWeather] = useState(0)
+  const [contentsOpen, setContentsOpen] = useState(false)
+  const contentsButton = useRef<HTMLButtonElement>(null)
+  const contentsPanel = useRef<HTMLElement>(null)
   const [label, setLabel] = useState<string | null>(null)
   const [hint, setHint] = useState(false)
   const host = useRef<HTMLDivElement>(null)
@@ -120,6 +124,30 @@ export default function PopupCity() {
     return () => window.removeEventListener('keydown', onKey)
   }, [page])
 
+  // The contents page: focus the page you're on, and close on Escape or a
+  // click anywhere else.
+  useEffect(() => {
+    if (!contentsOpen) return
+    const panel = contentsPanel.current
+    const here = panel?.querySelector<HTMLButtonElement>('[aria-current="page"]') ?? panel?.querySelector('button')
+    here?.focus()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setContentsOpen(false)
+      contentsButton.current?.focus()
+    }
+    const onDown = (e: PointerEvent) => {
+      const target = e.target as Node
+      if (!panel?.contains(target) && !contentsButton.current?.contains(target)) setContentsOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('pointerdown', onDown)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('pointerdown', onDown)
+    }
+  }, [contentsOpen])
+
   // Once the book is open, show how to explore it for a little while.
   useEffect(() => {
     setHint(open)
@@ -129,6 +157,29 @@ export default function PopupCity() {
   }, [open])
 
   if (!mounted) return null
+
+  const goTo = (i: number) => {
+    stage.current?.setPage(i)
+    setContentsOpen(false)
+  }
+  const entry = (name: string, chapter: boolean) => {
+    const i = PAGES.indexOf(name)
+    const here = open && i === page
+    return (
+      <button
+        type="button"
+        aria-current={here ? 'page' : undefined}
+        onClick={() => goTo(i)}
+        className={`flex w-full items-baseline gap-2 rounded px-1.5 py-1 text-left transition-colors hover:text-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 ${
+          chapter ? 'font-serif text-base italic' : 'text-sm'
+        } ${here ? 'text-orange-600' : ink}`}
+      >
+        <span>{name}</span>
+        <span aria-hidden className="mb-1 flex-1 border-b border-dotted border-current opacity-40" />
+        <span className={`text-xs tabular-nums ${here ? '' : muted}`}>{pageNumber(i)}</span>
+      </button>
+    )
+  }
 
   // With a page either side, small screens show just the arrows.
   const pageName = page > 0 && page < PAGES.length - 1 ? 'hidden sm:inline' : ''
@@ -151,7 +202,7 @@ export default function PopupCity() {
         ref={host}
         className="absolute inset-0"
         role="img"
-        aria-label="A 3D pop-up book of New York City. Manhattan: the Empire State and Chrysler buildings, One World Trade Center, Times Square, the Flatiron, brownstones with water towers, a yellow cab, the Statue of Liberty and the Brooklyn Bridge. Turn the page for Brooklyn: DUMBO and the Manhattan Bridge, Barclays Center, Grand Army Plaza and the Botanic Garden's cherry blossoms, a carousel, and Coney Island's Wonder Wheel, Cyclone and Parachute Jump. Turn again for Central Park in autumn: Bethesda Terrace and its fountain, Bow Bridge over the Lake, Gapstow Bridge, Belvedere Castle and a horse and carriage, with the Plaza Hotel, the San Remo and the Guggenheim around the edges. Then Times Square: One Times Square with its news ticker and the New Year's Eve ball, the Paramount Building, billboards on every side, the red steps at Duffy Square, a Broadway theater, tourists and yellow cabs. Then Lower Manhattan from the harbor: One World Trade Center and the Oculus, Trinity Church, the Stock Exchange, the Woolworth Building and 8 Spruce Street, the Charging Bull facing Fearless Girl, Castle Clinton, a tall ship at the Seaport and the Staten Island Ferry. The last page is Midtown up Fifth Avenue: 30 Rockefeller Plaza over the skating rink and Prometheus, Radio City Music Hall's neon, St. Patrick's Cathedral, Grand Central Terminal and the Chrysler Building, the Public Library with its lions, and a sightseeing bus."
+        aria-label="A 3D pop-up book of New York City. Manhattan: the Empire State and Chrysler buildings, One World Trade Center, Times Square, the Flatiron, brownstones with water towers, a yellow cab, the Statue of Liberty and the Brooklyn Bridge. Then Manhattan up close: Lower Manhattan from the harbor, with the Oculus, Trinity Church, the Stock Exchange and the Charging Bull facing Fearless Girl; Midtown up Fifth Avenue, with Rockefeller Center's rink, Radio City, St. Patrick's, Grand Central and the library lions; Times Square, with the New Year's Eve ball, the news ticker, billboards and the red steps; and Central Park in autumn, with Bethesda Terrace, Bow Bridge, Belvedere Castle and a horse and carriage. Last, Brooklyn: DUMBO and the Manhattan Bridge, Barclays Center, Grand Army Plaza and the Botanic Garden's cherry blossoms, a carousel, and Coney Island's Wonder Wheel, Cyclone and Parachute Jump."
         onPointerDown={() => setHint(false)}
       />
       <div
@@ -196,32 +247,77 @@ export default function PopupCity() {
           >
             {label}
           </div>
-          <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2">
+          <div className="pointer-events-auto relative flex flex-wrap items-center justify-center gap-2">
+            {contentsOpen && (
+              <nav
+                id="city-contents"
+                ref={contentsPanel}
+                aria-label="Contents"
+                className={`absolute bottom-full left-1/2 mb-3 w-[min(19rem,calc(100vw-2rem))] -translate-x-1/2 rounded-lg border p-5 shadow-xl ${
+                  night ? 'border-neutral-700 bg-[#1d2030]' : 'border-neutral-300 bg-[#fbf6ea]'
+                }`}
+              >
+                <h2 className={`px-1.5 font-serif text-xl italic ${ink}`}>Contents</h2>
+                <ol className="mt-3 space-y-1">
+                  {CHAPTERS.map((chapter) => (
+                    <li key={chapter.title}>
+                      {entry(chapter.title, true)}
+                      {chapter.sections && (
+                        <ol className="mt-0.5 space-y-0.5 pl-4">
+                          {chapter.sections.map((name) => (
+                            <li key={name}>{entry(name, false)}</li>
+                          ))}
+                        </ol>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              </nav>
+            )}
             <button type="button" className={button} onClick={() => stage.current?.setOpen(!open)}>
               {open ? <Book size={16} /> : <BookOpen size={16} />}
-              {open ? 'Close the book' : 'Open the book'}
+              <span>
+                {open ? 'Close' : 'Open'}
+                <span className="hidden sm:inline"> the book</span>
+              </span>
             </button>
-            {open && page > 0 && (
-              <button
-                type="button"
-                className={button}
-                aria-label={`Back to ${PAGES[page - 1]}`}
-                onClick={() => stage.current?.setPage(page - 1)}
-              >
-                <ArrowLeft size={16} />
-                <span className={pageName}>{PAGES[page - 1]}</span>
-              </button>
-            )}
-            {open && page < PAGES.length - 1 && (
-              <button
-                type="button"
-                className={button}
-                aria-label={`On to ${PAGES[page + 1]}`}
-                onClick={() => stage.current?.setPage(page + 1)}
-              >
-                <span className={pageName}>{PAGES[page + 1]}</span>
-                <ArrowRight size={16} />
-              </button>
+            <button
+              type="button"
+              ref={contentsButton}
+              className={button}
+              aria-expanded={contentsOpen}
+              aria-controls="city-contents"
+              onClick={() => setContentsOpen((o) => !o)}
+            >
+              <ListBullets size={16} />
+              Contents
+            </button>
+            {open && (
+              // The arrows stay together when the row wraps.
+              <span className="flex gap-2">
+                {page > 0 && (
+                  <button
+                    type="button"
+                    className={button}
+                    aria-label={`Back to ${PAGES[page - 1]}`}
+                    onClick={() => stage.current?.setPage(page - 1)}
+                  >
+                    <ArrowLeft size={16} />
+                    <span className={pageName}>{PAGES[page - 1]}</span>
+                  </button>
+                )}
+                {page < PAGES.length - 1 && (
+                  <button
+                    type="button"
+                    className={button}
+                    aria-label={`On to ${PAGES[page + 1]}`}
+                    onClick={() => stage.current?.setPage(page + 1)}
+                  >
+                    <span className={pageName}>{PAGES[page + 1]}</span>
+                    <ArrowRight size={16} />
+                  </button>
+                )}
+              </span>
             )}
             <button
               type="button"

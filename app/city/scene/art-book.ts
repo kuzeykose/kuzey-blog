@@ -344,7 +344,7 @@ const between = (a: Line, b: Line) => {
 }
 
 // Manhattan between the Hudson and the East River, with Liberty Island.
-export function manhattanSpread() {
+export function manhattanSpread(first: number) {
   const m = new MapSheet(42)
   const { c } = m
   const west = m.shore(-3.4, 0.25, 3)
@@ -494,13 +494,13 @@ export function manhattanSpread() {
   m.label('Central Park', 0.05, Z0 + 2.35, 0.13, 0, { italic: true, spacing: 2 })
   m.label('M A N H A T T A N', 0, 4.95, 0.22, 0, { spacing: 10 })
   m.cartouche(-5.7, 4.55, 'New York', '· the city, in paper ·')
-  return m.finish(['14', '15'])
+  return m.finish([String(first), String(first + 1)])
 }
 
 // Brooklyn: the East River on the left with Manhattan's shore beyond, a
 // tilted street grid, Prospect Park, and Coney Island's beach on the
 // Atlantic along the front.
-export function brooklynSpread() {
+export function brooklynSpread(first: number) {
   const m = new MapSheet(77)
   const { c } = m
   // Manhattan ends at the Battery; Brooklyn's shore swings west past Red
@@ -688,14 +688,14 @@ export function brooklynSpread() {
   m.label('Coney Island', 2.6, 2.45, 0.15, 0, { italic: true, spacing: 2 })
   m.label('A T L A N T I C   O C E A N', 1.2, 5.0, 0.2, 0, { color: rgba('#2f5468', 0.85), spacing: 8 })
   m.cartouche(-4.4, 4.4, 'Brooklyn', '· how sweet it is ·')
-  return m.finish(['16', '17'])
+  return m.finish([String(first), String(first + 1)])
 }
 
 // ---------------------------------------------------------------------------
 // Central Park, looking south: Central Park South along the back, Fifth
 // Avenue down the left, Central Park West down the right, and the
 // Reservoir at the front.
-export function centralParkSpread() {
+export function centralParkSpread(first: number) {
   const m = new MapSheet(91)
   const { c } = m
   const east = -7.0
@@ -834,14 +834,14 @@ export function centralParkSpread() {
   m.label('Strawberry Fields', 6.2, 3.15, 0.1, 0, { italic: true, spacing: 2 })
   m.cartouche(-4.6, 4.5, 'Central Park', '· the city’s backyard ·')
   m.compass(6.6, 4.45, Math.PI)
-  return m.finish(['18', '19'])
+  return m.finish([String(first), String(first + 1)])
 }
 
 // ---------------------------------------------------------------------------
 // Times Square, looking south: Broadway and Seventh Avenue cross in a
 // bowtie of plazas between 42nd Street at the back and Duffy Square at the
 // front.
-export function timesSquareSpread() {
+export function timesSquareSpread(first: number) {
   const m = new MapSheet(57)
   const { c } = m
   const sixth = -7.0
@@ -946,13 +946,13 @@ export function timesSquareSpread() {
   m.label('Theater District', 4.6, 2.9, 0.14, 0, { italic: true, spacing: 2 })
   m.cartouche(-4.6, 4.5, 'Times Square', '· the crossroads of the world ·')
   m.compass(6.6, 4.45, Math.PI)
-  return m.finish(['20', '21'])
+  return m.finish([String(first), String(first + 1)])
 }
 
 // ---------------------------------------------------------------------------
 // Lower Manhattan from the harbour: the island narrows to the Battery at the
 // front, the Hudson on the left, the East River on the right.
-export function lowerManhattanSpread() {
+export function lowerManhattanSpread(first: number) {
   const m = new MapSheet(63)
   const { c } = m
   // The island: shores running front to back, curving in to the tip.
@@ -1078,14 +1078,14 @@ export function lowerManhattanSpread() {
   m.label('to Staten Island', 2.6, 4.35, 0.09, 0, { italic: true, spacing: 1 })
   m.cartouche(-4.6, 4.5, 'Lower Manhattan', '· where the city began ·')
   m.compass(6.6, 4.45)
-  return m.finish(['22', '23'])
+  return m.finish([String(first), String(first + 1)])
 }
 
 // ---------------------------------------------------------------------------
 // Midtown, looking north up Fifth Avenue: Rockefeller Center and Radio City
 // on the left, St. Patrick's across the avenue, Grand Central on Park
 // Avenue and the library at 42nd Street.
-export function midtownSpread() {
+export function midtownSpread(first: number) {
   const m = new MapSheet(71)
   const { c } = m
   const avenues: [number, string][] = [
@@ -1148,7 +1148,7 @@ export function midtownSpread() {
   m.label('M I D T O W N', 2.4, 3.3, 0.22, 0, { spacing: 10 })
   m.cartouche(-4.6, 4.5, 'Midtown', '· the heart of the city ·')
   m.compass(6.6, 4.45)
-  return m.finish(['24', '25'])
+  return m.finish([String(first), String(first + 1)])
 }
 
 // ---------------------------------------------------------------------------

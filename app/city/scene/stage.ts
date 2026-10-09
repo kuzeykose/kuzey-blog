@@ -7,7 +7,8 @@ import { PARK } from './pieces-park'
 import { TIMES } from './pieces-times'
 import { LOWER } from './pieces-lower'
 import { MIDTOWN } from './pieces-midtown'
-import { buildBook, Book } from './book'
+import { buildBook, Book, Sheet } from './book'
+import { PAGES, pageNumber } from '../contents'
 import { canvasTexture, groundMaterial, paperMaterials, shared } from './materials'
 import { PageCurl } from './bend'
 import { Ground, Weather, WeatherFx } from './weather'
@@ -91,15 +92,16 @@ const riseStart = (order: number) => TURN + 0.02 + order * 0.4
 const PAGE_TIME = 4.2
 const FOLD_END = 0.3
 const LAND = 0.7
-// The spreads, in page order: their pop-ups and their printed map.
-const SPREADS = [
-  { pieces: PIECES, sheet: manhattanSpread },
-  { pieces: BROOKLYN, sheet: brooklynSpread },
-  { pieces: PARK, sheet: centralParkSpread },
-  { pieces: TIMES, sheet: timesSquareSpread },
-  { pieces: LOWER, sheet: lowerManhattanSpread },
-  { pieces: MIDTOWN, sheet: midtownSpread },
-]
+// Each place's pop-ups and printed map; the contents decide the order.
+const PLACES: Record<string, { pieces: PieceDef[]; sheet: (first: number) => Sheet }> = {
+  Manhattan: { pieces: PIECES, sheet: manhattanSpread },
+  'Lower Manhattan': { pieces: LOWER, sheet: lowerManhattanSpread },
+  Midtown: { pieces: MIDTOWN, sheet: midtownSpread },
+  'Times Square': { pieces: TIMES, sheet: timesSquareSpread },
+  'Central Park': { pieces: PARK, sheet: centralParkSpread },
+  Brooklyn: { pieces: BROOKLYN, sheet: brooklynSpread },
+}
+const SPREADS = PAGES.map((name) => PLACES[name])
 
 const DAY = {
   bg: new THREE.Color('#ece3d2'),
@@ -173,9 +175,13 @@ export class CityStage {
   private petalKit: { petal: THREE.BufferGeometry; confetti: THREE.BufferGeometry; mat: THREE.Material } | null = null
   private tickers: { map: THREE.Texture; speed: number }[] = []
   private platform: { groups: THREE.Group[]; rise: number; start: number; eps: number; top: number } | null = null
-  // Which spread is showing (target) and how far the turn between them is.
+  // Which spread is showing (target), how far the turn between them is,
+  // and where the current turn started from.
   private page = 0
   private pageT = 0
+  private pageFrom = 0
+  // A spread picked while the book was opening or closing.
+  private pendingPage: number | null = null
   private disposables: { dispose: () => void }[] = []
 
   private openT = 0
@@ -317,7 +323,7 @@ export class CityStage {
 
   async build() {
     const aniso = Math.min(8, this.renderer.capabilities.getMaxAnisotropy())
-    this.book = buildBook(aniso, SPREADS.map((sp) => sp.sheet()))
+    this.book = buildBook(aniso, SPREADS.map((sp, i) => sp.sheet(pageNumber(i))))
     this.book.root.traverse((o) => {
       if ((o as THREE.Mesh).isMesh) this.pickables.push(o)
     })
@@ -337,22 +343,27 @@ export class CityStage {
     if (this.disposed) return
 
     const byId = new Map<string, Piece>()
-    const total = SPREADS.reduce((n, sp) => n + sp.pieces.length, 0)
-    for (let spread = 0; spread < SPREADS.length; spread++) {
-      for (const def of SPREADS[spread].pieces) {
-        const piece = this.buildPiece(
-          def,
-          aniso,
-          def.parent ? byId.get(def.parent) ?? null : null,
-          spread,
-          def.sameArtAs ? byId.get(def.sameArtAs) ?? null : null
-        )
-        byId.set(def.id, piece)
-        this.pieces.push(piece)
-        this.events.onProgress?.(this.pieces.length / (total + 1))
-        await nextFrame()
-        if (this.disposed) return
-      }
+    // Pieces that borrow another's art (and anything glued onto them) are
+    // cut last, so the art they borrow is ready whatever the page order.
+    const jobs = SPREADS.flatMap((sp, spread) => sp.pieces.map((def) => ({ def, spread })))
+    const borrowing = new Set<string>()
+    for (const { def } of jobs) {
+      if (def.sameArtAs || (def.parent && borrowing.has(def.parent))) borrowing.add(def.id)
+    }
+    const ordered = [...jobs.filter((j) => !borrowing.has(j.def.id)), ...jobs.filter((j) => borrowing.has(j.def.id))]
+    for (const { def, spread } of ordered) {
+      const piece = this.buildPiece(
+        def,
+        aniso,
+        def.parent ? byId.get(def.parent) ?? null : null,
+        spread,
+        def.sameArtAs ? byId.get(def.sameArtAs) ?? null : null
+      )
+      byId.set(def.id, piece)
+      this.pieces.push(piece)
+      this.events.onProgress?.(this.pieces.length / (jobs.length + 1))
+      await nextFrame()
+      if (this.disposed) return
     }
     this.buildPlatform(aniso)
     // Everything now glued to the left page curls with it.
@@ -622,6 +633,7 @@ export class CityStage {
       this.pendingOpen = open
       return
     }
+    if (!open) this.pendingPage = null
     if (this.openTarget === (open ? 1 : 0)) return
     this.openTarget = open ? 1 : 0
     if (open && this.openT === 0) {
@@ -634,10 +646,25 @@ export class CityStage {
     this.events.onOpenChange?.(open)
   }
 
-  // Turn to another spread; only while the book lies open.
+  // Go to a spread. A shut book opens straight at it (the leaves before
+  // it ride over with the cover); one that's opening or closing turns there
+  // once it lies open.
   setPage(page: number) {
     const next = Math.max(0, Math.min(SPREADS.length - 1, page))
-    if (!this.ready || this.openTarget !== 1 || this.openT < 1 || next === this.page) return
+    if (!this.ready) return
+    if (this.openTarget === 0 && this.openT === 0) {
+      this.page = this.pageT = this.pageFrom = next
+      this.events.onPageChange?.(next)
+      this.setOpen(true)
+      return
+    }
+    if (this.openTarget !== 1 || this.openT < 1) {
+      this.pendingPage = next
+      this.setOpen(true)
+      return
+    }
+    if (next === this.page) return
+    this.pageFrom = this.pageT
     this.page = next
     this.events.onPageChange?.(next)
   }
@@ -653,7 +680,7 @@ export class CityStage {
   // Skip any running transition (handy from the dev console).
   settle() {
     this.openT = this.openTarget
-    this.pageT = this.page
+    this.pageT = this.pageFrom = this.page
     this.nightT = this.nightTarget
     this.rainT = this.weather === 'rain' ? 1 : 0
     this.snowT = this.weather === 'snow' ? 1 : 0
@@ -917,13 +944,21 @@ export class CityStage {
 
     // Once the book is shut it starts again at the first spread.
     if (t === 0 && !opening && this.page !== 0) {
-      this.page = 0
-      this.pageT = 0
+      this.page = this.pageT = this.pageFrom = 0
       this.events.onPageChange?.(0)
     }
-    // Turning between spreads.
+    // A spread picked while it was opening or closing, now it lies open.
+    if (this.pendingPage !== null && opening && t === 1) {
+      const next = this.pendingPage
+      this.pendingPage = null
+      this.setPage(next)
+    }
+    // Turning between spreads. Flipping several pages at once races through
+    // the ones in between and slows down again to land.
+    const far = Math.abs(this.page - this.pageFrom) > 1
     if (this.pageT !== this.page) {
-      const step = dt / PAGE_TIME
+      const along = Math.min(Math.abs(this.pageT - this.pageFrom), Math.abs(this.page - this.pageT), 1)
+      const step = (dt / PAGE_TIME) * (far ? 1 + 5 * along : 1)
       this.pageT = this.page > this.pageT ? Math.min(this.page, this.pageT + step) : Math.max(this.page, this.pageT - step)
     }
     const forward = this.page > this.pageT
@@ -955,6 +990,8 @@ export class CityStage {
     // How far a spread's pop-ups stand while the pages turn: a spread being
     // left folds front to back, one being reached rises back to front.
     const gate = (spread: number, order: number) => {
+      // The spreads flipped past on the way stay folded flat.
+      if (far && spread !== this.page && Math.abs(spread - this.pageFrom) >= 0.5) return 0
       if (this.pageT >= spread) {
         return 1 - smooth(clamp01((this.pageT - spread - (1 - order) * 0.12) / (FOLD_END - 0.12)))
       }
