@@ -524,15 +524,20 @@ export class CityStage {
     const ctx = cv.getContext('2d')!
     const font = 'bold 44px Helvetica, Arial, sans-serif'
     ctx.font = font
-    const text = `${t.text}   `
-    cv.width = Math.min(4096, Math.ceil(ctx.measureText(text).width))
+    const runs: [string, string][] = [...(typeof t.text === 'string' ? [[t.text, '#ffb347'] as [string, string]] : t.text), ['   ', '#000']]
+    const widths = runs.map(([str]) => ctx.measureText(str).width)
+    cv.width = Math.min(4096, Math.ceil(widths.reduce((a, b) => a + b, 0)))
     cv.height = 64
     ctx.fillStyle = '#14141a'
     ctx.fillRect(0, 0, cv.width, cv.height)
     ctx.font = font
-    ctx.fillStyle = '#ffb347'
     ctx.textBaseline = 'middle'
-    ctx.fillText(text, 0, 34)
+    let at = 0
+    runs.forEach(([str, color], i) => {
+      ctx.fillStyle = color
+      ctx.fillText(str, at, 34)
+      at += widths[i]
+    })
     const map = new THREE.CanvasTexture(cv)
     map.colorSpace = THREE.SRGBColorSpace
     map.wrapS = THREE.RepeatWrapping
@@ -1064,6 +1069,10 @@ export class CityStage {
         p.spin.vel += (idle - p.spin.vel) * Math.min(1, dt * 0.5)
         p.spin.angle += p.spin.vel * dt
         for (const h of p.halves) h.bob.rotation.z = p.spin.angle
+      }
+      if (p.def.whirl) {
+        const turn = this.reduced ? 1 : Math.cos(time * p.def.whirl)
+        for (const h of p.halves) h.poke.scale.x = turn
       }
       if (p.run) this.scurry(p, dt, time)
       if (p.twirl) {

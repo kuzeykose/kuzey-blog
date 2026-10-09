@@ -3,18 +3,40 @@ import { skyBackdrop, oneWorldTrade } from './art-landmarks'
 import { cloud, commuters, streetLamp } from './art-street'
 import { seagull } from './art-brooklyn'
 import {
+  BOARD,
+  ROTOR,
   castleClinton,
   chargingBull,
   downtownSkyline,
   eightSpruce,
   fearlessGirl,
+  heliRotor,
+  helicopter,
+  memorial,
   oculus,
   statenFerry,
+  stockBoard,
   stockExchange,
   tallShip,
   trinityChurch,
   woolworth,
 } from './art-lower'
+
+// Quotes for the stock board: symbol, price, change.
+const QUOTES: [string, number, number][] = [
+  ['BAGL', 4.2, 0.35],
+  ['SLCE', 1.0, 0.05],
+  ['CABS', 7.85, -0.42],
+  ['DELI', 12.4, 0.9],
+  ['RATS', 0.25, -0.03],
+  ['BODG', 3.5, 0.21],
+  ['HTDG', 2.75, 0.15],
+  ['PRTZ', 2.0, -0.12],
+  ['LOX', 18.6, 1.1],
+  ['MTRO', 2.9, -0.08],
+]
+
+const HELI = { x: -4.1, y: 4.75 }
 
 // The fifth spread: Lower Manhattan, seen from the harbour looking north.
 export const LOWER: PieceDef[] = [
@@ -52,6 +74,38 @@ export const LOWER: PieceDef[] = [
     sky: true,
   },
   {
+    id: 'lm-heli',
+    label: 'A sightseeing helicopter over the harbor',
+    art: helicopter,
+    w: 1.5,
+    h: 0.72,
+    x: HELI.x,
+    z: 0,
+    parent: 'lm-sky',
+    offset: [HELI.x, HELI.y, 0.24],
+    order: 0,
+    seed: 5103,
+    padBottom: true,
+    glow: true,
+    bob: { amp: 0.07, speed: 1.4, sway: 0.035 },
+    poke: 'lift',
+  },
+  {
+    id: 'lm-rotor',
+    label: 'A sightseeing helicopter over the harbor',
+    art: heliRotor,
+    w: 1.7,
+    h: 0.12,
+    x: HELI.x + ROTOR.x - 0.75,
+    z: 0,
+    parent: 'lm-heli',
+    offset: [ROTOR.x - 0.75, ROTOR.y - 0.06, 0.02],
+    order: 0,
+    seed: 5104,
+    padBottom: true,
+    whirl: 11,
+  },
+  {
     id: 'lm-skyline',
     label: 'The Financial District',
     art: downtownSkyline,
@@ -76,6 +130,18 @@ export const LOWER: PieceDef[] = [
     seed: 5202,
     glow: true,
     poke: 'tilt',
+  },
+  {
+    id: 'lm-memorial',
+    label: 'The 9/11 Memorial: two pools where the towers stood',
+    art: memorial,
+    w: 1.9,
+    h: 1.02,
+    x: -4.85,
+    z: -2.45,
+    order: 0.17,
+    seed: 5216,
+    glow: true,
   },
   {
     id: 'lm-oculus',
@@ -143,6 +209,28 @@ export const LOWER: PieceDef[] = [
     seed: 5207,
     glow: true,
     poke: 'tilt',
+  },
+  {
+    id: 'lm-board',
+    label: 'The stock board on Broad Street',
+    art: stockBoard,
+    w: 1.6,
+    h: 1.05,
+    x: 5.35,
+    z: -0.45,
+    order: 0.4,
+    seed: 5217,
+    glow: true,
+    poke: 'tilt',
+    ticker: {
+      text: QUOTES.map(([sym, price, change]): [string, string] => [
+        `${sym} ${price.toFixed(2)} ${change >= 0 ? '▲' : '▼'}${Math.abs(change).toFixed(2)}   `,
+        change >= 0 ? '#5fe08a' : '#ff6b6b',
+      ]),
+      at: [BOARD.x, BOARD.y],
+      w: BOARD.w,
+      h: BOARD.h,
+    },
   },
   {
     id: 'lm-lamp',

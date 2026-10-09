@@ -1,4 +1,4 @@
-import { INK, Pt, Shape, Sketch, rgba, shade } from './sketch'
+import { INK, Pt, Shape, Sketch, rgba, shade, tint } from './sketch'
 import { C } from './palette'
 import { Part, paint, pts } from './art-common'
 import { blobs, person } from './art-street'
@@ -869,4 +869,290 @@ export function squirrel(s: Sketch) {
     0.04
   )
   for (const x of [0.26, 0.38]) s.fill(s.ellipse(x, 0.04, 0.035, 0.018), shade(fur, -0.15))
+}
+
+// ---------------------------------------------------------------------------
+// The Metropolitan Museum of Art on Fifth Avenue: paired columns topped by
+// the stone blocks that were never carved, banners in the great arches, and
+// the steps everyone sits on.
+
+export function metMuseum(s: Sketch) {
+  const W = s.w
+  const stone = '#e6dcc6'
+  const L = 0.78
+  const R = W - 0.78
+  const centre = s.rect(L, 0.18, R - L, 1.04, 0.003)
+  const attic = s.rect(L - 0.04, 1.22, R - L + 0.08, 0.14, 0.002)
+  const wings = [s.rect(0.08, 0.18, L - 0.06, 0.76, 0.003), s.rect(R - 0.02, 0.18, W - 0.08 - R + 0.02, 0.76, 0.003)]
+  const arches = [0, 1, 2].map((k) => {
+    const x = L + 0.17 + k * ((R - L - 0.34) / 3) + 0.04
+    const w = (R - L - 0.34) / 3 - 0.08
+    return {
+      x,
+      w,
+      shape: s.custom(
+        (p) => {
+          p.moveTo(x, 0.22)
+          p.lineTo(x, 0.98 - w / 2)
+          p.arc(x + w / 2, 0.98 - w / 2, w / 2, Math.PI, 0, true)
+          p.lineTo(x + w, 0.22)
+          p.closePath()
+        },
+        pts(x, 0.22, x + w, 0.98)
+      ),
+    }
+  })
+  const pairs = [L + 0.06, ...arches.slice(1).map((a) => a.x - 0.1), R - 0.17]
+  const steps = [0, 1, 2, 3].map((k) => s.rect(0.32 + k * 0.05, k * 0.05, W - 0.64 - k * 0.1, 0.05, 0.001))
+  const banners = ['#b8323a', '#2f4f8a', '#c9902f']
+  paint(s, [
+    ...wings.map((shape) => ({
+      shape,
+      color: tint(stone, -0.04),
+      ink: 0.018,
+      detail: () => {
+        s.windows(shape.minX + 0.1, 0.32, 2, 2, 0.14, 0.2, 0.14, 0.12, { color: '#55606c', lit: 0.8, arch: true, litColor: '#a8803a' })
+        s.fill(s.rect(shape.minX, 0.86, shape.maxX - shape.minX, 0.08, 0), tint(stone, -0.12))
+      },
+    })),
+    {
+      shape: centre,
+      color: stone,
+      ink: 0.02,
+      detail: () => {
+        arches.forEach(({ x, w, shape }, k) => {
+          s.fill(shape, '#5a6672')
+          s.glow(shape, '#7a5a30')
+          // Glazing bars, and the doors at the foot.
+          for (let y = 0.6; y < 0.95; y += 0.14) {
+            s.line([[x, y], [x + w, y]], 0.008, rgba(INK, 0.5), 0)
+            s.glow(s.rect(x, y - 0.006, w, 0.012, 0), '#000')
+          }
+          const doors = s.rect(x + w * 0.2, 0.22, w * 0.6, 0.24, 0)
+          s.fill(doors, '#3a2c26')
+          s.glow(doors, '#ffc873')
+          // The banner for the big show, hung in the arch.
+          const banner = s.rect(x + w * 0.22, 0.52, w * 0.56, 0.42, 0)
+          s.fill(banner, banners[k])
+          s.glow(banner, '#000')
+          s.fill(s.rect(x + w * 0.22, 0.86, w * 0.56, 0.025, 0), '#f4f1ea')
+          if (k === 1) {
+            s.text('THE', x + w / 2, 0.74, 0.05, { color: '#f4f1ea', font: 'Helvetica, Arial, sans-serif' })
+            s.text('MET', x + w / 2, 0.66, 0.07, { color: '#f4f1ea', font: 'Helvetica, Arial, sans-serif' })
+          }
+        })
+        // Paired columns between the arches.
+        pairs.forEach((px) => {
+          for (const dx of [0, 0.07]) {
+            s.fill(s.rect(px + dx, 0.22, 0.05, 0.92, 0), tint(stone, 0.06))
+            s.line([[px + dx, 0.22], [px + dx, 1.14]], 0.006, rgba(INK, 0.4), 0)
+            s.line([[px + dx + 0.05, 0.22], [px + dx + 0.05, 1.14]], 0.006, rgba(INK, 0.4), 0)
+            s.fill(s.rect(px + dx - 0.01, 1.1, 0.07, 0.04, 0), tint(stone, -0.1))
+          }
+        })
+        s.fill(s.rect(L, 1.14, R - L, 0.08, 0), tint(stone, -0.08))
+      },
+    },
+    { shape: attic, color: tint(stone, -0.03), ink: 0.016 },
+    ...steps.map((shape) => ({ shape, color: tint(stone, 0.04), ink: 0.01 })),
+  ])
+  // The uncarved blocks, still waiting for their sculptures.
+  for (const px of pairs) {
+    const block = s.rect(px - 0.02, 1.36, 0.16, 0.2, 0.001)
+    s.border([block], 0.04)
+    s.wash(block, tint(stone, -0.06))
+    s.ink(block, 0.012)
+  }
+  // Visitors on the steps.
+  for (const [x, c] of [
+    [0.55, '#c8202f'],
+    [0.95, '#2f4566'],
+    [W - 0.75, '#e6bb4c'],
+  ] as [number, string][]) {
+    const body = s.rect(x - 0.03, 0.18, 0.06, 0.1, 0)
+    s.fill(body, c)
+    s.fill(s.ellipse(x, 0.31, 0.025, 0.025), C.skin)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Runners on the Reservoir loop, mid-stride. Face right.
+
+type Runner = { top: string; legs: string; shorts?: string; skin: string; hair: string; shoes: string; pony?: boolean; band?: string }
+
+function limb(s: Sketch, a: Pt, b: Pt, w0: number, w1 = w0): Shape {
+  const dx = b[0] - a[0]
+  const dy = b[1] - a[1]
+  const l = Math.hypot(dx, dy) || 1
+  const nx = -dy / l
+  const ny = dx / l
+  return s.poly(
+    [
+      [a[0] + nx * w0, a[1] + ny * w0],
+      [b[0] + nx * w1, b[1] + ny * w1],
+      [b[0] - nx * w1, b[1] - ny * w1],
+      [a[0] - nx * w0, a[1] - ny * w0],
+    ],
+    0.001
+  )
+}
+
+function runner(s: Sketch, x: number, H: number, o: Runner): Part[] {
+  const P = (dx: number, y: number): Pt => [x + dx * H, y * H]
+  const hip = P(0, 0.5)
+  const sh = P(0.07, 0.8)
+  const legW = 0.038 * H
+  const thigh = o.shorts ? o.skin : o.legs
+  const parts: Part[] = []
+  const leg = (knee: Pt, foot: Pt, shade_: number) => {
+    const c = tint(thigh, shade_)
+    parts.push({ shape: limb(s, hip, knee, legW * 1.15, legW), color: c, ink: 0.01 })
+    parts.push({ shape: limb(s, knee, foot, legW, legW * 0.8), color: o.shorts ? tint(o.skin, shade_) : tint(o.legs, shade_), ink: 0.01 })
+    parts.push({ shape: s.ellipse(foot[0] + 0.03 * H, foot[1] - 0.005 * H, 0.055 * H, 0.025 * H, Math.atan2(foot[1] - knee[1], foot[0] - knee[0]) + Math.PI / 2), color: o.shoes, ink: 0.008 })
+  }
+  const arm = (elbow: Pt, hand: Pt, shade_: number) => {
+    parts.push({ shape: limb(s, sh, elbow, 0.03 * H, 0.026 * H), color: tint(o.skin, shade_), ink: 0.01 })
+    parts.push({ shape: limb(s, elbow, hand, 0.026 * H, 0.022 * H), color: tint(o.skin, shade_), ink: 0.01 })
+  }
+  // Far side first: the back arm and the kicking leg.
+  arm(P(-0.09, 0.64), P(-0.02, 0.56), -0.12)
+  leg(P(-0.1, 0.27), P(-0.27, 0.2), -0.1)
+  const torso = s.poly([P(-0.08, 0.5), P(0.08, 0.5), P(0.16, 0.8), P(-0.01, 0.83)], 0.002)
+  parts.push({ shape: torso, color: o.top, ink: 0.014, hatch: { angle: 1.1, gap: 0.03, alpha: 0.15 } })
+  if (o.shorts) parts.push({ shape: s.poly([P(-0.085, 0.4), P(0.1, 0.4), P(0.085, 0.52), P(-0.08, 0.52)], 0.001), color: o.shorts, ink: 0.01 })
+  leg(P(0.18, 0.32), P(0.14, 0.04), 0)
+  arm(P(0.17, 0.66), P(0.27, 0.77), 0)
+  const head = s.ellipse(...P(0.11, 0.92), 0.075 * H, 0.08 * H)
+  if (o.pony) {
+    const pony = s.custom(
+      (p) => {
+        const [hx, hy] = P(0.04, 0.96)
+        p.moveTo(hx, hy)
+        p.quadraticCurveTo(hx - 0.14 * H, hy + 0.04 * H, hx - 0.2 * H, hy - 0.06 * H)
+        p.quadraticCurveTo(hx - 0.1 * H, hy - 0.02 * H, hx + 0.01 * H, hy - 0.05 * H)
+        p.closePath()
+      },
+      [P(-0.16, 0.9), P(0.05, 1.0)]
+    )
+    parts.push({ shape: pony, color: o.hair, ink: 0.01 })
+  }
+  parts.push({
+    shape: head,
+    color: o.skin,
+    ink: 0.012,
+    detail: () => {
+      const [ex, ey] = P(0.15, 0.93)
+      s.fill(s.ellipse(ex, ey, 0.008 * H, 0.01 * H), INK)
+      s.fill(s.ellipse(ex - 0.02 * H, ey - 0.03 * H, 0.016 * H, 0.01 * H), '#e48f7c', 0.6)
+    },
+  })
+  parts.push({
+    shape: s.custom(
+      (p) => {
+        const [hx, hy] = P(0.11, 0.93)
+        p.arc(hx, hy, 0.081 * H, 0.35, Math.PI + 0.25, false)
+        p.closePath()
+      },
+      [P(0.03, 0.92), P(0.19, 1.01)]
+    ),
+    color: o.hair,
+    ink: 0.01,
+  })
+  if (o.band) parts.push({ shape: limb(s, P(0.04, 0.955), P(0.18, 0.965), 0.012 * H), color: o.band, ink: 0.006 })
+  return parts
+}
+
+export function runners(s: Sketch) {
+  paint(
+    s,
+    [
+      ...runner(s, 0.36, 1.04, { top: '#e8587a', legs: '#2b2733', skin: C.skin, hair: '#7a3d22', shoes: '#f4f1ea', pony: true }),
+      ...runner(s, 0.96, 1.12, { top: '#3f6fb0', legs: '#2b2733', shorts: '#55565e', skin: '#8d5a3c', hair: '#1f1a18', shoes: '#f0cf6a', band: C.red }),
+    ],
+    0.045
+  )
+}
+
+// ---------------------------------------------------------------------------
+// A Citi Bike on the park drive: the blue step-through frame, chunky
+// fenders and the rack up front.
+
+export function citiBike(s: Sketch) {
+  const blue = '#1f6fb5'
+  const r = 0.24
+  const back: Pt = [0.3, r + 0.02]
+  const front: Pt = [1.2, r + 0.02]
+  for (const c of [back, front]) {
+    const ring: Pt[] = []
+    for (let k = 0; k <= 36; k++) ring.push([c[0] + Math.cos((k / 36) * Math.PI * 2) * r, c[1] + Math.sin((k / 36) * Math.PI * 2) * r])
+    s.strip(ring, 0.05, 0.035, '#2c2a30')
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI
+      s.line([[c[0] - Math.cos(a) * r, c[1] - Math.sin(a) * r], [c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r]], 0.006, rgba(INK, 0.55), 0)
+    }
+    // A fender over the top.
+    const fender: Pt[] = []
+    for (let k = 0; k <= 12; k++) {
+      const a = 0.25 + (k / 12) * (Math.PI - 0.5)
+      fender.push([c[0] + Math.cos(a) * (r + 0.05), c[1] + Math.sin(a) * (r + 0.05)])
+    }
+    s.strip(fender, 0.035, 0.03, blue)
+  }
+  const crank: Pt = [0.68, 0.24]
+  const seat: Pt = [0.56, 0.74]
+  const head: Pt = [1.06, 0.74]
+  // The low swooping step-through tube, the seat post and the fork.
+  s.strip([head, [0.9, 0.42], crank], 0.06, 0.035, blue)
+  s.strip([crank, [0.6, 0.6], seat], 0.05, 0.035, blue)
+  s.strip([back, crank], 0.03, 0.03, blue)
+  s.strip([back, [0.6, 0.6]], 0.025, 0.03, blue)
+  s.strip([head, front], 0.04, 0.03, blue)
+  s.strip([head, [1.02, 0.9], [1.12, 0.92]], 0.03, 0.03, '#2c2a30')
+  // The front rack, with a bag of groceries in it.
+  const rack = s.rect(1.14, 0.66, 0.3, 0.06, 0.001)
+  const bag = s.poly(pts(1.18, 0.72, 1.4, 0.72, 1.38, 0.92, 1.2, 0.92), 0.002)
+  const lamp = s.ellipse(1.15, 0.6, 0.035, 0.03)
+  // The rider, sitting up tall.
+  const hip: Pt = [0.6, 0.8]
+  const torso = s.poly(pts(0.52, 0.8, 0.7, 0.8, 0.8, 1.2, 0.62, 1.22), 0.002)
+  const thigh = limb(s, hip, [0.84, 0.66], 0.045, 0.04)
+  const shin = limb(s, [0.84, 0.66], [0.74, 0.3], 0.04, 0.032)
+  const farThigh = limb(s, hip, [0.76, 0.6], 0.045, 0.04)
+  const farShin = limb(s, [0.76, 0.6], [0.62, 0.2], 0.04, 0.032)
+  const arm = limb(s, [0.74, 1.15], [1.08, 0.92], 0.035, 0.028)
+  const headShape = s.ellipse(0.78, 1.32, 0.09, 0.095)
+  const helmet = s.custom((p) => p.arc(0.78, 1.34, 0.1, -0.1, Math.PI + 0.1, false), pts(0.68, 1.34, 0.88, 1.45))
+  paint(s, [
+    { shape: farThigh, color: tint('#2f4566', -0.15), ink: 0.01 },
+    { shape: farShin, color: tint('#2f4566', -0.15), ink: 0.01 },
+    { shape: s.ellipse(0.64, 0.2, 0.06, 0.025), color: '#2b2522', ink: 0.008 },
+    { shape: rack, color: '#2c2a30', ink: 0.01 },
+    {
+      shape: bag,
+      color: '#c9a77a',
+      ink: 0.01,
+      detail: () => {
+        s.fill(s.ellipse(1.25, 0.93, 0.05, 0.04), '#6fa84a')
+        s.fill(s.rect(1.32, 0.9, 0.025, 0.12, 0), '#e8d9a8')
+      },
+    },
+    { shape: lamp, color: '#f4f1ea', ink: 0.008, detail: () => s.glow(lamp, '#fff1c4') },
+    { shape: s.rect(0.48, 0.74, 0.18, 0.05, 0.001), color: '#2c2a30', ink: 0.008 },
+    { shape: torso, color: '#e2a03c', ink: 0.014, hatch: { angle: 0.7, gap: 0.03, alpha: 0.15 } },
+    { shape: thigh, color: '#2f4566', ink: 0.01 },
+    { shape: shin, color: '#2f4566', ink: 0.01 },
+    { shape: s.ellipse(0.77, 0.29, 0.06, 0.025), color: '#2b2522', ink: 0.008 },
+    { shape: arm, color: tint('#e2a03c', -0.08), ink: 0.01 },
+    { shape: s.ellipse(1.08, 0.92, 0.025, 0.025), color: C.skin, ink: 0.008 },
+    {
+      shape: headShape,
+      color: C.skin,
+      ink: 0.012,
+      detail: () => {
+        s.fill(s.ellipse(0.83, 1.32, 0.01, 0.012), INK)
+        s.fill(s.ellipse(0.8, 1.28, 0.02, 0.012), '#e48f7c', 0.6)
+      },
+    },
+    { shape: helmet, color: '#f4f1ea', ink: 0.01, detail: () => s.fill(s.rect(0.7, 1.36, 0.16, 0.02, 0), blue) },
+  ])
 }

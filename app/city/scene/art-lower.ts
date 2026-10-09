@@ -1,6 +1,7 @@
 import { INK, Pt, Shape, Sketch, rgba, shade } from './sketch'
 import { C } from './palette'
 import { Part, paint, pts } from './art-common'
+import { blobs } from './art-street'
 
 // Art for the Lower Manhattan spread, seen from the harbour looking north.
 
@@ -609,4 +610,249 @@ export function tallShip(s: Sketch) {
   s.strip([[0.12, 0.45], [0.12, 0.85]], 0.012, 0.02)
   s.fill(flag, C.red)
   s.ink(flag, 0.006)
+}
+
+// ---------------------------------------------------------------------------
+// A sightseeing helicopter out over the harbour. Faces right; its main rotor
+// is a strip of its own that turns.
+
+export const ROTOR = { x: 0.88, y: 0.68 }
+
+export function helicopter(s: Sketch) {
+  const red = '#c8302f'
+  const cream = '#f6f0e2'
+  // Skids on their struts.
+  for (const x of [0.66, 1.06]) s.strip([[x, 0.06], [x + 0.04, 0.22]], 0.018, 0.03, '#3a3a40')
+  s.strip([[0.48, 0.06], [1.22, 0.06], [1.32, 0.12]], 0.024, 0.035, '#3a3a40')
+  const disc = s.ellipse(0.13, 0.5, 0.12, 0.12)
+  const fin = s.poly(pts(0.05, 0.42, 0.22, 0.43, 0.13, 0.62, 0.06, 0.62), 0.001)
+  const boom = s.poly(pts(0.12, 0.43, 0.68, 0.36, 0.68, 0.47, 0.12, 0.48), 0.001)
+  const cabin = s.custom(
+    (p) => {
+      p.moveTo(0.6, 0.3)
+      p.quadraticCurveTo(0.58, 0.54, 0.82, 0.57)
+      p.lineTo(1.04, 0.57)
+      p.quadraticCurveTo(1.4, 0.53, 1.43, 0.3)
+      p.quadraticCurveTo(1.39, 0.19, 1.16, 0.19)
+      p.lineTo(0.74, 0.19)
+      p.quadraticCurveTo(0.6, 0.2, 0.6, 0.3)
+      p.closePath()
+    },
+    pts(0.58, 0.19, 1.43, 0.57)
+  )
+  const canopy = s.custom(
+    (p) => {
+      p.moveTo(1.08, 0.54)
+      p.quadraticCurveTo(1.36, 0.5, 1.4, 0.32)
+      p.lineTo(1.1, 0.32)
+      p.closePath()
+    },
+    pts(1.08, 0.32, 1.4, 0.54)
+  )
+  const side = s.rect(0.78, 0.33, 0.24, 0.15, 0.001)
+  const cowl = s.poly(pts(0.72, 0.56, 1.0, 0.56, 0.96, 0.64, 0.78, 0.64), 0.001)
+  const c = s.ctx
+  paint(s, [
+    {
+      // The tail rotor is a blur.
+      shape: disc,
+      color: 'rgba(120,130,140,0.16)',
+      flat: true,
+      ink: 0.006,
+      detail: () => {
+        for (const a of [0.3, 2.4, 4.4]) {
+          c.save()
+          c.strokeStyle = rgba(INK, 0.35)
+          c.lineWidth = 0.008
+          c.beginPath()
+          c.arc(0.13, 0.5, 0.09, a, a + 1.1)
+          c.stroke()
+          c.restore()
+        }
+      },
+    },
+    { shape: fin, color: red, ink: 0.012 },
+    { shape: boom, color: red, ink: 0.014, detail: () => s.fill(s.poly(pts(0.12, 0.445, 0.68, 0.4, 0.68, 0.425, 0.12, 0.465), 0), cream) },
+    { shape: cowl, color: '#d9d4c8', ink: 0.012 },
+    {
+      shape: cabin,
+      color: red,
+      ink: 0.018,
+      detail: () => {
+        c.save()
+        c.clip(cabin.path)
+        c.fillStyle = cream
+        c.fillRect(0.58, 0.25, 0.9, 0.05)
+        c.restore()
+        s.text('NYC', 0.7, 0.2, 0.05, { color: cream, font: 'Helvetica, Arial, sans-serif' })
+      },
+    },
+    {
+      shape: canopy,
+      color: '#9fc9e6',
+      ink: 0.012,
+      detail: () => {
+        s.glow(canopy, '#c9a35c')
+        s.line([[1.14, 0.48], [1.26, 0.48]], 0.012, 'rgba(255,255,255,0.7)', 0)
+      },
+    },
+    {
+      shape: side,
+      color: '#9fc9e6',
+      ink: 0.01,
+      detail: () => {
+        s.glow(side, '#c9a35c')
+        // Sightseers at the window.
+        for (const x of [0.84, 0.95]) s.fill(s.ellipse(x, 0.39, 0.03, 0.035), C.skin)
+      },
+    },
+  ])
+  // The mast up to the rotor hub, and the beacons.
+  s.strip([[ROTOR.x, 0.62], [ROTOR.x, ROTOR.y]], 0.03, 0.03, '#3a3a40')
+  for (const [x, y, color] of [
+    [0.08, 0.64, '#ff4b3a'],
+    [1.32, 0.22, '#5fe08a'],
+  ] as [number, number, string][]) {
+    const light = s.ellipse(x, y, 0.022, 0.022)
+    s.fill(light, color)
+    s.glow(light, color)
+  }
+}
+
+export function heliRotor(s: Sketch) {
+  const W = s.w
+  const blade = s.poly(pts(0.02, 0.045, W / 2, 0.035, W - 0.02, 0.045, W - 0.02, 0.075, W / 2, 0.085, 0.02, 0.075), 0.001)
+  const hub = s.ellipse(W / 2, 0.06, 0.05, 0.035)
+  paint(
+    s,
+    [
+      { shape: blade, color: '#3a3a40', ink: 0.01 },
+      { shape: hub, color: '#8d979e', ink: 0.01 },
+    ],
+    0.04
+  )
+}
+
+// ---------------------------------------------------------------------------
+// A stock board on the corner of Wall and Broad: the day's numbers, and a
+// strip of quotes ticking past underneath (added by the stage).
+
+export const BOARD = { x: 0.8, y: 0.59, w: 1.36, h: 0.15 }
+
+export function stockBoard(s: Sketch) {
+  const W = s.w
+  const frame = s.rect(0.05, 0.44, W - 0.1, 0.6, 0.002)
+  const screen = s.rect(0.11, 0.5, W - 0.22, 0.48, 0)
+  for (const x of [0.32, W - 0.32]) s.strip([[x, 0], [x, 0.46]], 0.04, 0.04, '#55565e')
+  paint(s, [
+    {
+      shape: frame,
+      color: '#6b6f78',
+      ink: 0.018,
+      detail: () => {
+        s.fill(screen, '#14141a')
+        s.glow(screen, '#000')
+        s.text('NYSE', 0.2, 0.86, 0.07, { color: '#f4f1ea', glow: '#c8c4bb', align: 'left', font: 'Helvetica, Arial, sans-serif' })
+        s.text('DOW', 0.2, 0.75, 0.055, { color: '#c8c4bb', glow: '#8d8a84', align: 'left', font: 'Helvetica, Arial, sans-serif' })
+        s.text('▲ 1.27%', W - 0.17, 0.86, 0.07, { color: '#5fe08a', glow: '#5fe08a', align: 'right', font: 'Helvetica, Arial, sans-serif' })
+        // The day so far, mostly up.
+        const line: Pt[] = []
+        for (let k = 0; k <= 16; k++) {
+          const t = k / 16
+          line.push([0.55 + t * 0.5, 0.71 + t * 0.15 + Math.sin(k * 1.9) * 0.025])
+        }
+        s.line(line, 0.012, '#5fe08a', 0)
+        const g = s.glowCtx
+        if (g) {
+          g.strokeStyle = '#5fe08a'
+          g.lineWidth = 0.014
+          g.beginPath()
+          line.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)))
+          g.stroke()
+        }
+      },
+    },
+  ])
+}
+
+// ---------------------------------------------------------------------------
+// The 9/11 Memorial: two pools where the towers stood, water falling into
+// the void, the names along the bronze parapets, swamp white oaks round them.
+
+export function memorial(s: Sketch) {
+  const W = s.w
+  const granite = '#5d6670'
+  const bronze = '#4a3b2c'
+  for (const [x, top, r] of [
+    [0.16, 0.8, 0.15],
+    [0.58, 0.85, 0.14],
+    [0.95, 0.81, 0.16],
+    [1.32, 0.86, 0.14],
+    [1.74, 0.8, 0.15],
+  ] as [number, number, number][]) {
+    s.strip([[x, 0.3], [x, top - r * 0.5]], 0.03, 0.04, '#5a4434')
+    blobs(s, [[x, top, r], [x - r * 0.62, top - r * 0.38, r * 0.68], [x + r * 0.62, top - r * 0.32, r * 0.7]], '#6f9a55', 'rgba(40,70,30,0.5)', 0.02)
+  }
+  const glowLine = (a: Pt, b: Pt, color: string) => {
+    const g = s.glowCtx
+    if (!g) return
+    g.strokeStyle = color
+    g.lineWidth = 0.008
+    g.beginPath()
+    g.moveTo(a[0], a[1])
+    g.lineTo(b[0], b[1])
+    g.stroke()
+  }
+  const pools = [0.1, 1.0].map((x0) => ({ x0, w: 0.8 }))
+  paint(s, [
+    { shape: s.rect(0.02, 0, W - 0.04, 0.05, 0), color: '#c9c4ba', ink: 0.01 },
+    ...pools.flatMap(({ x0, w }): Part[] => {
+      const wall = s.rect(x0, 0.1, w, 0.32, 0.002)
+      const parapet = s.rect(x0 - 0.04, 0, w + 0.08, 0.14, 0.002)
+      return [
+        {
+          shape: wall,
+          color: granite,
+          ink: 0.014,
+          detail: () => {
+            s.glow(wall, '#26333c')
+            // Water sheeting down every side, then on into the square
+            // void in the middle.
+            for (let x = x0 + 0.02; x < x0 + w - 0.01; x += 0.022) {
+              const a: Pt = [x, 0.42]
+              const b: Pt = [x + s.r(-0.004, 0.004), 0.42 - s.r(0.17, 0.24)]
+              s.line([a, b], 0.006, 'rgba(240,248,252,0.75)', 0)
+              glowLine(a, b, '#a8c4d4')
+            }
+            s.fill(s.rect(x0, 0.4, w, 0.025, 0), 'rgba(255,255,255,0.6)')
+            const hole = s.rect(x0 + w * 0.34, 0.1, w * 0.32, 0.09, 0)
+            s.fill(hole, '#1c252c')
+            s.glow(hole, '#000')
+          },
+        },
+        {
+          shape: parapet,
+          color: bronze,
+          ink: 0.014,
+          detail: () => {
+            // The names, cut through the bronze and lit from behind at night.
+            for (const y of [0.035, 0.07, 0.105]) {
+              for (let x = x0; x < x0 + w - 0.02; x += s.r(0.035, 0.06)) {
+                const a: Pt = [x, y]
+                const b: Pt = [x + s.r(0.018, 0.032), y]
+                s.line([a, b], 0.007, 'rgba(230,205,160,0.55)', 0)
+                glowLine(a, b, '#8a6a32')
+              }
+            }
+            // A white rose left in a name.
+            const rx = x0 + w * (x0 < 0.5 ? 0.7 : 0.3)
+            s.line([[rx, 0.08], [rx + 0.01, 0.14]], 0.008, '#4f7a3a', 0)
+            const rose = s.ellipse(rx + 0.012, 0.15, 0.02, 0.017)
+            s.fill(rose, '#ffffff')
+            s.ink(rose, 0.005)
+          },
+        },
+      ]
+    }),
+  ])
 }

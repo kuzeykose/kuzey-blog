@@ -27,15 +27,15 @@ vec3 bendPoint( vec3 p, out float ang ) {
 }
 `
 
-// Replaces <project_vertex>: bend the world position (and, unless DEPTH,
-// turn the normal with the paper).
+// Replaces <project_vertex>: bend the world position (and, for lit
+// materials, turn the normal with the paper).
 const PROJECT = /* glsl */ `
 vec4 bentWorld = modelMatrix * vec4( transformed, 1.0 );
 {
   float ang;
   vec3 bp = bendPoint( ( uPivotInv * bentWorld ).xyz, ang );
   bentWorld = uPivot * vec4( bp, 1.0 );
-  #ifndef BEND_DEPTH
+  #ifndef BEND_UNLIT
     vec3 np = mat3( uPivotInv ) * ( vec4( transformedNormal, 0.0 ) * viewMatrix ).xyz;
     float cs = cos( ang );
     float sn = sin( ang );
@@ -63,10 +63,11 @@ type Uniforms = {
   uPivotInv: { value: THREE.Matrix4 }
 }
 
-function patch(shader: THREE.WebGLProgramParametersWithUniforms, uniforms: Uniforms, depth: boolean) {
+// `unlit`: depth and basic materials have no normal to turn.
+function patch(shader: THREE.WebGLProgramParametersWithUniforms, uniforms: Uniforms, unlit: boolean) {
   Object.assign(shader.uniforms, uniforms)
   shader.vertexShader = shader.vertexShader
-    .replace('#include <common>', `#include <common>\n${depth ? '#define BEND_DEPTH\n' : ''}${DECL}`)
+    .replace('#include <common>', `#include <common>\n${unlit ? '#define BEND_UNLIT\n' : ''}${DECL}`)
     .replace('#include <project_vertex>', PROJECT)
     .replace('#include <worldpos_vertex>', WORLDPOS)
 }
@@ -108,7 +109,7 @@ export class PageCurl {
     const key = m.customProgramCacheKey.bind(m)
     copy.onBeforeCompile = (shader, renderer) => {
       base(shader, renderer)
-      patch(shader, this.uniforms, false)
+      patch(shader, this.uniforms, (m as THREE.MeshBasicMaterial).isMeshBasicMaterial === true)
     }
     copy.customProgramCacheKey = () => `${key()}|bend`
     this.bent.set(m, copy)

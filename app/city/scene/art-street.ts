@@ -335,9 +335,13 @@ type PersonOpts = {
   hair?: string
   skin?: string
   hat?: 'fedora' | 'beret' | 'beanie'
-  hold?: 'briefcase' | 'coffee' | 'umbrella' | 'leash' | 'balloon' | 'paper' | 'icecream' | 'bucket'
+  hold?: 'briefcase' | 'coffee' | 'umbrella' | 'leash' | 'balloon' | 'paper' | 'icecream' | 'bucket' | 'phone' | 'sandwich' | 'selfie'
   skirt?: boolean
   scarf?: string
+  // An office shirt and tie under the jacket.
+  tie?: string
+  // The free hand up: a wave, or a peace sign for a photo.
+  wave?: boolean
 }
 
 export function person(s: Sketch, x: number, y: number, H: number, o: PersonOpts): Part[] {
@@ -381,6 +385,14 @@ export function person(s: Sketch, x: number, y: number, H: number, o: PersonOpts
     },
     hatch: { angle: 1.2, gap: 0.03, alpha: 0.18 },
   })
+  if (o.tie) {
+    parts.push({ shape: s.poly(pts(x - H * 0.055, sh + H * 0.01, x + H * 0.055, sh + H * 0.01, x, sh - H * 0.14), 0), color: '#f7f4ec', ink: 0.008 })
+    parts.push({
+      shape: s.poly(pts(x - H * 0.016, sh, x + H * 0.016, sh, x + H * 0.026, sh - H * 0.16, x, sh - H * 0.2, x - H * 0.026, sh - H * 0.16), 0),
+      color: o.tie,
+      ink: 0.008,
+    })
+  }
   if (o.scarf) {
     parts.push({ shape: s.rect(x - H * 0.08, sh - H * 0.03, H * 0.16, H * 0.05, 0.001), color: o.scarf, ink: 0.01 })
   }
@@ -413,8 +425,14 @@ export function person(s: Sketch, x: number, y: number, H: number, o: PersonOpts
       ? [x + H * 0.2, y + H * 0.72]
       : hold === 'coffee' || hold === 'icecream'
         ? [x + H * 0.17, y + H * 0.58]
-        : [x + H * 0.2, y + H * 0.42]
-  const left: [number, number] = hold === 'paper' ? [x - H * 0.12, y + H * 0.55] : [x - H * 0.2, y + H * 0.42]
+        : hold === 'phone'
+          ? [x + H * 0.11, y + H * 0.84]
+          : hold === 'sandwich'
+            ? [x + H * 0.1, y + H * 0.7]
+            : hold === 'selfie'
+              ? [x + H * 0.24, y + H * 0.86]
+              : [x + H * 0.2, y + H * 0.42]
+  const left: [number, number] = hold === 'paper' ? [x - H * 0.12, y + H * 0.55] : o.wave ? [x - H * 0.22, y + H * 0.84] : [x - H * 0.2, y + H * 0.42]
   arm(-1, left[0], left[1])
   arm(1, right[0], right[1])
 
@@ -468,8 +486,22 @@ export function person(s: Sketch, x: number, y: number, H: number, o: PersonOpts
     parts.push({ shape: s.rect(right[0] - H * 0.06, right[1] - H * 0.16, H * 0.14, H * 0.12, 0.001), color: '#6b4430', ink: 0.012 })
   } else if (hold === 'coffee') {
     parts.push({ shape: s.poly(pts(right[0] - H * 0.03, right[1] - H * 0.02, right[0] + H * 0.03, right[1] - H * 0.02, right[0] + H * 0.035, right[1] + H * 0.08, right[0] - H * 0.035, right[1] + H * 0.08), 0), color: '#f4ecdc', ink: 0.008, detail: () => s.fill(s.rect(right[0] - H * 0.034, right[1] + H * 0.015, H * 0.068, H * 0.03, 0), C.brick) })
+  } else if (hold === 'phone') {
+    const phone = s.rect(right[0] - H * 0.022, right[1] - H * 0.02, H * 0.044, H * 0.09, 0)
+    parts.push({ shape: phone, color: '#26252b', ink: 0.006, detail: () => s.glow(phone, '#7fb2ff') })
+  } else if (hold === 'sandwich') {
+    parts.push({
+      shape: s.ellipse(right[0] - H * 0.02, right[1] + H * 0.03, H * 0.09, H * 0.032, -0.2),
+      color: '#d9a35c',
+      ink: 0.008,
+      detail: () => s.line([[right[0] - H * 0.1, right[1] + H * 0.035], [right[0] + H * 0.06, right[1] + H * 0.01]], 0.01, '#6fa84a', 0),
+    })
   } else if (hold === 'paper') {
     parts.push({ shape: s.rect(left[0] - H * 0.1, left[1] - H * 0.06, H * 0.18, H * 0.2, 0.001), color: '#f2ede0', ink: 0.01, detail: () => { for (let k = 0; k < 5; k++) s.line([[left[0] - H * 0.08, left[1] + H * (0.1 - k * 0.03)], [left[0] + H * 0.06, left[1] + H * (0.1 - k * 0.03)]], 0.005, rgba(INK, 0.5), 0) } })
+  }
+  if (o.wave) {
+    // Two fingers up.
+    for (const d of [-1, 1]) parts.push({ shape: s.rect(left[0] + d * H * 0.012 - H * 0.008, left[1], H * 0.016, H * 0.05, 0), color: skin, ink: 0.006 })
   }
   return parts
 }

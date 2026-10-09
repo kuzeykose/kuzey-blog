@@ -70,6 +70,13 @@ export function shade(hex: string, amount: number) {
   return `rgb(${f(r)},${f(g)},${f(b)})`
 }
 
+// The same as shade, as a hex colour (so it can be washed and shaded again).
+export function tint(hex: string, amount: number) {
+  const [r, g, b] = parseHex(hex)
+  const f = (c: number) => Math.round(amount >= 0 ? c + (255 - c) * amount : c * (1 + amount))
+  return `#${[r, g, b].map((c) => f(c).toString(16).padStart(2, '0')).join('')}`
+}
+
 export function rgba(hex: string, a: number) {
   const [r, g, b] = parseHex(hex)
   return `rgba(${r},${g},${b},${a})`

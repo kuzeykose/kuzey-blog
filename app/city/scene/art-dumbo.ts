@@ -1,7 +1,7 @@
 import { INK, Pt, Sketch, rgba, shade } from './sketch'
 import { C } from './palette'
 import { Part, awning, paint, pts } from './art-common'
-import { person } from './art-street'
+import { blobs, person } from './art-street'
 
 // Art for the DUMBO spread: the waterfront between the two bridges,
 // looking across the East River to Manhattan.
@@ -349,6 +349,266 @@ export function weddingShoot(s: Sketch) {
   const camera = s.rect(1.28, 0.55, 0.1, 0.07, 0)
   s.fill(camera, '#1f1c22')
   const flash = s.ellipse(1.29, 0.65, 0.025, 0.02)
+  s.fill(flash, '#fff8d0')
+  s.glow(flash, '#ffffff')
+}
+
+// ---------------------------------------------------------------------------
+// Brooklyn Bridge Park: the lawns by the water, a picnic, the park sign and
+// a kid with a kite.
+
+export const PARK_CROWNS: [number, number, number][] = [
+  [0.32, 0.86, 0.26],
+  [2.38, 0.8, 0.24],
+]
+
+export function bridgePark(s: Sketch) {
+  const W = s.w
+  for (const [x, y, r] of PARK_CROWNS) {
+    s.strip([[x, 0.1], [x, y - r * 0.5]], 0.07, 0.04, '#6e4f3a')
+    blobs(
+      s,
+      [
+        [x, y, r * 0.8],
+        [x - r * 0.6, y - r * 0.15, r * 0.6],
+        [x + r * 0.6, y - r * 0.1, r * 0.62],
+        [x - r * 0.15, y + r * 0.55, r * 0.55],
+      ],
+      '#6f9a55',
+      'rgba(40,80,30,0.5)'
+    )
+  }
+  // The kite, high on its string.
+  const kx = 1.95
+  const ky = 1.05
+  s.strip([[1.71, 0.52], [1.84, 0.8], [kx, ky - 0.08]], 0.006, 0.025)
+  const kite = s.poly(pts(kx, ky + 0.12, kx + 0.09, ky, kx, ky - 0.1, kx - 0.09, ky), 0.001)
+  s.strip([[kx, ky - 0.1], [kx - 0.05, ky - 0.2], [kx + 0.02, ky - 0.28], [kx - 0.04, ky - 0.36]], 0.006, 0.025)
+  paint(
+    s,
+    [
+      {
+        shape: kite,
+        color: '#e8364f',
+        ink: 0.01,
+        detail: () => {
+          s.fill(s.poly(pts(kx, ky + 0.12, kx + 0.09, ky, kx, ky), 0), '#f7c948')
+          s.fill(s.poly(pts(kx, ky, kx - 0.09, ky, kx, ky - 0.1), 0), '#3f6fb0')
+        },
+      },
+      ...[0.16, 0.26].map((dy, k) => ({ shape: s.ellipse(kx - 0.03 + k * 0.04, ky - dy - 0.04, 0.025, 0.014), color: k ? '#3f6fb0' : '#f7c948', ink: 0.006 })),
+    ],
+    0.03
+  )
+  const lawn = s.custom(
+    (p) => {
+      p.moveTo(0.02, 0)
+      p.lineTo(W - 0.02, 0)
+      p.lineTo(W - 0.02, 0.1)
+      p.quadraticCurveTo(W * 0.55, 0.42, 0.02, 0.12)
+      p.closePath()
+    },
+    pts(0.02, 0, W - 0.02, 0.27)
+  )
+  const sign = s.rect(0.38, 0.4, 0.66, 0.15, 0.001)
+  const blanket = s.poly(pts(0.95, 0.12, 1.5, 0.12, 1.46, 0.22, 0.99, 0.22), 0.001)
+  paint(s, [
+    ...[0.48, 0.94].map((x) => ({ shape: s.rect(x - 0.015, 0.12, 0.03, 0.3, 0), color: '#6e4f3a', ink: 0.008 })),
+    {
+      shape: sign,
+      color: '#2f5a3a',
+      ink: 0.012,
+      detail: () => s.text('BROOKLYN BRIDGE PARK', 0.71, 0.44, 0.05, { color: '#f4f1ea', font: SANS, spacing: 1 }),
+    },
+    {
+      shape: lawn,
+      color: '#8dbb6c',
+      ink: 0.016,
+      detail: () => {
+        for (let i = 0; i < 40; i++) {
+          const gx = s.r(0.1, W - 0.1)
+          const gy = s.r(0.03, 0.12)
+          s.line([[gx, gy], [gx + 0.01, gy + 0.04]], 0.006, rgba('#3f6a2e', 0.6), 0)
+        }
+      },
+    },
+    {
+      shape: blanket,
+      color: '#d24a3a',
+      ink: 0.01,
+      detail: () => {
+        for (let x = 1.0; x < 1.48; x += 0.08) s.fill(s.rect(x, 0.12, 0.04, 0.1, 0), 'rgba(255,255,255,0.65)')
+        s.fill(s.rect(0.97, 0.155, 0.52, 0.03, 0), 'rgba(255,255,255,0.5)')
+      },
+    },
+  ])
+  // A couple on the blanket, and the kid holding the kite string.
+  const seated = (x: number, top: string, hair: string, skin: string): Part[] => {
+    const body = s.poly(pts(x - 0.08, 0.18, x + 0.08, 0.18, x + 0.06, 0.42, x - 0.06, 0.42), 0.001)
+    const head = s.ellipse(x, 0.49, 0.06, 0.065)
+    return [
+      { shape: body, color: top, ink: 0.01 },
+      { shape: head, color: skin, ink: 0.01, detail: () => s.fill(s.ellipse(x + 0.02, 0.5, 0.007, 0.008), INK) },
+      { shape: s.custom((p) => p.arc(x, 0.5, 0.066, -0.2, Math.PI + 0.2, false), pts(x - 0.066, 0.5, x + 0.066, 0.57)), color: hair, ink: 0.008 },
+    ]
+  }
+  paint(
+    s,
+    [
+      ...seated(1.12, '#f7c948', '#3b2a24', C.skin),
+      ...seated(1.32, '#3f6fb0', '#7a3d22', '#c99772'),
+      ...person(s, 1.6, 0.12, 0.55, { coat: '#18a558', hold: 'balloon', hat: 'beanie' }),
+    ],
+    0.035
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Time Out Market, in the old warehouse on the water: arched windows full of
+// food stalls and long tables, and a roof terrace looking at the bridges.
+
+export function timeOutMarket(s: Sketch) {
+  const W = s.w
+  const brick = '#a8573f'
+  const front = s.rect(0.05, 0, W - 0.1, 1.5, 0.003)
+  const arches = [0, 1, 2].map((k) => {
+    const x = 0.2 + k * ((W - 0.4) / 3) + 0.04
+    const w = (W - 0.4) / 3 - 0.08
+    return {
+      x,
+      w,
+      shape: s.custom(
+        (p) => {
+          p.moveTo(x, 0.0)
+          p.lineTo(x, 0.62 - w / 2)
+          p.arc(x + w / 2, 0.62 - w / 2, w / 2, Math.PI, 0, true)
+          p.lineTo(x + w, 0.0)
+          p.closePath()
+        },
+        pts(x, 0, x + w, 0.62)
+      ),
+    }
+  })
+  const sign = s.rect(W / 2 - 0.42, 1.0, 0.84, 0.26, 0.001)
+  const label = s.rect(W / 2 - 0.42, 0.86, 0.84, 0.13, 0.001)
+  const rail = s.rect(0.12, 1.5, W - 0.24, 0.1, 0)
+  paint(s, [
+    {
+      shape: front,
+      color: brick,
+      ink: 0.022,
+      detail: () => {
+        for (let y = 0.1; y < 1.5; y += 0.06) s.line([[0.06, y], [W - 0.06, y]], 0.004, rgba(INK, 0.18), 0)
+        // The warehouse's small iron-shuttered windows upstairs.
+        s.windows(0.2, 0.74, 7, 1, 0.14, 0.16, 0.13, 0, { color: '#3d4a63', lit: 0.7, arch: true })
+        arches.forEach(({ x, w, shape }) => {
+          s.fill(shape, '#f3d9a4')
+          s.glow(shape, '#6a4a22')
+          // Food stalls along the back, diners at the long tables.
+          s.fill(s.rect(x, 0.32, w, 0.06, 0), '#1f6b45')
+          s.fill(s.rect(x + 0.04, 0.34, w - 0.08, 0.02, 0), '#f7c948')
+          s.fill(s.rect(x + 0.03, 0.12, w - 0.06, 0.035, 0), '#6b4430')
+          for (let dx = 0.07; dx < w - 0.04; dx += 0.1) {
+            const diner = s.ellipse(x + dx, 0.2, 0.03, 0.035)
+            s.fill(diner, rgba(INK, 0.75))
+            s.fill(s.rect(x + dx - 0.035, 0.12, 0.07, 0.06, 0), rgba(INK, 0.75))
+            s.glow(diner, '#000')
+          }
+          // String lights across the arch.
+          for (let k = 0; k < 6; k++) {
+            const t = (k + 0.5) / 6
+            const bulb = s.ellipse(x + t * w, 0.5 - Math.sin(t * Math.PI) * 0.06, 0.012, 0.012)
+            s.fill(bulb, '#fff1c4')
+            s.glow(bulb, '#ffd27a')
+          }
+          s.line([[x, 0.05], [x, 0.6 - w / 2]], 0.008, rgba(INK, 0.6), 0)
+        })
+      },
+    },
+    { shape: rail, color: '#3a3a40', ink: 0.01, noBorder: true },
+    {
+      shape: sign,
+      color: '#e4002b',
+      flat: true,
+      ink: 0.012,
+      detail: () => {
+        s.glow(sign, '#a8001f')
+        s.text('Time Out', W / 2, 1.06, 0.15, { color: '#ffffff', glow: '#ffffff', font: SANS, weight: '900' })
+      },
+    },
+    {
+      shape: label,
+      color: '#ffffff',
+      flat: true,
+      ink: 0.012,
+      detail: () => {
+        s.glow(label, '#5a5a5a')
+        s.text('MARKET', W / 2, 0.89, 0.085, { color: INK, font: SANS, weight: '900', spacing: 4 })
+      },
+    },
+  ])
+  // The roof terrace: railings, umbrellas and a strand of lights.
+  s.strip([[0.12, 1.5], [0.12, 1.62], [W - 0.12, 1.62], [W - 0.12, 1.5]], 0.014, 0.03)
+  for (let x = 0.2; x < W - 0.15; x += 0.1) s.strip([[x, 1.5], [x, 1.62]], 0.006, 0.02)
+  for (const [x, c] of [
+    [0.45, '#e4002b'],
+    [1.15, '#f4f1ea'],
+    [1.85, '#e4002b'],
+  ] as [number, string][]) {
+    s.strip([[x, 1.5], [x, 1.78]], 0.014, 0.03)
+    const top = s.custom(
+      (p) => {
+        p.moveTo(x - 0.26, 1.74)
+        p.quadraticCurveTo(x, 1.92, x + 0.26, 1.74)
+        p.closePath()
+      },
+      pts(x - 0.26, 1.74, x + 0.26, 1.83)
+    )
+    paint(s, [{ shape: top, color: c, ink: 0.012, detail: () => s.line([[x - 0.13, 1.77], [x, 1.83], [x + 0.13, 1.77]], 0.006, rgba(INK, 0.4), 0) }], 0.04)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The line for ice cream on a summer evening: whoever's at the front gets
+// the first cone.
+
+export function iceCreamQueue(s: Sketch) {
+  const queue = [
+    person(s, 0.18, 0, 0.62, { coat: '#f7c948', hold: 'icecream', skin: '#c99772', hat: 'beanie' }),
+    person(s, 0.5, 0, 1.0, { coat: '#4f8a8b', hold: 'icecream', hair: '#c9a26b', skirt: true }),
+    person(s, 0.84, 0, 1.06, { coat: '#f4f1ea', hold: 'phone', skin: '#8d5a3c', hair: '#1f1a18' }),
+    person(s, 1.14, 0, 0.97, { coat: '#e8587a', skirt: true, hair: '#7a3d22' }),
+    person(s, 1.44, 0, 1.03, { coat: '#7b2fbf', hat: 'fedora' }),
+  ]
+  paint(s, queue.flat(), 0.04)
+}
+
+// ---------------------------------------------------------------------------
+// Tourists taking a selfie with the Manhattan Bridge behind them.
+
+export function selfieTourists(s: Sketch) {
+  const H = 1.08
+  const x = 0.42
+  const hand: Pt = [x + H * 0.24, H * 0.86]
+  const phone: Pt = [x + 0.38, 1.38]
+  s.strip([hand, phone], 0.014, 0.03, '#2c2a30')
+  const a = person(s, x, 0, H, { coat: '#f4f1ea', legs: '#4f6d8f', hold: 'selfie', wave: true, hair: '#3b2a24' })
+  const b = person(s, x + 0.42, 0, 1.0, { coat: '#e2a03c', hold: 'paper', skin: '#c99772', hat: 'beret' })
+  paint(s, [...b, ...a], 0.045)
+  // I ♥ NY across the T-shirt, and a camera round the friend's neck.
+  s.text('I', x - 0.045, H * 0.62, 0.07, { color: INK, font: SANS, weight: '900' })
+  s.text('♥', x + 0.02, H * 0.62, 0.075, { color: '#e4002b', font: SANS, weight: '900' })
+  s.text('NY', x, H * 0.55, 0.07, { color: INK, font: SANS, weight: '900' })
+  s.line([[x + 0.36, 0.78], [x + 0.42, 0.66], [x + 0.48, 0.78]], 0.008, INK, 0)
+  const cam = s.rect(x + 0.38, 0.6, 0.09, 0.06, 0)
+  s.fill(cam, '#2c2a30')
+  s.fill(s.ellipse(x + 0.425, 0.63, 0.02, 0.02), '#8d979e')
+  // The phone on its stick, the flash going off.
+  const body = s.rect(phone[0] - 0.045, phone[1] - 0.02, 0.09, 0.15, 0.001)
+  s.border([body], 0.035)
+  s.fill(body, '#2c2a30')
+  s.ink(body, 0.01)
+  const flash = s.ellipse(phone[0] + 0.02, phone[1] + 0.1, 0.014, 0.014)
   s.fill(flash, '#fff8d0')
   s.glow(flash, '#ffffff')
 }

@@ -2,8 +2,23 @@ import { PieceDef } from './pieces'
 import { brooklynBridge, skyBackdrop } from './art-landmarks'
 import { farSkyline } from './art-buildings'
 import { cloud, dogWalker, readerAndKid, streetLamp } from './art-street'
-import { cyclist, seagull } from './art-brooklyn'
-import { CLOCK, clockHands, clockTower, empireStores, janesCarousel, manhattanBridge, pizzeria, riverFerry, weddingShoot } from './art-dumbo'
+import { cyclist, iceCreamTruck, seagull } from './art-brooklyn'
+import {
+  CLOCK,
+  PARK_CROWNS,
+  bridgePark,
+  clockHands,
+  clockTower,
+  empireStores,
+  iceCreamQueue,
+  janesCarousel,
+  manhattanBridge,
+  pizzeria,
+  riverFerry,
+  selfieTourists,
+  timeOutMarket,
+  weddingShoot,
+} from './art-dumbo'
 
 const HANDS = 0.56
 
@@ -145,6 +160,20 @@ export const DUMBO: PieceDef[] = [
     poke: 'tilt',
   },
   {
+    id: 'du-park',
+    label: 'Brooklyn Bridge Park',
+    art: bridgePark,
+    w: 2.7,
+    h: 1.25,
+    x: 4.6,
+    z: -1.75,
+    scale: 1.3,
+    order: 0.3,
+    seed: 8115,
+    poke: 'tilt',
+    petals: { from: PARK_CROWNS, colors: ['#6f9a55', '#8dbb6c', '#557f4b'] },
+  },
+  {
     id: 'du-carousel',
     label: 'Jane’s Carousel, in its glass box',
     art: janesCarousel,
@@ -213,6 +242,19 @@ export const DUMBO: PieceDef[] = [
     poke: 'tilt',
   },
   {
+    id: 'du-timeout',
+    label: 'Time Out Market, in Empire Stores',
+    art: timeOutMarket,
+    w: 2.3,
+    h: 1.92,
+    x: 6.0,
+    z: 0.8,
+    order: 0.6,
+    seed: 8116,
+    glow: true,
+    poke: 'tilt',
+  },
+  {
     id: 'du-dog',
     label: 'A walk along Water Street',
     art: dogWalker,
@@ -232,8 +274,8 @@ export const DUMBO: PieceDef[] = [
     art: readerAndKid,
     w: 1.6,
     h: 1.85,
-    x: 4.9,
-    z: 2.5,
+    x: -6.3,
+    z: 2.9,
     scale: 1.15,
     sameArtAs: 'kid',
     order: 0.78,
@@ -252,5 +294,44 @@ export const DUMBO: PieceDef[] = [
     order: 0.8,
     seed: 7211,
     poke: 'drive',
+  },
+  {
+    id: 'du-icecream',
+    label: 'Ice cream truck',
+    art: iceCreamTruck,
+    w: 2.1,
+    h: 1.65,
+    x: 6.65,
+    z: 2.55,
+    sameArtAs: 'bk-icecream',
+    order: 0.74,
+    seed: 8117,
+    glow: true,
+    poke: 'tilt',
+  },
+  {
+    id: 'du-queue',
+    label: 'The line for ice cream',
+    art: iceCreamQueue,
+    w: 1.6,
+    h: 1.1,
+    x: 4.75,
+    z: 2.8,
+    order: 0.76,
+    seed: 8118,
+    poke: 'tilt',
+  },
+  {
+    id: 'du-selfie',
+    label: 'A selfie with the Manhattan Bridge',
+    art: selfieTourists,
+    w: 1.1,
+    h: 1.56,
+    x: 3.0,
+    z: 3.05,
+    order: 0.82,
+    seed: 8119,
+    glow: true,
+    poke: 'lift',
   },
 ]

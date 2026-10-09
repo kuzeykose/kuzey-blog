@@ -68,8 +68,12 @@ export type PieceDef = {
   // For 'drop': slides down this far (art units) and back up again,
   // shaking its petals loose when it lands.
   drop?: number
-  // A scrolling news ticker over this band of the art (centre x, y; size).
-  ticker?: { text: string; at: [number, number]; w: number; h: number }
+  // A scrolling news ticker over this band of the art (centre x, y; size),
+  // in amber, or in [text, colour] runs.
+  ticker?: { text: string | [string, string][]; at: [number, number]; w: number; h: number }
+  // Keeps turning about its upright axis (rad/s), squashed flat into the
+  // paper like a rotor seen side on.
+  whirl?: number
   // Sky paper (backdrops, clouds): greys under rain, never gathers snow.
   sky?: boolean
 }

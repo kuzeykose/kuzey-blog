@@ -913,14 +913,17 @@ export function iceCreamTruck(s: Sketch) {
       color: '#fff1c9',
       ink: 0.016,
       detail: () => {
-        s.glow(window_, '#ffe2a3')
-        // The server leaning out, and the menu.
-        s.fill(s.ellipse(0.98, 0.72, 0.07, 0.075), C.skin)
-        s.fill(s.rect(0.92, 0.5, 0.13, 0.16, 0), '#ffffff')
-        s.fill(s.poly(pts(0.92, 0.79, 1.04, 0.79, 0.98, 0.84), 0), '#ffffff')
-        s.text('CONES', 0.55, 0.78, 0.06, { color: C.redDark, font: 'Helvetica, Arial, sans-serif' })
-        s.text('SHAKES', 0.55, 0.69, 0.06, { color: '#3f6fb0', font: 'Helvetica, Arial, sans-serif' })
-        s.text('SUNDAES', 0.55, 0.6, 0.06, { color: C.redDark, font: 'Helvetica, Arial, sans-serif' })
+        s.glow(window_, '#b8975a')
+        // The server leaning out, and the menu (dark against the lit
+        // window after dark).
+        const server = [s.ellipse(0.98, 0.72, 0.07, 0.075), s.rect(0.92, 0.5, 0.13, 0.16, 0), s.poly(pts(0.92, 0.79, 1.04, 0.79, 0.98, 0.84), 0)]
+        s.fill(server[0], C.skin)
+        s.fill(server[1], '#ffffff')
+        s.fill(server[2], '#ffffff')
+        server.forEach((shape) => s.glow(shape, '#000'))
+        s.text('CONES', 0.55, 0.78, 0.06, { color: C.redDark, font: 'Helvetica, Arial, sans-serif', glow: '#000' })
+        s.text('SHAKES', 0.55, 0.69, 0.06, { color: '#3f6fb0', font: 'Helvetica, Arial, sans-serif', glow: '#000' })
+        s.text('SUNDAES', 0.55, 0.6, 0.06, { color: C.redDark, font: 'Helvetica, Arial, sans-serif', glow: '#000' })
       },
     },
     { shape: cab, color: '#9fc9e6', ink: 0.016, detail: () => s.glow(cab, '#ffe2a3') },

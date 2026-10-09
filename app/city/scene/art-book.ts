@@ -1292,7 +1292,7 @@ export function dumboSpread(first: number) {
   m.label('EAST  RIVER', 0.0, -3.4, 0.24, 0, { color: rgba('#2f5468', 0.8), spacing: 10 })
   m.label('MANHATTAN', 0.0, -4.95, 0.14, 0, { spacing: 8 })
   m.label('D U M B O', 2.2, 2.45, 0.24, 0, { spacing: 10 })
-  m.label('Brooklyn Bridge Park', 5.2, -1.93, 0.11, 0, { italic: true, spacing: 2 })
+  m.label('Brooklyn Bridge Park', 1.9, -1.93, 0.11, 0, { italic: true, spacing: 2 })
   m.label('Pebble Beach', -2.6, -1.78, 0.09, 0, { italic: true, spacing: 1 })
   m.label('WATER ST', -5.8, -1.15, 0.09, 0, { color: rgba(INK, 0.7), spacing: 3 })
   m.label('FRONT ST', -5.8, 0.25, 0.09, 0, { color: rgba(INK, 0.7), spacing: 3 })

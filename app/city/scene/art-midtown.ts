@@ -1,7 +1,7 @@
-import { INK, Pt, Shape, Sketch, rgba, shade } from './sketch'
+import { INK, Pt, Shape, Sketch, rgba, shade, tint } from './sketch'
 import { C } from './palette'
 import { Part, paint, pts } from './art-common'
-import { person } from './art-street'
+import { blobs, person } from './art-street'
 
 // Art for the Midtown spread, looking north up Fifth Avenue.
 
@@ -613,4 +613,333 @@ export function tourBus(s: Sketch) {
     s.fill(hub, '#d9dde0')
     s.ink(hub, 0.01)
   }
+}
+
+// ---------------------------------------------------------------------------
+// Bryant Park, behind the library: London plane trees over the lawn, a lamp
+// and the stone balustrade along the terrace.
+
+export const BRYANT_CROWNS: [number, number, number][] = [
+  [0.36, 1.12, 0.32],
+  [1.64, 1.14, 0.32],
+]
+
+export function bryantPark(s: Sketch) {
+  const W = s.w
+  for (const [x] of BRYANT_CROWNS) {
+    const trunk = s.poly(pts(x - 0.07, 0.15, x + 0.07, 0.15, x + 0.05, 0.95, x - 0.05, 0.95), 0.002)
+    s.border([trunk], 0.05)
+    s.wash(trunk, '#9a937c')
+    // Plane-tree bark flakes off in pale patches.
+    for (let k = 0; k < 7; k++) s.fill(s.ellipse(x + s.r(-0.035, 0.035), s.r(0.25, 0.9), 0.022, 0.04), s.pick(['#ddd6bc', '#7f7a62', '#c7c0a0']), 0.9)
+    s.ink(trunk, 0.014)
+    s.strip([[x, 0.78], [x - 0.22, 1.0]], 0.035, 0.035, '#8a836c')
+    s.strip([[x, 0.72], [x + 0.24, 0.98]], 0.035, 0.035, '#8a836c')
+  }
+  for (const [x, y, r] of BRYANT_CROWNS) {
+    blobs(
+      s,
+      [
+        [x, y, r * 0.75],
+        [x - r * 0.55, y + r * 0.05, r * 0.55],
+        [x + r * 0.55, y + r * 0.08, r * 0.58],
+        [x - r * 0.2, y + r * 0.55, r * 0.55],
+        [x + r * 0.28, y + r * 0.5, r * 0.5],
+      ],
+      '#7fa860',
+      'rgba(40,80,30,0.5)'
+    )
+  }
+  // A park lamp between the trees.
+  s.strip([[W / 2, 0.2], [W / 2, 0.98]], 0.03, 0.04, '#2f3a33')
+  const globe = s.ellipse(W / 2, 1.05, 0.065, 0.075)
+  s.border([globe], 0.04)
+  s.fill(globe, '#fff3cf')
+  s.ink(globe, 0.012)
+  s.glow(globe, '#ffd27a')
+  s.fill(s.poly(pts(W / 2 - 0.07, 1.12, W / 2 + 0.07, 1.12, W / 2, 1.19), 0), '#2f3a33')
+  // The hedge, then the balustrade in front.
+  const hedge: [number, number, number][] = []
+  for (let x = 0.1; x < W - 0.05; x += 0.14) hedge.push([x, 0.27, 0.09 + s.r(0, 0.02)])
+  blobs(s, hedge, '#557f4b', 'rgba(30,60,25,0.5)', 0.02)
+  const wall = s.rect(0.02, 0, W - 0.04, 0.17, 0.002)
+  paint(s, [
+    {
+      shape: wall,
+      color: C.limestone,
+      ink: 0.016,
+      detail: () => {
+        s.fill(s.rect(0.02, 0.13, W - 0.04, 0.04, 0), tint(C.limestone, -0.08))
+        for (let x = 0.08; x < W - 0.04; x += 0.07) {
+          if (Math.abs(x - W / 2) < 0.24) continue
+          s.fill(s.ellipse(x, 0.075, 0.016, 0.045), tint(C.limestone, -0.15))
+        }
+        const plaque = s.rect(W / 2 - 0.22, 0.025, 0.44, 0.095, 0)
+        s.fill(plaque, '#2f5a3a')
+        s.text('BRYANT PARK', W / 2, 0.05, 0.045, { color: '#f4f1ea', font: SANS, spacing: 1, glow: '#a89a6a' })
+      },
+    },
+  ])
+}
+
+// Office workers out on their lunch break, on the park's green chairs.
+type Sitter = { top: string; pants: string; hair: string; skin?: string; tie?: string; skirt?: boolean; food: 'salad' | 'sandwich' }
+
+function bistroChair(s: Sketch, x: number, seat: number): Part[] {
+  const green = '#3d6b45'
+  return [
+    {
+      shape: s.rect(x - 0.15, seat, 0.3, 0.3, 0.001),
+      color: green,
+      ink: 0.01,
+      detail: () => {
+        for (let k = 1; k < 5; k++) s.line([[x - 0.15 + k * 0.06, seat + 0.02], [x - 0.15 + k * 0.06, seat + 0.28]], 0.008, rgba(INK, 0.45), 0)
+      },
+    },
+    { shape: s.poly(pts(x - 0.15, seat, x - 0.12, seat, x - 0.15, 0, x - 0.18, 0), 0), color: green, ink: 0.008 },
+    { shape: s.poly(pts(x + 0.12, seat, x + 0.15, seat, x + 0.18, 0, x + 0.15, 0), 0), color: green, ink: 0.008 },
+    { shape: s.rect(x - 0.17, seat - 0.03, 0.34, 0.05, 0), color: tint(green, 0.1), ink: 0.01 },
+  ]
+}
+
+function sitter(s: Sketch, x: number, o: Sitter): Part[] {
+  const skin = o.skin ?? C.skin
+  const seat = 0.34
+  const sh = seat + 0.4
+  const parts: Part[] = [...bistroChair(s, x, seat)]
+  for (const d of [-1, 1]) {
+    parts.push({ shape: s.poly(pts(x + d * 0.06 - 0.03, seat, x + d * 0.06 + 0.03, seat, x + d * 0.065 + 0.028, 0.05, x + d * 0.065 - 0.028, 0.05), 0.001), color: o.skirt ? skin : o.pants, ink: 0.01 })
+    parts.push({ shape: s.ellipse(x + d * 0.08, 0.035, 0.05, 0.026), color: '#2b2522', ink: 0.008 })
+  }
+  // Lap towards us, then the body.
+  parts.push({ shape: s.rect(x - 0.13, seat - 0.03, 0.26, 0.11, 0.001), color: o.skirt ? o.top : o.pants, ink: 0.012 })
+  const body = s.custom(
+    (p) => {
+      p.moveTo(x - 0.12, seat + 0.06)
+      p.lineTo(x + 0.12, seat + 0.06)
+      p.quadraticCurveTo(x + 0.14, sh - 0.08, x + 0.12, sh)
+      p.quadraticCurveTo(x, sh + 0.04, x - 0.12, sh)
+      p.quadraticCurveTo(x - 0.14, sh - 0.08, x - 0.12, seat + 0.06)
+      p.closePath()
+    },
+    pts(x - 0.14, seat + 0.06, x + 0.14, sh + 0.04)
+  )
+  parts.push({ shape: body, color: o.top, ink: 0.014, hatch: { angle: 1.2, gap: 0.03, alpha: 0.15 } })
+  if (o.tie) {
+    parts.push({ shape: s.poly(pts(x - 0.016, sh, x + 0.016, sh, x + 0.024, sh - 0.15, x, sh - 0.19, x - 0.024, sh - 0.15), 0), color: o.tie, ink: 0.008 })
+  }
+  // Both hands busy with lunch.
+  const lh: Pt = [x - 0.05, seat + 0.2]
+  const rh: Pt = o.food === 'sandwich' ? [x + 0.05, sh - 0.02] : [x + 0.07, seat + 0.24]
+  for (const [ax, h] of [
+    [x - 0.11, lh],
+    [x + 0.11, rh],
+  ] as [number, Pt][]) {
+    parts.push({ shape: s.poly(pts(ax - 0.025, sh - 0.03, ax + 0.025, sh - 0.03, h[0] + 0.02, h[1], h[0] - 0.02, h[1]), 0.001), color: tint(o.top, -0.08), ink: 0.01 })
+    parts.push({ shape: s.ellipse(h[0], h[1], 0.024, 0.024), color: skin, ink: 0.008 })
+  }
+  if (o.food === 'salad') {
+    const bowl = s.custom((p) => p.ellipse(x, seat + 0.2, 0.09, 0.06, 0, Math.PI, 0, true), pts(x - 0.09, seat + 0.14, x + 0.09, seat + 0.2))
+    parts.push({
+      shape: bowl,
+      color: 'rgba(235,245,250,0.9)',
+      flat: true,
+      ink: 0.008,
+      detail: () => {
+        for (const [dx, c] of [
+          [-0.05, '#6fa84a'],
+          [-0.01, '#e0703f'],
+          [0.03, '#6fa84a'],
+          [0.06, '#f0cf6a'],
+        ] as [number, string][])
+          s.fill(s.ellipse(x + dx, seat + 0.2, 0.025, 0.018), c)
+      },
+    })
+    parts.push({ shape: s.rect(rh[0] - 0.005, rh[1], 0.01, 0.07, 0), color: '#c9d1d6', ink: false })
+  } else {
+    parts.push({
+      shape: s.ellipse(rh[0] - 0.03, rh[1] + 0.03, 0.08, 0.03, -0.3),
+      color: '#d9a35c',
+      ink: 0.008,
+      detail: () => s.line([[rh[0] - 0.1, rh[1] + 0.05], [rh[0] + 0.04, rh[1] + 0.005]], 0.01, '#6fa84a', 0),
+    })
+  }
+  const hy = sh + 0.1
+  parts.push({ shape: s.rect(x - 0.022, sh - 0.01, 0.044, 0.05, 0), color: skin, ink: false })
+  parts.push({
+    shape: s.ellipse(x, hy, 0.075, 0.08),
+    color: skin,
+    ink: 0.012,
+    detail: () => {
+      s.fill(s.ellipse(x - 0.026, hy, 0.008, 0.009), INK)
+      s.fill(s.ellipse(x + 0.026, hy, 0.008, 0.009), INK)
+      s.fill(s.ellipse(x, hy - 0.04, 0.02, 0.012), '#b85c50')
+    },
+  })
+  parts.push({
+    shape: s.custom(
+      (p) => {
+        p.arc(x, hy + 0.008, 0.081, -0.2, Math.PI + 0.2, false)
+        p.closePath()
+      },
+      pts(x - 0.08, hy, x + 0.08, hy + 0.09)
+    ),
+    color: o.hair,
+    ink: 0.01,
+  })
+  return parts
+}
+
+function pigeon(s: Sketch, x: number, face: 1 | -1): Part[] {
+  const X = (d: number) => x + d * face
+  const body = s.ellipse(X(0), 0.07, 0.07, 0.045, -0.2 * face)
+  const head = s.ellipse(X(0.065), 0.12, 0.028, 0.026)
+  const tail = s.poly(pts(X(-0.05), 0.08, X(-0.13), 0.06, X(-0.12), 0.04, X(-0.05), 0.05), 0)
+  return [
+    { shape: tail, color: '#6c727c', ink: 0.006 },
+    { shape: body, color: '#8f96a0', ink: 0.008, detail: () => s.fill(s.ellipse(X(0.03), 0.085, 0.03, 0.025), '#6f9a8a', 0.8) },
+    {
+      shape: head,
+      color: '#7a818c',
+      ink: 0.006,
+      detail: () => {
+        s.fill(s.poly(pts(X(0.09), 0.125, X(0.115), 0.118, X(0.09), 0.11), 0), '#d9a35c')
+        s.fill(s.ellipse(X(0.072), 0.126, 0.006, 0.006), INK)
+      },
+    },
+  ]
+}
+
+export function lunchBreak(s: Sketch) {
+  const table = s.ellipse(0.66, 0.46, 0.13, 0.03)
+  const tableParts: Part[] = [
+    { shape: s.rect(0.65, 0.03, 0.025, 0.42, 0), color: '#3d6b45', ink: 0.008 },
+    { shape: s.ellipse(0.66, 0.03, 0.09, 0.02), color: '#3d6b45', ink: 0.008 },
+    {
+      shape: table,
+      color: '#3d6b45',
+      ink: 0.01,
+      detail: () => {
+        // Coffee and a paper bag of lunch.
+        s.fill(s.poly(pts(0.57, 0.47, 0.61, 0.47, 0.615, 0.54, 0.565, 0.54), 0), '#f4ecdc')
+        s.fill(s.rect(0.566, 0.495, 0.048, 0.02, 0), C.brick)
+      },
+    },
+    { shape: s.rect(0.68, 0.475, 0.08, 0.09, 0.001), color: '#c9a77a', ink: 0.008 },
+  ]
+  paint(
+    s,
+    [
+      ...tableParts,
+      ...sitter(s, 0.3, { top: '#b9b0d6', pants: '#2f3b55', hair: '#2d2420', skirt: true, food: 'salad' }),
+      ...sitter(s, 0.98, { top: '#f4f1ea', pants: '#3a3a48', hair: '#3b2a24', skin: '#c99772', tie: '#2f4566', food: 'sandwich' }),
+      ...person(s, 1.38, 0, 1.0, { coat: '#2f3b55', legs: '#2f3b55', tie: C.red, hold: 'phone', hair: '#8a5a32' }),
+      ...person(s, 1.72, 0, 0.96, { coat: '#6d7078', skirt: true, hold: 'coffee', hair: '#7a3d22', skin: '#8d5a3c' }),
+      ...pigeon(s, 0.5, -1),
+    ],
+    0.045
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Madison Square Garden: the round drum on top of Penn Station, ribbed in
+// concrete, its name in lights, and the glass entrance with tonight's game.
+
+export function madisonSquareGarden(s: Sketch) {
+  const W = s.w
+  const cx = W / 2
+  const R = W / 2 - 0.15
+  // The roof bulges up in the middle: top(u) = EAVE + RISE (1 - u²).
+  const EAVE = 0.95
+  const RISE = 0.4
+  const drum = s.custom(
+    (p) => {
+      p.moveTo(cx - R, 0.25)
+      p.lineTo(cx + R, 0.25)
+      p.lineTo(cx + R, EAVE)
+      p.quadraticCurveTo(cx, EAVE + RISE * 2, cx - R, EAVE)
+      p.closePath()
+    },
+    pts(cx - R, 0.25, cx + R, EAVE + RISE)
+  )
+  const crown = s.custom(
+    (p) => {
+      p.moveTo(cx - R - 0.04, EAVE - 0.03)
+      p.quadraticCurveTo(cx, EAVE + RISE * 2 - 0.03, cx + R + 0.04, EAVE - 0.03)
+      p.lineTo(cx + R + 0.04, EAVE + 0.04)
+      p.quadraticCurveTo(cx, EAVE + RISE * 2 + 0.04, cx - R - 0.04, EAVE + 0.04)
+      p.closePath()
+    },
+    pts(cx - R - 0.04, EAVE - 0.03, cx + R + 0.04, EAVE + RISE + 0.04)
+  )
+  const glass = s.rect(cx - R, 0.48, 2 * R, 0.2, 0)
+  const canopy = s.poly(pts(0.55, 0.0, W - 0.55, 0.0, W - 0.5, 0.32, 0.5, 0.32), 0.002)
+  const screen = s.rect(0.06, 0.3, 0.42, 0.3, 0.001)
+  paint(s, [
+    {
+      shape: drum,
+      color: '#d2ccbf',
+      ink: 0.022,
+      detail: () => {
+        s.fill(glass, '#33405a')
+        s.glow(glass, '#5a4628')
+        // Ribs closer together towards the edges, the way a drum turns away
+        // (and dark against the lit glass after dark).
+        for (let k = -11; k <= 11; k++) {
+          const x = cx + R * Math.sin((k / 12) * (Math.PI / 2))
+          s.line([[x, 0.27], [x, EAVE - 0.01 + RISE * (1 - ((x - cx) / R) ** 2)]], 0.016, tint('#d2ccbf', -0.22), 0)
+          s.glow(s.rect(x - 0.012, 0.47, 0.024, 0.22, 0), '#000')
+        }
+        // Shade round the curve.
+        const c = s.ctx
+        c.save()
+        c.clip(drum.path)
+        const g = c.createLinearGradient(cx - R, 0, cx + R, 0)
+        g.addColorStop(0, 'rgba(60,50,40,0.25)')
+        g.addColorStop(0.4, 'rgba(255,255,255,0.08)')
+        g.addColorStop(1, 'rgba(60,50,40,0.3)')
+        c.fillStyle = g
+        c.fillRect(cx - R, 0.25, 2 * R, 1.2)
+        c.restore()
+        s.text('MADISON SQUARE GARDEN', cx, 0.8, 0.1, { color: '#c8202f', glow: '#ff6a5a', font: SANS, spacing: 2 })
+      },
+    },
+    { shape: crown, color: '#a9a397', ink: 0.016 },
+    {
+      shape: canopy,
+      color: '#b9cfd8',
+      ink: 0.018,
+      detail: () => {
+        s.glow(canopy, '#3a2c18')
+        for (let x = 0.65; x < W - 0.6; x += 0.12) {
+          s.line([[x, 0.02], [x + (x - cx) * 0.03, 0.3]], 0.008, rgba(INK, 0.4), 0)
+          s.glow(s.rect(x - 0.01, 0.02, 0.02, 0.28, 0), '#000')
+        }
+        for (const x of [cx - 0.3, cx + 0.05, cx + 0.4]) {
+          const door = s.rect(x, 0.0, 0.18, 0.2, 0)
+          s.fill(door, '#3d4a63')
+          s.glow(door, '#ffc873')
+        }
+        s.fill(s.rect(0.5, 0.29, W - 1.0, 0.04, 0), '#3a3a40')
+      },
+    },
+    {
+      shape: screen,
+      color: '#14141a',
+      flat: true,
+      ink: 0.014,
+      detail: () => {
+        s.text('TONIGHT', 0.27, 0.5, 0.05, { color: '#ffb347', glow: '#ffb347', font: SANS })
+        s.text('KNICKS', 0.27, 0.38, 0.08, { color: '#f58426', glow: '#f58426', font: SANS })
+        s.strip([[0.27, 0.0], [0.27, 0.3]], 0.03, 0.03, '#3a3a40')
+      },
+    },
+  ])
+  // Penn Station, underneath it all.
+  const sign = s.rect(W - 0.5, 0.36, 0.42, 0.12, 0.001)
+  s.border([sign], 0.04)
+  s.fill(sign, '#1f2a44')
+  s.ink(sign, 0.01)
+  s.glow(sign, '#2a3550')
+  s.text('PENN STATION', W - 0.29, 0.39, 0.045, { color: '#f4f1ea', glow: '#c8c4bb', font: SANS })
 }
