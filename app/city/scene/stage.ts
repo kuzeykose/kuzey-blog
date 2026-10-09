@@ -834,9 +834,11 @@ export class CityStage {
     this.glide = { from: { target, at }, to, t: 0 }
   }
 
-  // Looking at the open spread.
+  // Looking at the open spread from low down, so the pop-ups stand up tall
+  // and the front of the book clears the controls.
   private homeShot(): Shot {
-    return { target: new THREE.Vector3(0, 2.1, -0.8), at: this.homeSpherical() }
+    const target = this.camera.aspect < 1 ? new THREE.Vector3(0, 2.4, -0.6) : new THREE.Vector3(0, 2.6, -0.4)
+    return { target, at: this.homeSpherical() }
   }
 
   // Looking at the closed book, which lies on the right half of the spread.
@@ -859,10 +861,11 @@ export class CityStage {
     const tanH = tanV * aspect
     // Keep the spread in frame: wide screens are limited by height, narrow
     // ones by width.
-    const d = Math.min(52, Math.max(21, 8.4 / tanH, 8.2 / tanV))
+    const portrait = aspect < 1
+    const d = Math.min(52, Math.max(21, 8.4 / tanH, 8.2 / tanV) * (portrait ? 1.04 : 0.97))
     this.controls.maxDistance = Math.max(38, d * 1.35)
     // Tall screens look down a little more so the pages fill the height.
-    return new THREE.Spherical(d, aspect < 1 ? 0.86 : 1.0, 0)
+    return new THREE.Spherical(d, portrait ? 0.98 : 1.24, 0)
   }
 
   private resize = () => {

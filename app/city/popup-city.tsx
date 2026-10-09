@@ -54,6 +54,9 @@ export default function PopupCity() {
   const contentsButton = useRef<HTMLButtonElement>(null)
   const contentsPanel = useRef<HTMLElement>(null)
   const [label, setLabel] = useState<string | null>(null)
+  // (The last one stays in the pill while it fades out.)
+  const lastLabel = useRef<string | null>(null)
+  if (label) lastLabel.current = label
   const [hint, setHint] = useState(false)
   const host = useRef<HTMLDivElement>(null)
   const stage = useRef<CityStage | null>(null)
@@ -276,11 +279,14 @@ export default function PopupCity() {
 
       {status !== 'error' && (
         <footer className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center gap-3 p-4 sm:p-6">
-          <div
-            aria-live="polite"
-            className={`h-6 text-sm transition-opacity duration-200 ${ink} ${label ? 'opacity-100' : 'opacity-0'}`}
-          >
-            {label}
+          <div aria-live="polite" className={`h-8 transition-opacity duration-200 ${label ? 'opacity-100' : 'opacity-0'}`}>
+            <span
+              className={`inline-block rounded-full border px-3.5 py-1.5 text-sm shadow-sm backdrop-blur ${
+                night ? 'border-neutral-700 bg-neutral-900/85 text-neutral-100' : 'border-neutral-300 bg-white/90 text-neutral-800'
+              }`}
+            >
+              {label ?? lastLabel.current}
+            </span>
           </div>
           <div className="pointer-events-auto relative flex flex-wrap items-center justify-center gap-2">
             {contentsOpen && (
