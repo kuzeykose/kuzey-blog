@@ -32,9 +32,13 @@ export type Book = {
   // Distance from the spine to the free edge of the cover / a loose leaf.
   flapLength: number
   leafLength: number
-  // 0 = lying open on the left, 1 = lying on the right.
   // Each spread's printed pages, to repaint for the seasons.
   pages: { left: THREE.Texture; right: THREE.Texture }[]
+  // How much higher the left page lies than the right with the book open
+  // at a spread: the leaves turned so far stack up on the left while the
+  // rest sink on the right.
+  step: (spread: number) => number
+  // 0 = lying open on the left, 1 = lying on the right.
   setAngle: (closed: number) => void
   setLeaf: (leaf: number, closed: number) => void
   dispose: () => void
@@ -196,6 +200,7 @@ export function buildBook(maxAnisotropy: number, sheets: Sheet[]): Book {
     flapLength: coverW,
     leafLength: PAGE_W,
     pages,
+    step: (spread) => 4 * LEAF_LIFT * spread,
     setAngle,
     setLeaf,
     dispose: () => disposables.forEach((d) => d.dispose()),

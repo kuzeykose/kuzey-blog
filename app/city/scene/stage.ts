@@ -49,6 +49,9 @@ type Half = {
   poke: THREE.Object3D
   bob: THREE.Object3D
   mesh: THREE.Mesh
+  // How far this half sits below its page when standing (the left half of
+  // a pop-up across the gutter, levelled with the lower right page).
+  level: number
 }
 
 type Paper = { front: THREE.Material; back: THREE.Material }
@@ -435,7 +438,7 @@ export class CityStage {
     const H = cut.height * k
     const left = def.x - (def.w / 2 + cut.pad) * k
     const right = def.x + (def.w / 2 + cut.pad) * k
-    type Seg = { x0: number; x1: number; anchorX: number; root: THREE.Object3D; pos: THREE.Vector3 }
+    type Seg = { x0: number; x1: number; anchorX: number; root: THREE.Object3D; pos: THREE.Vector3; level?: number }
     const segs: Seg[] = []
     const pages = this.book!.spreads[spread]
 
@@ -453,7 +456,7 @@ export class CityStage {
         pos: new THREE.Vector3(childX - anchorX, dy, dz),
       })
     } else if (!def.ry && left < 0 && right > 0) {
-      segs.push({ x0: left, x1: 0, anchorX: 0, root: pages.left, pos: new THREE.Vector3(0, 0, def.z) })
+      segs.push({ x0: left, x1: 0, anchorX: 0, root: pages.left, pos: new THREE.Vector3(0, 0, def.z), level: this.book!.step(spread) })
       segs.push({ x0: 0, x1: right, anchorX: 0, root: pages.right, pos: new THREE.Vector3(0, 0, def.z) })
     } else {
       segs.push({
@@ -535,7 +538,7 @@ export class CityStage {
       poke.add(bob)
       bob.add(mesh, back)
       seg.root.add(anchor)
-      piece.halves.push({ anchor, hinge, poke, bob, mesh })
+      piece.halves.push({ anchor, hinge, poke, bob, mesh, level: seg.level ?? 0 })
     }
 
     if (def.lamp) {
@@ -1008,7 +1011,7 @@ export class CityStage {
     if (!live) items.length = 0
     // Pieces glued up on another piece shed from up there: the page is
     // further down.
-    const floor = 0.006 - (p.parent ? p.def.offset?.[1] ?? 0 : 0)
+    const floor = 0.006 + p.halves[0].level - (p.parent ? p.def.offset?.[1] ?? 0 : 0)
     let busy = false
     // Each petal keeps its own instance (and so its colour); ones not yet
     // released or already gone are drawn at zero size.
@@ -1223,7 +1226,8 @@ export class CityStage {
       for (const h of p.halves) {
         h.anchor.visible = visible && p.present > 0
         h.hinge.rotation.x = fold
-        if (!p.parent) h.anchor.position.y = p.eps * flat + mountY + 0.001
+        // (Levelled only while standing: folded flat it lies on its own page.)
+        if (!p.parent) h.anchor.position.y = p.eps * flat + mountY + 0.001 - h.level * clamp01(p.rise)
         h.poke.rotation.x = p.tilt.x * 0.35
         h.poke.position.y = Math.max(-0.05, p.lift.x * 0.5)
         h.poke.position.x = p.drive.x * 0.6
