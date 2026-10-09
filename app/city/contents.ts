@@ -7,7 +7,7 @@ export type Chapter = { title: string; sections?: string[] }
 export const CHAPTERS: Chapter[] = [
   // Up the island from the harbour, then across the river.
   { title: 'Manhattan', sections: ['Lower Manhattan', 'Midtown', 'Times Square', 'Central Park'] },
-  { title: 'Brooklyn' },
+  { title: 'Brooklyn', sections: ['DUMBO'] },
 ]
 
 export const PAGES = CHAPTERS.flatMap((c) => [c.title, ...(c.sections ?? [])])

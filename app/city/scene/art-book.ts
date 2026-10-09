@@ -1152,6 +1152,159 @@ export function midtownSpread(first: number) {
 }
 
 // ---------------------------------------------------------------------------
+// DUMBO, looking north across the East River: Manhattan's shore at the
+// back, the two bridges crossing over, the waterfront park, and cobbled
+// streets with old trolley tracks.
+export function dumboSpread(first: number) {
+  const m = new MapSheet(83)
+  const { c } = m
+  const shore = m.coast(-2.35, 0.12, 31)
+  const farShore = m.coast(-4.75, 0.08, 32)
+  const top: Line = [[X0 - 1, Z0 - 1], [X1 + 1, Z0 - 1]]
+  const front: Line = [[X1 + 1, Z1 + 1], [X0 - 1, Z1 + 1]]
+
+  m.water(
+    (() => {
+      const p = new Path2D()
+      farShore.forEach(([x, z], i) => (i ? p.lineTo(x, z) : p.moveTo(x, z)))
+      for (let i = shore.length - 1; i >= 0; i--) p.lineTo(shore[i][0], shore[i][1])
+      p.closePath()
+      return p
+    })(),
+    [
+      [shore, 0, -1],
+      [farShore, 0, 1],
+    ]
+  )
+  const land = new Path2D()
+  shore.forEach(([x, z], i) => (i ? land.lineTo(x, z) : land.moveTo(x, z)))
+  front.forEach(([x, z]) => land.lineTo(x, z))
+  land.closePath()
+  const manhattan = new Path2D()
+  top.forEach(([x, z], i) => (i ? manhattan.lineTo(x, z) : manhattan.moveTo(x, z)))
+  for (let i = farShore.length - 1; i >= 0; i--) manhattan.lineTo(farShore[i][0], farShore[i][1])
+  manhattan.closePath()
+  m.fill(manhattan, C.land)
+  m.fill(land, C.land)
+
+  c.save()
+  c.clip(land)
+  // Brick blocks between cobbled streets.
+  for (let i = 0; i < 380; i++) {
+    c.fillStyle = rgba(m.pick([C.brick, C.brickDark, C.brownstone, C.limestoneDark]), 0.26)
+    c.fillRect(m.r(X0, X1), m.r(-2.2, Z1), m.r(0.15, 0.3), m.r(0.15, 0.3))
+  }
+  // Brooklyn Bridge Park along the water, with Pebble Beach between the
+  // bridges.
+  c.fillStyle = '#b8cf98'
+  c.fillRect(X0, -2.5, X1 - X0, 0.75)
+  for (let i = 0; i < 70; i++) {
+    c.fillStyle = rgba(m.pick([C.greenDark, '#d98b3c', '#7fa860']), 0.6)
+    c.beginPath()
+    c.arc(m.r(X0, X1), m.r(-2.3, -1.8), m.r(0.04, 0.08), 0, Math.PI * 2)
+    c.fill()
+  }
+  c.fillStyle = '#d6cfc2'
+  c.beginPath()
+  c.ellipse(-2.6, -2.15, 1.2, 0.25, 0, 0, Math.PI * 2)
+  c.fill()
+  for (let i = 0; i < 90; i++) {
+    c.fillStyle = rgba(m.pick(['#9a958c', '#b9b4a8', '#7d7468']), 0.8)
+    c.beginPath()
+    c.arc(-2.6 + m.r(-1.1, 1.1), -2.15 + m.r(-0.2, 0.2), 0.025, 0, Math.PI * 2)
+    c.fill()
+  }
+  // Cobbled streets: Water, Front and York running across, Main, Washington
+  // and Jay running down to the water.
+  const across = [-1.2, 0.2, 1.6, 3.0]
+  const down = [-0.4, 3.5, 5.9]
+  const cobbles = (draw: () => void, w: number) => {
+    m.road(draw, w)
+    c.save()
+    c.lineWidth = w * 0.7
+    c.setLineDash([0.025, 0.03])
+    c.strokeStyle = rgba(INK, 0.18)
+    c.beginPath()
+    draw()
+    c.stroke()
+    c.restore()
+  }
+  for (const z of across) {
+    cobbles(() => {
+      c.moveTo(X0 - 1, z)
+      c.lineTo(X1 + 1, z)
+    }, 0.2)
+  }
+  for (const x of down) {
+    cobbles(() => {
+      c.moveTo(x, -1.8)
+      c.lineTo(x, Z1 + 1)
+    }, 0.2)
+  }
+  // Old trolley tracks along Water Street.
+  c.strokeStyle = rgba(INK, 0.55)
+  c.lineWidth = 0.012
+  for (const dz of [-0.03, 0.03]) {
+    c.beginPath()
+    c.moveTo(X0, -1.2 + dz)
+    c.lineTo(X1, -1.2 + dz)
+    c.stroke()
+  }
+  // The carousel's pavilion by the water.
+  c.fillStyle = '#e3d6c8'
+  c.fillRect(-1.8, -1.95, 2.8, 0.5)
+  c.strokeStyle = INK
+  c.lineWidth = 0.015
+  c.strokeRect(-1.8, -1.95, 2.8, 0.5)
+  c.restore()
+  m.ink([shore, farShore])
+  // The park's old piers reaching out into the river.
+  for (const x of [-6.2, 1.6, 5.0, 6.9]) {
+    c.fillStyle = '#e6d6b6'
+    c.strokeStyle = INK
+    c.lineWidth = 0.014
+    c.beginPath()
+    c.rect(x - 0.25, -3.0, 0.5, 0.7)
+    c.fill()
+    c.stroke()
+  }
+
+  // The two bridges striding over everything to Manhattan.
+  for (const [x, w] of [
+    [-3.7, 0.5],
+    [3.5, 0.55],
+  ]) {
+    m.road(() => {
+      c.moveTo(x, Z0 - 1)
+      c.lineTo(x, Z1 + 1)
+    }, w)
+    c.strokeStyle = rgba(INK, 0.35)
+    c.lineWidth = 0.01
+    for (let z = Z0; z < Z1; z += 0.2) {
+      c.beginPath()
+      c.moveTo(x - w / 2, z)
+      c.lineTo(x + w / 2, z + 0.1)
+      c.stroke()
+    }
+  }
+  for (let i = 0; i < 6; i++) m.boat(m.r(-6, 6), m.r(-4.3, -2.8), m.r(0.35, 0.55), m.pick([C.red, '#2f4566', '#f6f0e2']), '#f6f0e2', m.r(-0.3, 0.3) + (i % 2 ? Math.PI : 0))
+
+  m.label('EAST  RIVER', 0.0, -3.4, 0.24, 0, { color: rgba('#2f5468', 0.8), spacing: 10 })
+  m.label('MANHATTAN', 0.0, -4.95, 0.14, 0, { spacing: 8 })
+  m.label('D U M B O', 2.2, 2.45, 0.24, 0, { spacing: 10 })
+  m.label('Brooklyn Bridge Park', 5.2, -1.93, 0.11, 0, { italic: true, spacing: 2 })
+  m.label('Pebble Beach', -2.6, -1.78, 0.09, 0, { italic: true, spacing: 1 })
+  m.label('WATER ST', -5.8, -1.15, 0.09, 0, { color: rgba(INK, 0.7), spacing: 3 })
+  m.label('FRONT ST', -5.8, 0.25, 0.09, 0, { color: rgba(INK, 0.7), spacing: 3 })
+  m.label('YORK ST', -5.8, 1.65, 0.09, 0, { color: rgba(INK, 0.7), spacing: 3 })
+  m.label('WASHINGTON ST', 3.55, 3.8, 0.09, -Math.PI / 2, { color: rgba(INK, 0.7), spacing: 3 })
+  m.label('MAIN ST', -0.35, 3.8, 0.09, -Math.PI / 2, { color: rgba(INK, 0.7), spacing: 3 })
+  m.cartouche(-4.6, 4.5, 'DUMBO', '· down under the Manhattan Bridge overpass ·')
+  m.compass(6.6, 4.45)
+  return m.finish([String(first), String(first + 1)])
+}
+
+// ---------------------------------------------------------------------------
 
 export function cloth(color: string, seed = 1) {
   const s = 512

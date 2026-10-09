@@ -7,6 +7,7 @@ import { PARK } from './pieces-park'
 import { TIMES } from './pieces-times'
 import { LOWER } from './pieces-lower'
 import { MIDTOWN } from './pieces-midtown'
+import { DUMBO } from './pieces-dumbo'
 import { buildBook, Book, Sheet } from './book'
 import { PAGES, pageNumber } from '../contents'
 import { canvasTexture, groundMaterial, paperMaterials, shared } from './materials'
@@ -16,6 +17,7 @@ import {
   brooklynSpread,
   centralParkSpread,
   curb,
+  dumboSpread,
   lowerManhattanSpread,
   manhattanSpread,
   midtownSpread,
@@ -100,6 +102,7 @@ const PLACES: Record<string, { pieces: PieceDef[]; sheet: (first: number) => She
   'Times Square': { pieces: TIMES, sheet: timesSquareSpread },
   'Central Park': { pieces: PARK, sheet: centralParkSpread },
   Brooklyn: { pieces: BROOKLYN, sheet: brooklynSpread },
+  DUMBO: { pieces: DUMBO, sheet: dumboSpread },
 }
 const SPREADS = PAGES.map((name) => PLACES[name])
 
@@ -824,6 +827,7 @@ export class CityStage {
       const q = this.pieces.find((o) => o.def.id === p.def.startles)
       if (q?.run && q.run.s === 0) q.run.target = q.run.len
       if (q?.drop && q.drop.at < 0) q.drop.at = 0
+      if (q?.spin) q.spin.vel += 2.4
     }
   }
 
