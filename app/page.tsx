@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { GithubLogo, XLogo } from '@phosphor-icons/react/dist/ssr'
 
 const socials = [
@@ -12,7 +13,11 @@ export default function Page() {
                 Kuzey Kose
             </h1>
             <p className="text-neutral-600 dark:text-neutral-400 mb-8">
-                Software engineer based in New York.
+                Software engineer based in{' '}
+                <Link href="/city" className="underline">
+                    New York
+                </Link>
+                .
             </p>
 
             <p className="mb-8">
@@ -24,16 +29,8 @@ export default function Page() {
 
             <ul className="mb-8 space-y-2 text-neutral-700 dark:text-neutral-300">
                 <li>
-                    These days I&apos;m building a high-scalability platform at{' '}
-                    <a
-                        href="https://unplugdining.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline"
-                    >
-                        unPLUG
-                    </a>
-                    , helping restaurants boost first-party revenue by unifying
+                    These days I&apos;m building a high-scalability platform at
+                    unPLUG, helping restaurants boost first-party revenue by unifying
                     digital ordering, loyalty, and payments to maximize guest
                     lifetime value.
                 </li>
