@@ -9,6 +9,7 @@ import { LOWER } from './pieces-lower'
 import { MIDTOWN } from './pieces-midtown'
 import { DUMBO } from './pieces-dumbo'
 import { WILLIAMSBURG } from './pieces-williamsburg'
+import { CONEY } from './pieces-coney'
 import { buildBook, Book, Sheet } from './book'
 import { PAGES, pageNumber } from '../contents'
 import { canvasTexture, groundMaterial, paperMaterials, shared } from './materials'
@@ -18,6 +19,7 @@ import { SKY, Season } from './season'
 import {
   brooklynSpread,
   centralParkSpread,
+  coneyIslandSpread,
   curb,
   dumboSpread,
   lowerManhattanSpread,
@@ -127,6 +129,7 @@ const PLACES: Record<string, { pieces: PieceDef[]; sheet: (first: number, season
   Brooklyn: { pieces: BROOKLYN, sheet: brooklynSpread },
   DUMBO: { pieces: DUMBO, sheet: dumboSpread },
   Williamsburg: { pieces: WILLIAMSBURG, sheet: williamsburgSpread },
+  'Coney Island': { pieces: CONEY, sheet: coneyIslandSpread },
 }
 const SPREADS = PAGES.map((name) => PLACES[name])
 

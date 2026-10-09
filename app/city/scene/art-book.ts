@@ -1460,6 +1460,111 @@ export function williamsburgSpread(first: number) {
 }
 
 // ---------------------------------------------------------------------------
+// Coney Island, looking north from the Atlantic: the surf along the front,
+// the beach, the boardwalk, then Surf Avenue and the amusement parks.
+export function coneyIslandSpread(first: number) {
+  const m = new MapSheet(103)
+  const { c } = m
+  const shoreline = m.coast(3.45, 0.14, 51)
+  const boardFront = 1.05
+  const boardBack = 0.5
+  c.fillStyle = C.land
+  c.fillRect(X0, Z0, X1 - X0, Z1 - Z0)
+  for (let i = 0; i < 520; i++) {
+    c.fillStyle = rgba(m.pick([C.brick, C.limestoneDark, C.slate, C.brownstone, C.limestone]), 0.25)
+    c.fillRect(m.r(X0, X1), m.r(Z0, boardBack - 0.2), m.r(0.15, 0.3), m.r(0.15, 0.3))
+  }
+  // Luna Park and the Wonder Wheel's park, between Surf Avenue and the
+  // boardwalk, with their rides in plan.
+  c.fillStyle = '#efe0c8'
+  c.fillRect(-2.0, -1.2, 7.4, 1.6)
+  c.strokeStyle = rgba(INK, 0.4)
+  c.lineWidth = 0.015
+  c.strokeRect(-2.0, -1.2, 7.4, 1.6)
+  for (let i = 0; i < 9; i++) {
+    c.strokeStyle = rgba(m.pick([C.red, '#3f6fb0', '#f7c948', '#18a558']), 0.55)
+    c.lineWidth = 0.02
+    c.beginPath()
+    c.arc(m.r(-1.6, 5.0), m.r(-1.0, 0.2), m.r(0.12, 0.3), 0, Math.PI * 2)
+    c.stroke()
+  }
+  // Streets.
+  for (const z of [-1.45, -3.6]) {
+    m.road(() => {
+      c.moveTo(X0 - 1, z)
+      c.lineTo(X1 + 1, z)
+    }, 0.24)
+  }
+  for (const x of [-3.0, -6.8, 1.5, 5.9]) {
+    m.road(() => {
+      c.moveTo(x, Z0 - 1)
+      c.lineTo(x, boardBack)
+    }, 0.16)
+  }
+  // The beach, then the sea.
+  const sand = new Path2D()
+  sand.moveTo(X0 - 1, boardFront)
+  sand.lineTo(X1 + 1, boardFront)
+  for (let k = shoreline.length - 1; k >= 0; k--) sand.lineTo(shoreline[k][0], shoreline[k][1])
+  sand.closePath()
+  m.fill(sand, '#ead9b0')
+  c.save()
+  c.clip(sand)
+  for (let i = 0; i < 700; i++) {
+    c.fillStyle = rgba(m.pick(['#c9b07a', '#d8c08c', '#f4ead0', '#b89c6a']), 0.6)
+    c.beginPath()
+    c.arc(m.r(X0, X1), m.r(boardFront, 3.6), m.r(0.015, 0.04), 0, Math.PI * 2)
+    c.fill()
+  }
+  c.restore()
+  const sea = new Path2D()
+  shoreline.forEach(([x, z], i) => (i ? sea.lineTo(x, z) : sea.moveTo(x, z)))
+  sea.lineTo(X1 + 1, Z1 + 1)
+  sea.lineTo(X0 - 1, Z1 + 1)
+  sea.closePath()
+  m.water(sea, [[shoreline, 0, 1]])
+  m.ink([shoreline])
+  // The boardwalk's planks.
+  c.fillStyle = '#c9a77a'
+  c.fillRect(X0, boardBack, X1 - X0, boardFront - boardBack)
+  c.strokeStyle = rgba(INK, 0.3)
+  c.lineWidth = 0.008
+  for (let x = X0; x < X1; x += 0.09) {
+    c.beginPath()
+    c.moveTo(x, boardBack)
+    c.lineTo(x, boardFront)
+    c.stroke()
+  }
+  c.strokeStyle = INK
+  c.lineWidth = 0.02
+  c.strokeRect(X0 - 0.1, boardBack, X1 - X0 + 0.2, boardFront - boardBack)
+  // Steeplechase Pier, out into the surf.
+  c.fillStyle = '#c9a77a'
+  c.fillRect(-6.7, boardFront, 0.4, Z1 - boardFront)
+  c.strokeStyle = INK
+  c.lineWidth = 0.015
+  c.strokeRect(-6.7, boardFront, 0.4, Z1 - boardFront)
+  for (let z = boardFront; z < Z1; z += 0.12) {
+    c.beginPath()
+    c.moveTo(-6.7, z)
+    c.lineTo(-6.3, z)
+    c.stroke()
+  }
+  m.boat(4.2, 4.9, 0.5, '#f6f0e2', '#3f6fb0', 0.2)
+
+  m.label('ATLANTIC  OCEAN', 2.0, 4.85, 0.24, 0, { color: rgba('#2f5468', 0.8), spacing: 10 })
+  m.label('C O N E Y   I S L A N D   B E A C H', 1.4, 3.15, 0.16, 0, { color: rgba('#8a6a3a', 0.85), spacing: 6 })
+  m.label('SURF AVE', -5.0, -1.41, 0.1, 0, { color: rgba(INK, 0.7), spacing: 3 })
+  m.label('MERMAID AVE', -5.0, -3.56, 0.1, 0, { color: rgba(INK, 0.7), spacing: 3 })
+  m.label('STILLWELL AVE', -2.97, -2.5, 0.09, -Math.PI / 2, { color: rgba(INK, 0.7), spacing: 3 })
+  m.label('Luna Park', 3.6, 0.3, 0.12, 0, { italic: true, spacing: 2 })
+  m.label('Steeplechase Pier', -6.0, 2.4, 0.1, -Math.PI / 2, { italic: true, spacing: 2 })
+  m.cartouche(-4.6, 4.5, 'Coney Island', '· the people’s playground ·')
+  m.compass(6.6, 4.45)
+  return m.finish([String(first), String(first + 1)])
+}
+
+// ---------------------------------------------------------------------------
 
 export function cloth(color: string, seed = 1) {
   const s = 512

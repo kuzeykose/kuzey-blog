@@ -30,8 +30,8 @@ import {
 } from './art-brooklyn'
 
 // Where the Wonder Wheel's hub sits on its frame, and the wheel's size.
-const HUB_Y = 2.62
-const WHEEL = 3.3
+export const HUB_Y = 2.62
+export const WHEEL = 3.3
 
 const horse = (i: number, body: string, saddle: string): PieceDef => ({
   id: `bk-horse-${i}`,
