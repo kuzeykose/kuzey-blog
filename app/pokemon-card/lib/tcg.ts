@@ -1,6 +1,7 @@
 import { PRICE_REVALIDATE, TCG_API } from './constants'
 import type { SearchCard, TcgCard, TcgSet } from './types'
 import { availablePrintings } from './prices'
+import { tcgApiHeaders } from './tcg-key'
 
 type FetchOptions = {
   revalidate?: number
@@ -17,7 +18,7 @@ async function tcgFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const res = await fetch(url, {
-        headers: { 'User-Agent': 'kuzeykose.com pokemon-card' },
+        headers: tcgApiHeaders(),
         next: { revalidate: options.revalidate ?? PRICE_REVALIDATE },
       })
       if (res.ok) {

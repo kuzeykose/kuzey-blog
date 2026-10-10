@@ -5,9 +5,10 @@ type OwnerLink = {
   label: string
 }
 
-/** Local-dev collection tools. Add `{ href: '/pokemon-card/scan', label: 'Scan' }` when that page exists. */
+/** Local-dev collection tools. The scan page itself stays reachable in production. */
 export const OWNER_LINKS: OwnerLink[] = [
   { href: '/pokemon-card/add', label: 'Add card' },
+  { href: '/pokemon-card/scan', label: 'Scan' },
 ]
 
 export function OwnerActions({

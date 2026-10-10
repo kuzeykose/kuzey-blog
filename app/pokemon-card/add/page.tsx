@@ -9,11 +9,11 @@ export const metadata = {
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ id?: string }>
+  searchParams: Promise<{ id?: string; q?: string }>
 }) {
-  const { id } = await searchParams
+  const { id, q } = await searchParams
   const writable = isWritable()
   const editing = typeof id === 'string' && id ? await getEnrichedCard(id) : null
 
-  return <AddFlow writable={writable} editing={editing} />
+  return <AddFlow writable={writable} editing={editing} initialQuery={q} />
 }

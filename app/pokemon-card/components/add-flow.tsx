@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { Camera, UploadSimple } from '@phosphor-icons/react'
 import {
   BackLink,
   CardArt,
@@ -64,13 +66,15 @@ function useRecentSearches() {
 export function AddFlow({
   writable,
   editing,
+  initialQuery,
 }: {
   writable: boolean
   editing: EnrichedCard | null
+  initialQuery?: string
 }) {
   const router = useRouter()
   const [step, setStep] = useState<1 | 2 | 3>(editing ? 3 : 1)
-  const [query, setQuery] = useState(editing?.tcg?.name ?? '')
+  const [query, setQuery] = useState(editing?.tcg?.name ?? initialQuery ?? '')
   const [setId, setSetId] = useState('')
   const [sets, setSets] = useState<TcgSet[]>([])
   const [results, setResults] = useState<SearchCard[]>([])
@@ -103,6 +107,13 @@ export function AddFlow({
   const recent = useRecentSearches()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!editing && initialQuery?.trim()) {
+      runSearch(initialQuery)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -202,7 +213,11 @@ export function AddFlow({
       </div>
       <div className="mt-4">
         <PageIntro title={editing ? 'Edit a card' : 'Add a card'}>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-2 mb-6">{stepLabel}</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-2 mb-6">
+            {step === 1 && !editing
+              ? 'Scan it, upload a photo, or search by hand.'
+              : stepLabel}
+          </p>
         </PageIntro>
       </div>
 
@@ -219,12 +234,42 @@ export function AddFlow({
             runSearch()
           }}
         >
+          <div className="grid gap-3 mb-6">
+            <Link
+              href="/pokemon-card/scan"
+              className="rounded-lg border border-orange-600 px-4 py-4 block"
+            >
+              <div className="flex items-start gap-3">
+                <Camera className="mt-0.5 shrink-0" />
+                <div>
+                  <div className="text-sm font-medium">Scan card</div>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                    Use your camera. Reads the name and set number.
+                  </p>
+                </div>
+              </div>
+            </Link>
+            <Link
+              href="/pokemon-card/scan?mode=upload"
+              className="rounded-lg border border-neutral-200 dark:border-neutral-800 px-4 py-4 block"
+            >
+              <div className="flex items-start gap-3">
+                <UploadSimple className="mt-0.5 shrink-0" />
+                <div>
+                  <div className="text-sm font-medium">Upload photo</div>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                    Pick an existing photo of the card front.
+                  </p>
+                </div>
+              </div>
+            </Link>
+          </div>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-2">or search by hand</p>
           <SearchField
             autoFocus
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder='Name, set or number — e.g. “Pikachu 58”'
-            accent
           />
           <div className="flex flex-wrap items-center gap-2 mt-3">
             <SelectPill
@@ -241,6 +286,9 @@ export function AddFlow({
               {busy ? 'Searching…' : 'Search'}
             </PrimaryButton>
           </div>
+          <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-4">
+            Photos are only used to read the card and aren&apos;t saved.
+          </p>
         </form>
       ) : null}
 

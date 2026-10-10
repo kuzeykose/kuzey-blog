@@ -127,10 +127,20 @@ export function writeCollection(file: CollectionFile) {
 
 export function upsertCard(
   incoming: CollectionEntry,
-  mode: 'add' | 'edit'
+  mode: 'add' | 'edit' | 'undo'
 ): CollectionFile {
   const file = readCollection()
   const index = file.cards.findIndex((card) => card.id === incoming.id)
+
+  if (mode === 'undo') {
+    if (index === -1) return file
+    const current = file.cards[index]
+    const quantity = current.quantity - incoming.quantity
+    if (quantity <= 0) file.cards.splice(index, 1)
+    else file.cards[index] = { ...current, quantity }
+    writeCollection(file)
+    return file
+  }
 
   if (index === -1) {
     file.cards.unshift({
