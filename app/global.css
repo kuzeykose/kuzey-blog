@@ -132,7 +132,8 @@ pre {
 
 /* Remove Safari input shadow on mobile */
 input[type="text"],
-input[type="email"] {
+input[type="email"],
+input[type="search"] {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;

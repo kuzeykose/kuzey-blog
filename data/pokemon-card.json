@@ -1,0 +1,290 @@
+{
+  "cards": [
+    {
+      "id": "sv8-40",
+      "quantity": 3,
+      "condition": "NM",
+      "printing": "normal",
+      "notes": "Bulk from a Surging Sparks box. Keeping extras for trades.",
+      "added": "2026-10-09",
+      "catalog": {
+        "name": "Mantine",
+        "number": "40",
+        "rarity": "Common",
+        "types": [
+          "Water"
+        ],
+        "setId": "sv8",
+        "setName": "Surging Sparks",
+        "printedTotal": 191,
+        "image": "https://images.pokemontcg.io/sv8/40.png",
+        "imageLarge": "https://images.pokemontcg.io/sv8/40_hires.png",
+        "market": 0.32,
+        "variant": "normal",
+        "updatedAt": "2026/10/10"
+      }
+    },
+    {
+      "id": "sv8pt5-30",
+      "quantity": 2,
+      "condition": "NM",
+      "printing": "holofoil",
+      "notes": "Two copies from Prismatic Evolutions. One for the binder, one for the deck box.",
+      "added": "2026-10-08",
+      "catalog": {
+        "name": "Jolteon ex",
+        "number": "30",
+        "rarity": "Double Rare",
+        "types": [
+          "Lightning"
+        ],
+        "setId": "sv8pt5",
+        "setName": "Prismatic Evolutions",
+        "printedTotal": 131,
+        "image": "https://images.pokemontcg.io/sv8pt5/30.png",
+        "imageLarge": "https://images.pokemontcg.io/sv8pt5/30_hires.png",
+        "market": 3.92,
+        "variant": "holofoil",
+        "updatedAt": "2026/10/10"
+      }
+    },
+    {
+      "id": "sv5-81",
+      "quantity": 1,
+      "condition": "NM",
+      "printing": "holofoil",
+      "notes": "Pulled at a league night in Brooklyn.",
+      "added": "2026-10-06",
+      "catalog": {
+        "name": "Iron Crown ex",
+        "number": "81",
+        "rarity": "Double Rare",
+        "types": [
+          "Psychic"
+        ],
+        "setId": "sv5",
+        "setName": "Temporal Forces",
+        "printedTotal": 162,
+        "image": "https://images.pokemontcg.io/sv5/81.png",
+        "imageLarge": "https://images.pokemontcg.io/sv5/81_hires.png",
+        "market": 0.9,
+        "variant": "holofoil",
+        "updatedAt": "2026/10/10"
+      }
+    },
+    {
+      "id": "me1-133",
+      "quantity": 1,
+      "condition": "NM",
+      "printing": "holofoil",
+      "notes": "Illustration Rare Bulbasaur \u2014 favorite art in the set.",
+      "added": "2026-10-02",
+      "catalog": {
+        "name": "Bulbasaur",
+        "number": "133",
+        "rarity": "Illustration Rare",
+        "types": [
+          "Grass"
+        ],
+        "setId": "me1",
+        "setName": "Mega Evolution",
+        "printedTotal": 132,
+        "image": "https://images.pokemontcg.io/me1/133.png",
+        "imageLarge": "https://images.pokemontcg.io/me1/133_hires.png",
+        "market": 15.28,
+        "variant": "holofoil",
+        "updatedAt": "2026/10/10"
+      }
+    },
+    {
+      "id": "sv6-25",
+      "quantity": 1,
+      "condition": "NM",
+      "printing": "holofoil",
+      "notes": "Teal Mask Ogerpon from a Twilight Masquerade 3-pack.",
+      "added": "2026-09-28",
+      "catalog": {
+        "name": "Teal Mask Ogerpon ex",
+        "number": "25",
+        "rarity": "Double Rare",
+        "types": [
+          "Grass"
+        ],
+        "setId": "sv6",
+        "setName": "Twilight Masquerade",
+        "printedTotal": 167,
+        "image": "https://images.pokemontcg.io/sv6/25.png",
+        "imageLarge": "https://images.pokemontcg.io/sv6/25_hires.png",
+        "market": 2.88,
+        "variant": "holofoil",
+        "updatedAt": "2026/10/10"
+      }
+    },
+    {
+      "id": "sv6-78",
+      "quantity": 1,
+      "condition": "NM",
+      "printing": "normal",
+      "notes": "",
+      "added": "2026-09-20",
+      "catalog": {
+        "name": "Clefairy",
+        "number": "78",
+        "rarity": "Common",
+        "types": [
+          "Psychic"
+        ],
+        "setId": "sv6",
+        "setName": "Twilight Masquerade",
+        "printedTotal": 167,
+        "image": "https://images.pokemontcg.io/sv6/78.png",
+        "imageLarge": "https://images.pokemontcg.io/sv6/78_hires.png",
+        "market": 0.29,
+        "variant": "normal",
+        "updatedAt": "2026/10/10"
+      }
+    },
+    {
+      "id": "sv3pt5-199",
+      "quantity": 1,
+      "condition": "NM",
+      "printing": "holofoil",
+      "notes": "151 Special Illustration Rare. Centerpiece of the binder.",
+      "added": "2026-09-14",
+      "catalog": {
+        "name": "Charizard ex",
+        "number": "199",
+        "rarity": "Special Illustration Rare",
+        "types": [
+          "Fire"
+        ],
+        "setId": "sv3pt5",
+        "setName": "151",
+        "printedTotal": 165,
+        "image": "https://images.pokemontcg.io/sv3pt5/199.png",
+        "imageLarge": "https://images.pokemontcg.io/sv3pt5/199_hires.png",
+        "market": 322.26,
+        "variant": "holofoil",
+        "updatedAt": "2026/10/10"
+      }
+    },
+    {
+      "id": "sv4-91",
+      "quantity": 2,
+      "condition": "NM",
+      "printing": "normal",
+      "notes": "",
+      "added": "2026-08-22",
+      "catalog": {
+        "name": "Gligar",
+        "number": "91",
+        "rarity": "Common",
+        "types": [
+          "Fighting"
+        ],
+        "setId": "sv4",
+        "setName": "Paradox Rift",
+        "printedTotal": 182,
+        "image": "https://images.pokemontcg.io/sv4/91.png",
+        "imageLarge": "https://images.pokemontcg.io/sv4/91_hires.png",
+        "market": 0.17,
+        "variant": "normal",
+        "updatedAt": "2026/10/10"
+      }
+    },
+    {
+      "id": "dp1-1",
+      "quantity": 1,
+      "condition": "LP",
+      "printing": "holofoil",
+      "notes": "Diamond & Pearl Dialga from a shop binder. Light edge wear on the back.",
+      "added": "2026-08-02",
+      "catalog": {
+        "name": "Dialga",
+        "number": "1",
+        "rarity": "Rare Holo",
+        "types": [
+          "Metal"
+        ],
+        "setId": "dp1",
+        "setName": "Diamond & Pearl",
+        "printedTotal": 130,
+        "image": "https://images.pokemontcg.io/dp1/1.png",
+        "imageLarge": "https://images.pokemontcg.io/dp1/1_hires.png",
+        "market": 44.41,
+        "variant": "holofoil",
+        "updatedAt": "2026/10/10"
+      }
+    },
+    {
+      "id": "base1-58",
+      "quantity": 1,
+      "condition": "MP",
+      "printing": "normal",
+      "notes": "Base Set Pikachu. Childhood card \u2014 creased corner, keeping it anyway.",
+      "added": "2026-07-18",
+      "catalog": {
+        "name": "Pikachu",
+        "number": "58",
+        "rarity": "Common",
+        "types": [
+          "Lightning"
+        ],
+        "setId": "base1",
+        "setName": "Base",
+        "printedTotal": 102,
+        "image": "https://images.pokemontcg.io/base1/58.png",
+        "imageLarge": "https://images.pokemontcg.io/base1/58_hires.png",
+        "market": 10.05,
+        "variant": "normal",
+        "updatedAt": "2026/10/10"
+      }
+    },
+    {
+      "id": "swsh9-29",
+      "quantity": 1,
+      "condition": "LP",
+      "printing": "holofoil",
+      "notes": "Kingler VMAX, lightly played from kitchen-table games.",
+      "added": "2026-06-11",
+      "catalog": {
+        "name": "Kingler VMAX",
+        "number": "29",
+        "rarity": "Rare Holo VMAX",
+        "types": [
+          "Water"
+        ],
+        "setId": "swsh9",
+        "setName": "Brilliant Stars",
+        "printedTotal": 172,
+        "image": "https://images.pokemontcg.io/swsh9/29.png",
+        "imageLarge": "https://images.pokemontcg.io/swsh9/29_hires.png",
+        "market": 2.24,
+        "variant": "holofoil",
+        "updatedAt": "2026/10/10"
+      }
+    },
+    {
+      "id": "cel25-24",
+      "quantity": 1,
+      "condition": "NM",
+      "printing": "holofoil",
+      "notes": "Professor's Research (Professor Oak) from Celebrations.",
+      "added": "2026-05-03",
+      "catalog": {
+        "name": "Professor's Research (Professor Oak)",
+        "number": "24",
+        "rarity": "Rare Ultra",
+        "types": null,
+        "setId": "cel25",
+        "setName": "Celebrations",
+        "printedTotal": 25,
+        "image": "https://images.pokemontcg.io/cel25/24.png",
+        "imageLarge": "https://images.pokemontcg.io/cel25/24_hires.png",
+        "market": 0.95,
+        "variant": "holofoil",
+        "updatedAt": "2026/10/10"
+      }
+    }
+  ]
+}
