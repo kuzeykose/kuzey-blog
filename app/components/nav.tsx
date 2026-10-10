@@ -10,6 +10,9 @@ const navItems = {
   "/projects": {
     name: "projects",
   },
+  "/pokemon-card": {
+    name: "cards",
+  },
 };
 
 export function Navbar() {

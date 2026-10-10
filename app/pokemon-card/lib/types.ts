@@ -1,0 +1,80 @@
+export const CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG'] as const
+export type Condition = (typeof CONDITIONS)[number]
+
+export type CollectionEntry = {
+  id: string
+  quantity: number
+  condition: Condition
+  printing?: string
+  notes?: string
+  added: string
+}
+
+export type CollectionFile = {
+  cards: CollectionEntry[]
+}
+
+export type TcgPrice = {
+  low?: number
+  mid?: number
+  high?: number
+  market?: number
+  directLow?: number
+}
+
+export type TcgCard = {
+  id: string
+  name: string
+  number: string
+  rarity?: string
+  types?: string[]
+  images?: {
+    small?: string
+    large?: string
+  }
+  set: {
+    id: string
+    name: string
+    printedTotal?: number
+    series?: string
+    releaseDate?: string
+  }
+  tcgplayer?: {
+    url?: string
+    updatedAt?: string
+    prices?: Record<string, TcgPrice>
+  }
+}
+
+export type TcgSet = {
+  id: string
+  name: string
+  releaseDate?: string
+  series?: string
+}
+
+export type MarketQuote = {
+  market: number | null
+  variant: string | null
+  updatedAt: string | null
+}
+
+export type EnrichedCard = CollectionEntry & {
+  tcg: TcgCard | null
+  quote: MarketQuote
+}
+
+export type SearchCard = {
+  id: string
+  name: string
+  number: string
+  rarity?: string
+  types?: string[]
+  setName: string
+  setId: string
+  printedTotal?: number
+  image?: string
+  printings: string[]
+  quotes: Record<string, number>
+  updatedAt: string | null
+}
