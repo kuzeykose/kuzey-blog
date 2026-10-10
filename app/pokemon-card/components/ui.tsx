@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import Link from 'next/link'
+import { OwnerActions } from './owner-actions'
 import { TYPE_COLORS } from '../lib/constants'
 import { formatUsd } from '../lib/format'
 import type { EnrichedCard } from '../lib/types'
@@ -52,14 +53,7 @@ export function SectionTabs({
           )
         })}
       </div>
-      {writable ? (
-        <Link
-          href="/pokemon-card/add"
-          className="text-neutral-600 dark:text-neutral-400 underline decoration-neutral-400 dark:decoration-neutral-600 underline-offset-2 hover:text-neutral-900 dark:hover:text-neutral-100"
-        >
-          add
-        </Link>
-      ) : null}
+      <OwnerActions writable={writable} />
     </div>
   )
 }

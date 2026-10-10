@@ -12,6 +12,19 @@ export function formatCount(value: number) {
   return new Intl.NumberFormat('en-US').format(value)
 }
 
+export function formatCopyCount(copies: number, unique: number) {
+  return `${formatCount(copies)} cards · ${formatCount(unique)} unique`
+}
+
+export function formatFilteredCount(
+  filteredUnique: number,
+  unique: number,
+  filteredCopies: number,
+  copies: number
+) {
+  return `${formatCount(filteredUnique)} of ${formatCount(unique)} unique · ${formatCount(filteredCopies)} of ${formatCount(copies)} cards`
+}
+
 export function formatLongDate(iso: string) {
   const date = parseDay(iso)
   if (!date) return iso

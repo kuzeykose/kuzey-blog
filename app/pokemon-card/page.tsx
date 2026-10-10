@@ -10,7 +10,7 @@ import {
   tileFromEntry,
 } from './components/ui'
 import { collectionTotals, getEnrichedCollection, isWritable } from './lib/collection'
-import { formatCount, formatShortDate, formatUsd } from './lib/format'
+import { formatCopyCount, formatCount, formatShortDate, formatUsd } from './lib/format'
 import { TYPE_COLORS } from './lib/constants'
 import type { EnrichedCard } from './lib/types'
 
@@ -62,7 +62,7 @@ export default async function Page() {
           <Stat
             label="cards"
             value={formatCount(totals.copies)}
-            hint={`${formatCount(totals.unique)} unique`}
+            hint={formatCopyCount(totals.copies, totals.unique)}
           />
           <Stat label="Est. value" value={formatUsd(totals.value)} hint="near mint · USD" />
           <Stat label="Sets" value={formatCount(totals.sets)} hint="in the binders" />

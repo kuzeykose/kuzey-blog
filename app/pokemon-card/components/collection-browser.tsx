@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { List, SquaresFour } from '@phosphor-icons/react'
 import { CardTile, ListRow, tileFromEntry } from './ui'
-import { formatCount, formatUsd } from '../lib/format'
+import { formatCopyCount, formatFilteredCount, formatUsd } from '../lib/format'
 import type { EnrichedCard } from '../lib/types'
 
 type SortKey = 'value' | 'value-asc' | 'name' | 'added' | 'set' | 'number'
@@ -114,6 +114,13 @@ export function CollectionBrowser({ cards }: { cards: EnrichedCard[] }) {
 
   const filteredOn = Boolean(q || set || rarity || selectedTypes.length)
   const typeLabel = selectedTypes.length ? selectedTypes.join(', ') : 'All'
+  const unique = cards.length
+  const copies = cards.reduce((sum, card) => sum + card.quantity, 0)
+  const filteredUnique = filtered.length
+  const filteredCopies = filtered.reduce((sum, card) => sum + card.quantity, 0)
+  const countLabel = filteredOn
+    ? formatFilteredCount(filteredUnique, unique, filteredCopies, copies)
+    : formatCopyCount(copies, unique)
 
   return (
     <div>
@@ -206,7 +213,7 @@ export function CollectionBrowser({ cards }: { cards: EnrichedCard[] }) {
       </div>
 
       <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-6">
-        {formatCount(filtered.length)} of {formatCount(cards.length)} cards
+        {countLabel}
         {filteredOn ? (
           <>
             {' · '}

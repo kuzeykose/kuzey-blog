@@ -8,6 +8,7 @@ import {
   SourceCredit,
   TypeDot,
 } from '../components/ui'
+import { OwnerActions } from '../components/owner-actions'
 import { getEnrichedCard, isWritable, readCollection } from '../lib/collection'
 import { CONDITION_LABELS } from '../lib/constants'
 import { formatLongDate, formatUpdated, formatUsd, printingLabel } from '../lib/format'
@@ -47,7 +48,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
   return (
     <section>
-      <BackLink />
+      <div className="flex items-center justify-between gap-3">
+        <BackLink />
+        <OwnerActions writable={writable} />
+      </div>
       <div className="mt-4">
         <PageIntro title={name}>
           <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-2 mb-8">
