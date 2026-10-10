@@ -1,6 +1,13 @@
 import { readFileSync, writeFileSync } from 'fs'
 import path from 'path'
-import { CONDITIONS, type CollectionEntry, type CollectionFile, type EnrichedCard } from './types'
+import {
+  CONDITIONS,
+  type CatalogSnapshot,
+  type CollectionEntry,
+  type CollectionFile,
+  type EnrichedCard,
+  type TcgCard,
+} from './types'
 import { fetchCardById, fetchCardsByIds } from './tcg'
 import { quoteFor } from './prices'
 
@@ -30,24 +37,87 @@ function isEntry(value: CollectionEntry): value is CollectionEntry {
 export async function getEnrichedCollection(): Promise<EnrichedCard[]> {
   const { cards } = readCollection()
   const tcgById = await fetchCardsByIds(cards.map((card) => card.id))
-  return cards.map((entry) => {
-    const tcg = tcgById.get(entry.id) ?? null
-    return {
-      ...entry,
-      tcg,
-      quote: quoteFor(tcg, entry.printing),
-    }
-  })
+  return cards.map((entry) => enrich(entry, tcgById.get(entry.id) ?? null))
 }
 
 export async function getEnrichedCard(id: string): Promise<EnrichedCard | null> {
   const entry = readCollection().cards.find((card) => card.id === id)
   if (!entry) return null
   const tcg = await fetchCardById(id)
+  return enrich(entry, tcg)
+}
+
+function enrich(entry: CollectionEntry, live: TcgCard | null): EnrichedCard {
+  const tcg = live ?? snapshotToCard(entry)
+  const liveQuote = live ? quoteFor(live, entry.printing) : null
+  const quote =
+    liveQuote?.market != null
+      ? liveQuote
+      : {
+          market: entry.catalog?.market ?? liveQuote?.market ?? null,
+          variant: entry.printing ?? entry.catalog?.variant ?? liveQuote?.variant ?? null,
+          updatedAt: liveQuote?.updatedAt ?? entry.catalog?.updatedAt ?? null,
+        }
+  return { ...entry, tcg, quote }
+}
+
+function snapshotToCard(entry: CollectionEntry): TcgCard | null {
+  const catalog = entry.catalog
+  if (!catalog?.name) {
+    const guessed = guessFromId(entry.id)
+    if (!guessed) return null
+    return guessed
+  }
   return {
-    ...entry,
-    tcg,
-    quote: quoteFor(tcg, entry.printing),
+    id: entry.id,
+    name: catalog.name,
+    number: catalog.number,
+    rarity: catalog.rarity,
+    types: catalog.types,
+    images: {
+      small: catalog.image,
+      large: catalog.imageLarge ?? catalog.image,
+    },
+    set: {
+      id: catalog.setId ?? '',
+      name: catalog.setName ?? 'Unknown set',
+      printedTotal: catalog.printedTotal,
+    },
+  }
+}
+
+function guessFromId(id: string): TcgCard | null {
+  const split = id.lastIndexOf('-')
+  if (split <= 0) return null
+  const setId = id.slice(0, split)
+  const number = id.slice(split + 1)
+  return {
+    id,
+    name: id,
+    number,
+    images: {
+      small: `https://images.pokemontcg.io/${setId}/${number}.png`,
+      large: `https://images.pokemontcg.io/${setId}/${number}_hires.png`,
+    },
+    set: { id: setId, name: setId },
+  }
+}
+
+export function catalogFromCard(card: TcgCard, printing?: string): CatalogSnapshot {
+  const quote = quoteFor(card, printing)
+  return {
+    name: card.name,
+    number: card.number,
+    rarity: card.rarity,
+    types: card.types,
+    setId: card.set?.id,
+    setName: card.set?.name,
+    printedTotal: card.set?.printedTotal,
+    image: card.images?.small,
+    imageLarge: card.images?.large,
+    market: quote.market ?? undefined,
+    variant: quote.variant ?? undefined,
+    updatedAt: quote.updatedAt ?? undefined,
   }
 }
 
@@ -84,6 +154,7 @@ export function upsertCard(
       condition: incoming.condition,
       printing: incoming.printing ?? current.printing,
       notes: incoming.notes ?? current.notes,
+      catalog: incoming.catalog ?? current.catalog,
     }
   }
 

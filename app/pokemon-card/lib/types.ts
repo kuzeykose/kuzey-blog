@@ -1,6 +1,21 @@
 export const CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG'] as const
 export type Condition = (typeof CONDITIONS)[number]
 
+export type CatalogSnapshot = {
+  name: string
+  number: string
+  rarity?: string
+  types?: string[]
+  setId?: string
+  setName?: string
+  printedTotal?: number
+  image?: string
+  imageLarge?: string
+  market?: number
+  variant?: string
+  updatedAt?: string
+}
+
 export type CollectionEntry = {
   id: string
   quantity: number
@@ -8,6 +23,7 @@ export type CollectionEntry = {
   printing?: string
   notes?: string
   added: string
+  catalog?: CatalogSnapshot
 }
 
 export type CollectionFile = {

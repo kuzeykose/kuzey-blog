@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { isWritable, upsertCard } from 'app/pokemon-card/lib/collection'
-import { CONDITIONS, type CollectionEntry, type Condition } from 'app/pokemon-card/lib/types'
+import { CONDITIONS, type CatalogSnapshot, type CollectionEntry, type Condition } from 'app/pokemon-card/lib/types'
 
 export const runtime = 'nodejs'
 
@@ -19,6 +19,7 @@ export async function POST(request: Request) {
     printing?: string
     notes?: string
     mode?: 'add' | 'edit'
+    catalog?: CatalogSnapshot
   }
 
   try {
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
     printing: typeof body.printing === 'string' ? body.printing : undefined,
     notes: typeof body.notes === 'string' ? body.notes : '',
     added: new Date().toISOString().slice(0, 10),
+    catalog: body.catalog && typeof body.catalog.name === 'string' ? body.catalog : undefined,
   }
 
   const file = upsertCard(entry, mode)

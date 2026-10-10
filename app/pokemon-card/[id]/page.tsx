@@ -51,8 +51,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       <div className="mt-4">
         <PageIntro title={name}>
           <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-2 mb-8">
-            {setName} · {number}
-            {printed ? `/${printed}` : ''}
+            {setName} · {number}{printed ? `/${printed}` : ''}
             {rarity ? ` · ${rarity}` : ''}
           </p>
         </PageIntro>
@@ -68,8 +67,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         <div className="pt-1">
           <ListRow label="Set">{setName}</ListRow>
           <ListRow label="Number">
-            {number}
-            {printed ? `/${printed}` : ''}
+            {`${number}${printed ? `/${printed}` : ''}`}
           </ListRow>
           <ListRow label="Rarity">{rarity ?? '—'}</ListRow>
           <ListRow label="Type">

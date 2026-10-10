@@ -160,6 +160,19 @@ export function AddFlow({
           printing: activePrinting,
           notes,
           mode: editing ? 'edit' : 'add',
+          catalog: {
+            name: selected.name,
+            number: selected.number,
+            rarity: selected.rarity,
+            types: selected.types,
+            setId: selected.setId,
+            setName: selected.setName,
+            printedTotal: selected.printedTotal,
+            image: selected.image,
+            market: selected.quotes[activePrinting],
+            variant: activePrinting,
+            updatedAt: selected.updatedAt ?? undefined,
+          },
         }),
       })
       const body = await res.json()
@@ -212,7 +225,7 @@ export function AddFlow({
               autoFocus
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder='Name, set or number — e.g. “Pikachu 058”'
+              placeholder='Name, set or number — e.g. “Pikachu 58”'
               className="w-full bg-transparent outline-none placeholder:text-neutral-400"
             />
           </label>

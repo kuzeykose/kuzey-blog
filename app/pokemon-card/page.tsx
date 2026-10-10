@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 import {
   CardTile,
   ListRow,
@@ -22,14 +21,7 @@ export const metadata = {
   description: 'A small record of what’s in my binders. Prices are estimates.',
 }
 
-export default async function Page({
-  searchParams,
-}: {
-  searchParams: Promise<{ view?: string }>
-}) {
-  const { view } = await searchParams
-  if (view === 'collection') redirect('/pokemon-card/collection')
-
+export default async function Page() {
   const cards = await getEnrichedCollection()
   const totals = collectionTotals(cards)
   const writable = isWritable()
@@ -82,13 +74,18 @@ export default async function Page({
       <SectionTitle>By set</SectionTitle>
       <div className="mb-2">
         {bySet.map((item) => (
-          <div key={item.key} className="mb-3">
-            <ListRow label={formatUsd(item.value)}>{item.key}</ListRow>
-            <div className="h-1 rounded-sm bg-neutral-200 dark:bg-neutral-800 -mt-1">
-              <i
-                className="block h-full rounded-sm bg-neutral-600 dark:bg-neutral-400"
-                style={{ width: `${Math.max(4, (item.value / maxSet) * 100)}%` }}
-              />
+          <div key={item.key} className="flex gap-2 mb-3 text-sm">
+            <div className="w-[100px] shrink-0 text-neutral-600 dark:text-neutral-400 tabular-nums">
+              {formatUsd(item.value)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-neutral-900 dark:text-neutral-100 tracking-tight">{item.key}</div>
+              <div className="h-1 rounded-sm bg-neutral-200 dark:bg-neutral-800 mt-1">
+                <span
+                  className="block h-full rounded-sm bg-neutral-600 dark:bg-neutral-400"
+                  style={{ width: `${Math.max(6, (item.value / maxSet) * 100)}%` }}
+                />
+              </div>
             </div>
           </div>
         ))}
@@ -114,8 +111,8 @@ export default async function Page({
         <div>
           <SectionTitle>By rarity</SectionTitle>
           {byRarity.map((item) => (
-            <ListRow key={item.key} label={item.key}>
-              {formatCount(item.value)}
+            <ListRow key={item.key} label={formatCount(item.value)}>
+              {item.key}
             </ListRow>
           ))}
         </div>
@@ -139,6 +136,7 @@ export default async function Page({
             <span className="text-neutral-600 dark:text-neutral-400">
               {' '}
               · {card.tcg?.set.name ?? 'Unknown set'} {card.tcg?.number ?? ''}
+              {card.tcg?.set.printedTotal ? `/${card.tcg.set.printedTotal}` : ''}
             </span>
           </ListRow>
         </Link>

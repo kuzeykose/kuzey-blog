@@ -24,11 +24,11 @@ async function tcgFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
         return (await res.json()) as T
       }
       lastError = new Error(`Pokémon TCG API ${res.status}`)
-      if (res.status < 500) break
+      if (res.status < 500 && res.status !== 429) break
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Pokémon TCG API failed')
     }
-    await sleep(250 * (attempt + 1))
+    await sleep(400 * (attempt + 1))
   }
 
   throw lastError ?? new Error('Pokémon TCG API failed')
@@ -46,10 +46,7 @@ export async function fetchCardById(id: string): Promise<TcgCard | null> {
 export async function fetchCardsByIds(ids: string[]): Promise<Map<string, TcgCard>> {
   const unique = Array.from(new Set(ids.filter(Boolean)))
   const entries = await Promise.all(
-    unique.map(async (id) => {
-      const card = await fetchCardById(id)
-      return [id, card] as const
-    })
+    unique.map(async (id) => [id, await fetchCardById(id)] as const)
   )
   return new Map(entries.filter((entry): entry is readonly [string, TcgCard] => entry[1] != null))
 }
@@ -58,33 +55,49 @@ function sanitizeQuery(value: string) {
   return value.replace(/[+\-&|!(){}[\]^"~*?:\\/]/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
-export function buildSearchQuery(raw: string, setId?: string) {
+function splitSearch(raw: string) {
   const q = sanitizeQuery(raw)
   const match = q.match(/^(.*?)(?:\s+(\d+[a-zA-Z]*))?$/)
-  const name = match?.[1]?.trim()
-  const number = match?.[2]
+  const name = match?.[1]?.trim() || ''
+  let number = match?.[2] || ''
+  if (number && /^\d+$/.test(number)) number = String(Number.parseInt(number, 10))
+  return { name, number }
+}
+
+export function buildSearchQuery(raw: string, setId?: string, includeNumber = true) {
+  const { name, number } = splitSearch(raw)
   const parts: string[] = []
   if (name) parts.push(`name:"${name}*"`)
-  if (number) parts.push(`number:${number}`)
+  if (includeNumber && number) parts.push(`number:${number}`)
   if (setId) parts.push(`set.id:${setId}`)
   return parts.join(' ')
+}
+
+async function runCardSearch(query: string) {
+  const params = new URLSearchParams({
+    q: query,
+    pageSize: '20',
+    orderBy: '-set.releaseDate',
+  })
+  const body = await tcgFetch<{ data: TcgCard[] }>(`/cards?${params}`, {
+    revalidate: 3600,
+  })
+  return (body.data ?? []).map(toSearchCard)
 }
 
 export async function searchCards(raw: string, setId?: string): Promise<SearchCard[]> {
   const query = buildSearchQuery(raw, setId)
   if (!query) return []
 
-  const params = new URLSearchParams({
-    q: query,
-    pageSize: '20',
-    orderBy: '-set.releaseDate',
-  })
+  const first = await runCardSearch(query)
+  if (first.length) return first
 
-  const body = await tcgFetch<{ data: TcgCard[] }>(`/cards?${params}`, {
-    revalidate: 3600,
-  })
-
-  return (body.data ?? []).map(toSearchCard)
+  const { number } = splitSearch(raw)
+  if (number) {
+    const fallback = buildSearchQuery(raw, setId, false)
+    if (fallback && fallback !== query) return runCardSearch(fallback)
+  }
+  return []
 }
 
 export async function fetchSets(): Promise<TcgSet[]> {
