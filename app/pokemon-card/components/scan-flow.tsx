@@ -112,7 +112,7 @@ export function ScanFlow({
   const [condition, setCondition] = useState<Condition>('NM')
   const [quantity, setQuantity] = useState(1)
   const [notes, setNotes] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [torchOn, setTorchOn] = useState(false)
   const [hasTorch, setHasTorch] = useState(false)
@@ -163,6 +163,7 @@ export function ScanFlow({
     setQuantity(1)
     setNotes('')
     setError(null)
+    setSaving(false)
     setChecks({ name: false, number: false, matching: false })
   }
 
@@ -174,7 +175,6 @@ export function ScanFlow({
   async function recognizeBlob(blob: Blob, nextPreview: string) {
     setPreview(nextPreview)
     setStage('reading')
-    setBusy(true)
     setError(null)
     setChecks({ name: false, number: false, matching: false })
     setOcrPreview({})
@@ -216,8 +216,6 @@ export function ScanFlow({
       if (abort.signal.aborted) return
       setError(err instanceof Error ? err.message : 'Scan failed')
       setStage(preferUpload(mode) ? 'upload' : 'camera')
-    } finally {
-      setBusy(false)
     }
   }
 
@@ -259,8 +257,8 @@ export function ScanFlow({
   }
 
   async function save() {
-    if (!selected) return
-    setBusy(true)
+    if (!writable || !selected || saving) return
+    setSaving(true)
     setError(null)
     try {
       const res = await fetch('/api/pokemon-card/collection', {
@@ -309,14 +307,14 @@ export function ScanFlow({
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save')
     } finally {
-      setBusy(false)
+      setSaving(false)
     }
   }
 
   async function undoLast() {
     const last = session[0]
-    if (!last) return
-    setBusy(true)
+    if (!writable || !last || saving) return
+    setSaving(true)
     try {
       const res = await fetch('/api/pokemon-card/collection', {
         method: 'POST',
@@ -335,7 +333,7 @@ export function ScanFlow({
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not undo')
     } finally {
-      setBusy(false)
+      setSaving(false)
     }
   }
 
@@ -443,7 +441,7 @@ export function ScanFlow({
           notes={notes}
           market={market}
           writable={writable}
-          busy={busy}
+          saving={saving}
           onPrinting={setPrinting}
           onCondition={setCondition}
           onQuantity={setQuantity}
@@ -458,7 +456,7 @@ export function ScanFlow({
           last={session[0]}
           session={session}
           writable={writable}
-          busy={busy}
+          saving={saving}
           onUndo={undoLast}
           onAgain={() => {
             resetCapture()
@@ -881,7 +879,7 @@ function ConfirmStage({
   notes,
   market,
   writable,
-  busy,
+  saving,
   onPrinting,
   onCondition,
   onQuantity,
@@ -897,7 +895,7 @@ function ConfirmStage({
   notes: string
   market: number | null
   writable: boolean
-  busy: boolean
+  saving: boolean
   onPrinting: (value: string) => void
   onCondition: (value: Condition) => void
   onQuantity: (value: number | ((n: number) => number)) => void
@@ -961,9 +959,14 @@ function ConfirmStage({
             TCGplayer · example
           </span>
         </p>
-        <PrimaryButton type="button" disabled={!writable || busy} onClick={onSave} className="w-full">
-          {busy ? 'Saving…' : 'Add to collection'}
+        <PrimaryButton type="button" disabled={!writable || saving} onClick={onSave} className="w-full">
+          {saving ? 'Saving…' : 'Add to collection'}
         </PrimaryButton>
+        {!writable ? (
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-3">
+            Saving only writes the local JSON in development (`pnpm dev`).
+          </p>
+        ) : null}
       </div>
     </div>
   )
@@ -973,7 +976,7 @@ function SavedStage({
   last,
   session,
   writable,
-  busy,
+  saving,
   onUndo,
   onAgain,
   onDone,
@@ -981,7 +984,7 @@ function SavedStage({
   last: SessionItem
   session: SessionItem[]
   writable: boolean
-  busy: boolean
+  saving: boolean
   onUndo: () => void
   onAgain: () => void
   onDone: () => void
@@ -1001,7 +1004,7 @@ function SavedStage({
           </p>
           <p className="mt-2 text-xs">
             {writable ? (
-              <button type="button" onClick={onUndo} disabled={busy} className="underline underline-offset-2 mr-3">
+              <button type="button" onClick={onUndo} disabled={saving} className="underline underline-offset-2 mr-3">
                 Undo
               </button>
             ) : null}

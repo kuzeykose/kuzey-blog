@@ -106,6 +106,7 @@ export function AddFlow({
   const [notes, setNotes] = useState(editing?.notes ?? '')
   const recent = useRecentSearches()
   const [busy, setBusy] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -159,8 +160,8 @@ export function AddFlow({
   }
 
   async function save() {
-    if (!selected) return
-    setBusy(true)
+    if (!writable || !selected || saving) return
+    setSaving(true)
     setError(null)
     try {
       const res = await fetch('/api/pokemon-card/collection', {
@@ -195,7 +196,7 @@ export function AddFlow({
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save')
     } finally {
-      setBusy(false)
+      setSaving(false)
     }
   }
 
@@ -414,11 +415,16 @@ export function AddFlow({
               <GhostButton type="button" onClick={() => setStep(editing ? 1 : 2)}>
                 Back
               </GhostButton>
-              <PrimaryButton type="button" disabled={!writable || busy} onClick={save}>
-                {busy ? 'Saving…' : editing ? 'Save changes' : 'Add to collection'}
+              <PrimaryButton type="button" disabled={!writable || saving} onClick={save}>
+                {saving ? 'Saving…' : editing ? 'Save changes' : 'Add to collection'}
               </PrimaryButton>
             </div>
           </div>
+          {!writable ? (
+            <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-3">
+              Saving only works in local development (`pnpm dev`). Production is read-only.
+            </p>
+          ) : null}
         </>
       ) : null}
 
