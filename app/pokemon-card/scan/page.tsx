@@ -1,4 +1,4 @@
-import { ScanFlow } from '../components/scan-flow'
+import { ScanClient } from '../components/scan-client'
 import { isWritable } from '../lib/collection'
 
 export const metadata = {
@@ -12,5 +12,5 @@ export default async function Page({
   searchParams: Promise<{ mode?: string }>
 }) {
   const { mode } = await searchParams
-  return <ScanFlow writable={isWritable()} mode={mode} />
+  return <ScanClient writable={isWritable()} mode={mode} />
 }
