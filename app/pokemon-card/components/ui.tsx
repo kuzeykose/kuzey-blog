@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react'
 import Link from 'next/link'
 import { OwnerActions } from './owner-actions'
 import { TYPE_COLORS } from '../lib/constants'
@@ -257,6 +257,65 @@ export function GhostButton({
     >
       {children}
     </button>
+  )
+}
+
+export const nativeFieldClass =
+  'appearance-none bg-transparent border-0 outline-none shadow-none ring-0 focus:outline-none focus:ring-0 focus:border-0 text-inherit'
+
+export function SearchField({
+  accent = false,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & { accent?: boolean }) {
+  return (
+    <label
+      className={`flex items-center gap-2 h-9 rounded-lg border px-3 text-sm text-neutral-900 dark:text-neutral-100 focus-within:border-orange-600 focus-within:ring-2 focus-within:ring-orange-600 ${
+        accent
+          ? 'border-orange-600'
+          : 'border-neutral-200 dark:border-neutral-800'
+      }`}
+    >
+      <span className="text-neutral-400" aria-hidden>
+        ⌕
+      </span>
+      <input
+        type="search"
+        {...props}
+        className={`${nativeFieldClass} w-full min-w-0 placeholder:text-neutral-400 [&::-webkit-search-decoration]:appearance-none [&::-webkit-search-cancel-button]:appearance-none`}
+      />
+    </label>
+  )
+}
+
+export function SelectPill({
+  label,
+  value,
+  onChange,
+  options,
+  selectClassName = 'max-w-[9rem]',
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  options: { value: string; label: string }[]
+  selectClassName?: string
+}) {
+  return (
+    <label className="h-8 rounded-md border border-neutral-200 dark:border-neutral-800 px-2.5 text-sm inline-flex items-center gap-1.5 text-neutral-900 dark:text-neutral-100 focus-within:border-orange-600 focus-within:ring-2 focus-within:ring-orange-600">
+      <span className="text-neutral-600 dark:text-neutral-400">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className={`${nativeFieldClass} cursor-pointer [&::-ms-expand]:hidden ${selectClassName}`}
+      >
+        {options.map((option) => (
+          <option key={option.value || 'all'} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <span aria-hidden>▾</span>
+    </label>
   )
 }
 

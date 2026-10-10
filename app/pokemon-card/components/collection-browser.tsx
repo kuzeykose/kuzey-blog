@@ -4,7 +4,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { List, SquaresFour } from '@phosphor-icons/react'
-import { CardTile, ListRow, tileFromEntry } from './ui'
+import { CardTile, ListRow, SearchField, SelectPill, tileFromEntry } from './ui'
 import { formatCopyCount, formatFilteredCount, formatUsd } from '../lib/format'
 import type { EnrichedCard } from '../lib/types'
 
@@ -124,18 +124,11 @@ export function CollectionBrowser({ cards }: { cards: EnrichedCard[] }) {
 
   return (
     <div>
-      <label className="flex items-center gap-2 h-9 rounded-lg border border-neutral-200 dark:border-neutral-800 px-3 text-sm text-neutral-900 dark:text-neutral-100 focus-within:border-orange-600">
-        <span className="text-neutral-400" aria-hidden>
-          ⌕
-        </span>
-        <input
-          type="search"
-          value={q}
-          onChange={(event) => update({ q: event.target.value || null })}
-          placeholder="Search name, set or number"
-          className="w-full bg-transparent outline-none placeholder:text-neutral-400"
-        />
-      </label>
+      <SearchField
+        value={q}
+        onChange={(event) => update({ q: event.target.value || null })}
+        placeholder="Search name, set or number"
+      />
 
       <div className="flex flex-wrap items-center gap-2 mt-3 mb-2">
         <SelectPill
@@ -149,7 +142,7 @@ export function CollectionBrowser({ cards }: { cards: EnrichedCard[] }) {
           <button
             type="button"
             onClick={() => setTypeOpen((open) => !open)}
-            className="h-8 rounded-md border border-neutral-200 dark:border-neutral-800 px-2.5 text-sm inline-flex items-center gap-1.5"
+            className="h-8 rounded-md border border-neutral-200 dark:border-neutral-800 px-2.5 text-sm inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:border-orange-600 focus-visible:ring-2 focus-visible:ring-orange-600"
           >
             <span className="text-neutral-600 dark:text-neutral-400">Type</span>
             <span>{typeLabel} ▾</span>
@@ -258,35 +251,6 @@ export function CollectionBrowser({ cards }: { cards: EnrichedCard[] }) {
         </div>
       )}
     </div>
-  )
-}
-
-function SelectPill({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  options: { value: string; label: string }[]
-}) {
-  return (
-    <label className="h-8 rounded-md border border-neutral-200 dark:border-neutral-800 px-2.5 text-sm inline-flex items-center gap-1.5">
-      <span className="text-neutral-600 dark:text-neutral-400">{label}</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="bg-transparent outline-none max-w-[9rem]"
-      >
-        {options.map((option) => (
-          <option key={option.value || 'all'} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
   )
 }
 

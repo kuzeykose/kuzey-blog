@@ -11,6 +11,8 @@ import {
   PageIntro,
   PrimaryButton,
   PrivateBadge,
+  SearchField,
+  SelectPill,
   SourceCredit,
 } from './ui'
 import { CONDITIONS } from '../lib/types'
@@ -217,34 +219,21 @@ export function AddFlow({
             runSearch()
           }}
         >
-          <label className="flex items-center gap-2 h-9 rounded-lg border border-orange-600 px-3 text-sm">
-            <span className="text-neutral-400" aria-hidden>
-              ⌕
-            </span>
-            <input
-              autoFocus
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder='Name, set or number — e.g. “Pikachu 58”'
-              className="w-full bg-transparent outline-none placeholder:text-neutral-400"
-            />
-          </label>
+          <SearchField
+            autoFocus
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder='Name, set or number — e.g. “Pikachu 58”'
+            accent
+          />
           <div className="flex flex-wrap items-center gap-2 mt-3">
-            <label className="h-8 rounded-md border border-neutral-200 dark:border-neutral-800 px-2.5 text-sm inline-flex items-center gap-1.5">
-              <span className="text-neutral-600 dark:text-neutral-400">Set</span>
-              <select
-                value={setId}
-                onChange={(event) => setSetId(event.target.value)}
-                className="bg-transparent outline-none max-w-[12rem]"
-              >
-                <option value="">Any</option>
-                {sets.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <SelectPill
+              label="Set"
+              value={setId}
+              onChange={setSetId}
+              options={[{ value: '', label: 'Any' }, ...sets.map((item) => ({ value: item.id, label: item.name }))]}
+              selectClassName="max-w-[12rem]"
+            />
             <span className="text-xs text-neutral-600 dark:text-neutral-400">
               Searches the Pokémon TCG API (pokemontcg.io)
             </span>
@@ -263,16 +252,10 @@ export function AddFlow({
               runSearch()
             }}
           >
-            <label className="flex items-center gap-2 h-9 rounded-lg border border-neutral-200 dark:border-neutral-800 px-3 text-sm">
-              <span className="text-neutral-400" aria-hidden>
-                ⌕
-              </span>
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                className="w-full bg-transparent outline-none"
-              />
-            </label>
+            <SearchField
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
           </form>
           <div className="flex items-center justify-between gap-3 my-3 mb-6">
             <p className="text-sm text-neutral-600 dark:text-neutral-400">
