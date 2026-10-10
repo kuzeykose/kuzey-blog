@@ -35,6 +35,16 @@ export type RecognizeOptions = {
   apiKey?: string
 }
 
+/** Parsed OCR fields the browser POSTs. The API never receives a photo. */
+export type ScanQuery = {
+  name?: string
+  number?: string
+  total?: string
+  kind?: NumberRead['kind']
+  alts?: NumberRead[]
+  agreement?: number
+}
+
 export type NumberRead = {
   number: string
   total?: string

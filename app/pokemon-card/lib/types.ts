@@ -65,6 +65,7 @@ export type TcgCard = {
 export type TcgSet = {
   id: string
   name: string
+  printedTotal?: number
   releaseDate?: string
   series?: string
 }

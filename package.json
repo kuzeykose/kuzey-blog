@@ -5,9 +5,8 @@
         "build": "next build",
         "start": "next start",
         "lint": "eslint app/pokemon-card app/api/pokemon-card app/components/nav.tsx next.config.ts",
-        "postinstall": "node scripts/vendor-tesseract.mjs",
         "test": "pnpm test:scan",
-        "test:scan": "node --experimental-strip-types --test app/pokemon-card/lib/scan/recognize.test.mjs"
+        "test:scan": "node --experimental-strip-types --test app/pokemon-card/lib/scan/*.test.mjs"
     },
     "dependencies": {
         "@phosphor-icons/react": "^2.1.10",
@@ -22,7 +21,6 @@
         "postcss": "^8.4.35",
         "react": "19.2.7",
         "react-dom": "19.2.7",
-        "sharp": "^0.34.5",
         "sugar-high": "^0.6.0",
         "tailwindcss": "4.0.0-alpha.13",
         "tesseract.js": "^7.0.0",
@@ -38,8 +36,6 @@
     },
     "pnpm": {
         "onlyBuiltDependencies": [
-            "sharp",
-            "tesseract.js",
             "unrs-resolver"
         ]
     }

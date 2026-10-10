@@ -32,9 +32,6 @@ yarn-error.log*
 # vercel
 .vercel
 
-# generated tesseract worker tree (see scripts/vendor-tesseract.mjs)
-/vendor/
-
 # typescript
 *.tsbuildinfo
 next-env.d.ts

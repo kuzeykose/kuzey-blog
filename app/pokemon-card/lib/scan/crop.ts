@@ -44,7 +44,7 @@ export async function cropVideoToGuide(video: HTMLVideoElement, guide: HTMLEleme
   return toBlob(canvas)
 }
 
-/** Downscale an uploaded photo so the POST stays under Vercel's 4.5 MB body limit. */
+/** Downscale an uploaded photo before client-side OCR. Photos are never uploaded. */
 export async function preparePhoto(file: Blob): Promise<Blob> {
   const bitmap = await createImageBitmap(file)
   try {

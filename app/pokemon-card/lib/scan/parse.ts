@@ -1,4 +1,4 @@
-import type { NumberRead } from './types'
+import type { NumberRead, ScanQuery } from './types'
 
 const STOP = /^(basic|stage|evolves|from|hp|put|on|the|v|ex|gx|vmax|vstar|trainer|gallery)$/i
 
@@ -117,4 +117,53 @@ export function voteNumber(reads: NumberRead[]) {
     agreement: ranked[0] ? ranked[0].votes / reads.length : 0,
     alts: ranked.slice(1, 3),
   }
+}
+
+export function readsFromQuery(query: ScanQuery): NumberRead[] {
+  const primary = query.number
+    ? {
+        number: query.number,
+        total: query.total,
+        kind: query.kind ?? (query.total ? 'std' : 'promo'),
+      }
+    : undefined
+  return [primary, ...(query.alts ?? [])].filter((read): read is NumberRead => Boolean(read?.number))
+}
+
+export function buildQueries(query: ScanQuery): string[] {
+  const name = query.name
+  const tries: string[] = []
+  for (const candidate of readsFromQuery(query)) {
+    if (candidate.kind !== 'std') {
+      if (name) tries.push(`number:${candidate.number} name:"${name}*"`)
+      tries.push(`number:${candidate.number}`)
+    } else {
+      if (name) {
+        tries.push(`number:${candidate.number} set.printedTotal:${candidate.total} name:"${name}*"`)
+      }
+      tries.push(`number:${candidate.number} set.printedTotal:${candidate.total}`)
+      if (name) tries.push(`number:${candidate.number} name:"${name}*"`)
+    }
+  }
+  if (name) tries.push(`name:"${name}"`, `name:${name.slice(0, 4)}*`)
+  return tries
+}
+
+export function scoreMatch(
+  card: { name: string; number: string; printedTotal?: number },
+  query: ScanQuery
+) {
+  const pick = readsFromQuery(query)[0]
+  const name = query.name
+  const agreement = query.agreement ?? 0
+  const similarity = name ? nameSim(name, card.name) : 0
+  const numberOk = Boolean(pick && card.number.toUpperCase() === pick.number.toUpperCase())
+  const totalOk =
+    pick && pick.kind !== 'std' ? numberOk : Boolean(pick && String(card.printedTotal) === pick.total)
+  let score = 0.1 + 0.25 * similarity
+  if (numberOk) score += 0.25
+  if (numberOk && totalOk) score += 0.2
+  if (numberOk && totalOk && similarity >= 0.8) score += 0.1
+  if (numberOk && totalOk && agreement >= 0.5) score += 0.05
+  return Number(Math.min(1, score).toFixed(3))
 }

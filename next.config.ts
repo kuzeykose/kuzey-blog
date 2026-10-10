@@ -1,13 +1,6 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['tesseract.js', 'tesseract.js-core', 'sharp'],
-  outputFileTracingIncludes: {
-    '/api/pokemon-card/scan': [
-      './data/tessdata/**/*',
-      './vendor/tesseract-node/**/*',
-    ],
-  },
   images: {
     remotePatterns: [
       {

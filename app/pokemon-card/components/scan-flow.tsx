@@ -15,7 +15,7 @@ import {
   SourceCredit,
 } from './ui'
 import { cropVideoToGuide, preparePhoto } from '../lib/scan/crop'
-import type { Match, ScanResult } from '../lib/scan/types'
+import type { Match, ScanQuery, ScanResult } from '../lib/scan/types'
 import { CONDITIONS, type Condition } from '../lib/types'
 import { formatUsd, printingLabel } from '../lib/format'
 
@@ -75,10 +75,13 @@ function relativeTime(at: number) {
   return `${minutes} min ago`
 }
 
-async function postScan(blob: Blob, signal?: AbortSignal): Promise<ScanResult> {
-  const body = new FormData()
-  body.append('image', blob, 'card.jpg')
-  const res = await fetch('/api/pokemon-card/scan', { method: 'POST', body, signal })
+async function postScan(query: ScanQuery, signal?: AbortSignal): Promise<ScanResult> {
+  const res = await fetch('/api/pokemon-card/scan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(query),
+    signal,
+  })
   const json = await res.json()
   if (!res.ok) throw new Error(json.error || 'Scan failed')
   return json as ScanResult
@@ -103,6 +106,7 @@ export function ScanFlow({
   const [fileName, setFileName] = useState<string | null>(null)
   const [fileSize, setFileSize] = useState<string | null>(null)
   const [result, setResult] = useState<ScanResult | null>(null)
+  const [ocrPreview, setOcrPreview] = useState<ScanResult['ocr']>({})
   const [selected, setSelected] = useState<Match | null>(null)
   const [printing, setPrinting] = useState('')
   const [condition, setCondition] = useState<Condition>('NM')
@@ -152,6 +156,7 @@ export function ScanFlow({
     setFileName(null)
     setFileSize(null)
     setResult(null)
+    setOcrPreview({})
     setSelected(null)
     setPrinting('')
     setCondition('NM')
@@ -172,15 +177,31 @@ export function ScanFlow({
     setBusy(true)
     setError(null)
     setChecks({ name: false, number: false, matching: false })
-    const timers = [
-      window.setTimeout(() => setChecks((c) => ({ ...c, name: true })), 400),
-      window.setTimeout(() => setChecks((c) => ({ ...c, number: true })), 900),
-      window.setTimeout(() => setChecks((c) => ({ ...c, matching: true })), 1400),
-    ]
+    setOcrPreview({})
     const abort = new AbortController()
     abortRef.current = abort
     try {
-      const next = await postScan(blob, abort.signal)
+      const { ocrCard } = await import('../lib/scan/ocr')
+      const query = await ocrCard(blob, (progress) => {
+        if (progress.ocr) {
+          setOcrPreview({
+            name: progress.ocr.name,
+            number: progress.ocr.number,
+            total: progress.ocr.total,
+          })
+        }
+        setChecks((current) => ({
+          ...current,
+          name: current.name || Boolean(progress.name),
+          number: current.number || Boolean(progress.number),
+        }))
+      })
+      setOcrPreview({ name: query.name, number: query.number, total: query.total })
+      setChecks({ name: true, number: true, matching: true })
+      if (!query.name && !query.number) {
+        throw new Error('Could not read a name or set number from that photo')
+      }
+      const next = await postScan(query, abort.signal)
       setResult(next)
       if (next.best && next.confidence >= 0.9) {
         setSelected(next.best)
@@ -196,7 +217,6 @@ export function ScanFlow({
       setError(err instanceof Error ? err.message : 'Scan failed')
       setStage(preferUpload(mode) ? 'upload' : 'camera')
     } finally {
-      timers.forEach(clearTimeout)
       setBusy(false)
     }
   }
@@ -384,7 +404,7 @@ export function ScanFlow({
         <ReadingStage
           preview={preview}
           checks={checks}
-          ocr={result?.ocr}
+          ocr={result?.ocr ?? ocrPreview}
           onCancel={goRescan}
         />
       ) : null}
