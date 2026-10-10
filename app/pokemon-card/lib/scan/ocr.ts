@@ -1,152 +1,73 @@
 'use client'
+/**
+ * Browser OCR: canvas only (no sharp). Decodes with EXIF orientation, runs the shared pure plan
+ * (trim -> 1000x1400 -> name band + bottom strips -> full-art/SIR fallback), returns TEXT only.
+ * Pixels never leave the device; nothing is persisted.
+ */
+import type { Img } from './image'
+import { runOcrPlan, type Engine, type Psm } from './ocrPlan'
+import type { ScanQuery } from './types'
 
-import type { NumberRead, ScanQuery } from './types'
-import { parseNumbers, pickNameToken, voteNumber } from './parse'
-
-export type OcrProgress = {
-  name?: boolean
-  number?: boolean
-  ocr?: ScanQuery
-}
-
-const CARD_WIDTH = 1000
-const CARD_HEIGHT = 1400
-
+/** Same shape as PR #8 so scan-flow.tsx needs no change. */
+export type OcrProgress = { name?: boolean; number?: boolean; ocr?: ScanQuery }
 type TesseractMod = typeof import('tesseract.js')
 type TessWorker = Awaited<ReturnType<TesseractMod['createWorker']>>
-
 let workerPromise: Promise<TessWorker> | null = null
 
-async function getWorker() {
+function getWorker() {
   workerPromise ??= (async () => {
     const { createWorker } = await import('tesseract.js')
-    // Browser defaults load worker, wasm core, and eng.traineddata from jsDelivr.
     return createWorker('eng', 1, { workerBlobURL: true })
   })()
   return workerPromise
 }
 
-function extractBand(
-  source: HTMLCanvasElement,
-  top: number,
-  bandHeight: number,
-  left: number,
-  bandWidth: number,
-  threshold: boolean
-) {
-  const sx = Math.round(source.width * left)
-  const sy = Math.round(source.height * top)
-  const sw = Math.max(1, Math.round(source.width * bandWidth))
-  const sh = Math.max(1, Math.round(source.height * bandHeight))
-  const destW = 1600
-  const destH = Math.max(1, Math.round(sh * (destW / sw)))
-  const canvas = document.createElement('canvas')
-  canvas.width = destW
-  canvas.height = destH
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('Canvas is not available')
-  ctx.filter = 'grayscale(1) contrast(1.25)'
-  ctx.drawImage(source, sx, sy, sw, sh, 0, 0, destW, destH)
-  ctx.filter = 'none'
-  if (threshold) {
-    const image = ctx.getImageData(0, 0, destW, destH)
-    const pixels = image.data
-    for (let i = 0; i < pixels.length; i += 4) {
-      const value = pixels[i] > 140 ? 255 : 0
-      pixels[i] = value
-      pixels[i + 1] = value
-      pixels[i + 2] = value
-    }
-    ctx.putImageData(image, 0, 0)
-  }
-  return canvas
-}
-
-async function toCardCanvas(blob: Blob) {
-  const bitmap = await createImageBitmap(blob)
+/** Decode with EXIF orientation applied (replaces sharp.rotate()). Caps the long edge to save memory. */
+async function decode(blob: Blob, maxEdge = 2000): Promise<Img> {
+  const bitmap = await createImageBitmap(blob, { imageOrientation: 'from-image' })
   try {
-    const canvas = document.createElement('canvas')
-    canvas.width = CARD_WIDTH
-    canvas.height = CARD_HEIGHT
-    const ctx = canvas.getContext('2d')
+    const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height))
+    const w = Math.round(bitmap.width * scale), h = Math.round(bitmap.height * scale)
+    const canvas = new OffscreenCanvas(w, h)
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
     if (!ctx) throw new Error('Canvas is not available')
-    ctx.drawImage(bitmap, 0, 0, CARD_WIDTH, CARD_HEIGHT)
-    return canvas
+    ctx.drawImage(bitmap, 0, 0, w, h)
+    return ctx.getImageData(0, 0, w, h)
   } finally {
     bitmap.close()
   }
 }
 
-async function readText(worker: TessWorker, image: HTMLCanvasElement, psm: string) {
+function toCanvas(img: Img): OffscreenCanvas {
+  const c = new OffscreenCanvas(img.width, img.height)
+  c.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(img.data), img.width, img.height), 0, 0)
+  return c
+}
+
+const engine: Engine = async (img, psm: Psm) => {
+  const worker = await getWorker()
   await worker.setParameters({ tessedit_pageseg_mode: psm as never })
-  const result = await worker.recognize(image)
-  return { text: result.data.text.trim(), conf: result.data.confidence }
+  const r = await worker.recognize(toCanvas(img) as unknown as HTMLCanvasElement)
+  return { text: r.data.text, conf: r.data.confidence }
 }
 
-async function knownTotals() {
-  try {
-    const res = await fetch('/api/pokemon-card/sets')
-    if (!res.ok) return undefined
-    const body = (await res.json()) as { sets?: { printedTotal?: number }[] }
-    const totals = new Set(
-      (body.sets ?? []).map((set) => set.printedTotal).filter((n): n is number => n != null)
-    )
-    return totals.size ? totals : undefined
-  } catch {
-    return undefined
-  }
+let totalsPromise: Promise<Set<number> | undefined> | null = null
+function knownTotals() {
+  totalsPromise ??= fetch('/api/pokemon-card/sets')
+    .then((r) => (r.ok ? r.json() : Promise.reject()))
+    .then((b: { sets?: { printedTotal?: number }[] }) => {
+      const s = new Set((b.sets ?? []).map((x) => x.printedTotal).filter((n): n is number => n != null))
+      return s.size ? s : undefined
+    })
+    .catch(() => { totalsPromise = null; return undefined })
+  return totalsPromise
 }
 
-export async function ocrCard(
-  blob: Blob,
-  onProgress?: (progress: OcrProgress) => void
-): Promise<ScanQuery> {
-  const { PSM } = await import('tesseract.js')
-  const [card, worker, totals] = await Promise.all([toCardCanvas(blob), getWorker(), knownTotals()])
-
-  const names: { n: string; conf: number }[] = []
-  for (const useThreshold of [false, true]) {
-    for (const [top, left] of [
-      [0.035, 0.05],
-      [0.055, 0.05],
-    ] as const) {
-      const read = await readText(
-        worker,
-        extractBand(card, top, 0.06, left, 0.6, useThreshold),
-        PSM.SINGLE_LINE
-      )
-      const token = pickNameToken(read.text)
-      if (token) names.push({ n: token, conf: read.conf })
-    }
-  }
-  names.sort((a, b) => b.conf - a.conf)
-  const name = names[0]?.n
-  onProgress?.({ name: true, ocr: { name } })
-
-  const reads: NumberRead[] = []
-  for (const useThreshold of [false, true]) {
-    for (const top of [0.9, 0.925]) {
-      const read = await readText(worker, extractBand(card, top, 0.06, 0, 1, useThreshold), PSM.SPARSE_TEXT)
-      reads.push(...parseNumbers(read.text, totals))
-    }
-  }
-
-  if (!name && !reads.length) {
-    const fallback = await readText(worker, card, PSM.SPARSE_TEXT)
-    const token = pickNameToken(fallback.text)
-    if (token) names.push({ n: token, conf: fallback.conf })
-    reads.push(...parseNumbers(fallback.text, totals))
-  }
-
-  const { pick, agreement, alts } = voteNumber(reads)
-  const query: ScanQuery = {
-    name: names[0]?.n ?? name,
-    number: pick?.number,
-    total: pick?.total,
-    kind: pick?.kind,
-    alts,
-    agreement,
-  }
+export async function ocrCard(blob: Blob, onProgress?: (p: OcrProgress) => void): Promise<ScanQuery> {
+  const [img, totals] = await Promise.all([decode(blob), knownTotals(), getWorker()])
+  const { passes: _passes, ...query } = await runOcrPlan(img, engine, totals, (stage, partial) => {
+    if (stage === 'name') onProgress?.({ name: true, ocr: partial })
+  })
   onProgress?.({ name: true, number: true, ocr: query })
   return query
 }

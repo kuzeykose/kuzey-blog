@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { parseNumbers, voteNumber } from './parse.ts'
+import { parseNumbers, parseRawText, voteNumber } from './parse.ts'
 
 function first(text, totals) {
   return parseNumbers(text, totals)[0]
@@ -36,6 +36,28 @@ test('known totals trim junk and repair a missing slash', () => {
   assert.deepEqual([first('2017165, rg', totals).number, first('2017165', totals).total], ['201', '165'])
   assert.equal(first('1IGO5/1G30', totals).number, 'TG05')
   assert.equal(first('GG35/GGZ0N', totals).number, 'GG35')
+})
+
+test('full-art slash repairs against known totals', () => {
+  const totals = new Set([165, 193])
+  assert.deepEqual([first('1997,165', totals).number, first('1997,165', totals).total], ['199', '165'])
+  assert.deepEqual([first('2564193', totals).number, first('2564193', totals).total], ['256', '193'])
+})
+
+test('vote credits a dropped leading digit to the longer secret rare', () => {
+  assert.equal(
+    voteNumber([
+      { number: '199', total: '165', kind: 'std' },
+      { number: '99', total: '165', kind: 'std' },
+    ]).pick.number,
+    '199'
+  )
+})
+
+test('raw text recovers a number the client vote missed', () => {
+  const parsed = parseRawText(['PRAT', '1997,165'], new Set([165]))
+  assert.equal(parsed.reads[0].number, '199')
+  assert.equal(parsed.reads[0].total, '165')
 })
 
 test('vote prefers the majority and drops implausible secret-rare reads', () => {

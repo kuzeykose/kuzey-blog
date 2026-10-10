@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { matchScan } from 'app/pokemon-card/lib/scan/match'
+import { cleanRawText, matchScan } from 'app/pokemon-card/lib/scan/match'
 import type { NumberRead, ScanQuery } from 'app/pokemon-card/lib/scan/types'
 import { tcgApiKey } from 'app/pokemon-card/lib/tcg-key'
 
@@ -29,7 +29,8 @@ function parseQuery(body: unknown): ScanQuery | null {
     ? raw.alts.map(asRead).filter((read): read is NumberRead => Boolean(read))
     : undefined
   const agreement = typeof raw.agreement === 'number' && Number.isFinite(raw.agreement) ? raw.agreement : undefined
-  if (!name && !primary) return null
+  const rawText = cleanRawText(raw.rawText)
+  if (!name && !primary && !rawText.length) return null
   return {
     name,
     number: primary?.number,
@@ -37,6 +38,7 @@ function parseQuery(body: unknown): ScanQuery | null {
     kind: primary?.kind,
     alts,
     agreement,
+    rawText: rawText.length ? rawText : undefined,
   }
 }
 

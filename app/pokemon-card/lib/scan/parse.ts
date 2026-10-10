@@ -76,9 +76,27 @@ export function parseNumbers(text: string, totals?: Set<number>): NumberRead[] {
   for (const match of Array.from(cleaned.matchAll(/(?<![A-Z\d])(\d{1,3})\/(\d{2,4})/gi))) {
     pushStd(match[1], match[2])
   }
-  if (!out.length) {
-    for (const match of Array.from(cleaned.matchAll(/(?<!\d)(\d{3})[71](\d{3})(?!\d)/g))) {
-      pushStd(match[1], match[2])
+  if (!out.length && totals) {
+    // "/" misread as 7, 1 or 4, often with stray "," "." "%" (full-art italics): "1997,165" -> 199/165, "2564193" -> 256/193.
+    // Scan digit runs for <n:1-3><sep><total:2-3>, keep only known totals and plausible n (<= 1.6 x total).
+    for (const run of cleaned.replace(/(?<=\d)[,.%'](?=\d)/g, '').match(/\d{5,}/g) ?? []) {
+      const found: NumberRead[] = []
+      for (let i = 0; i < run.length; i++) {
+        for (const nl of [3, 2, 1]) {
+          const sep = run[i + nl]
+          if (sep !== '7' && sep !== '1' && sep !== '4') continue
+          for (const tl of [3, 2]) {
+            const n = run.slice(i, i + nl), t = run.slice(i + nl + 1, i + nl + 1 + tl)
+            if (n.length !== nl || t.length !== tl) continue
+            if (totals.has(Number(t)) && Number(t) >= 10 && Number(n) >= 1 && Number(n) <= Number(t) * 1.6) {
+              found.push({ number: String(Number(n)), total: String(Number(t)), kind: 'std' })
+            }
+          }
+        }
+      }
+      // keep only the longest-number window(s) of a run (avoid "99/165" from "1997165")
+      const maxLen = Math.max(0, ...found.map((r) => r.number.length))
+      out.push(...found.filter((r) => r.number.length === maxLen).slice(0, 1))
     }
   }
   if (!out.length) {
@@ -101,6 +119,12 @@ export function voteNumber(reads: NumberRead[]) {
     existing.votes += 1
     tally.set(key, existing)
   }
+
+  // A dropped leading digit ("99/165" vs "199/165") supports the longer read with the same total.
+  const rows = Array.from(tally.values())
+  for (const long of rows) for (const short of rows)
+    if (long !== short && long.kind === 'std' && short.kind === 'std' && long.total === short.total &&
+        long.number.length > short.number.length && long.number.endsWith(short.number)) long.votes += short.votes
 
   const plausible = (read: NumberRead) =>
     read.kind !== 'std' ||
@@ -166,4 +190,42 @@ export function scoreMatch(
   if (numberOk && totalOk && similarity >= 0.8) score += 0.1
   if (numberOk && totalOk && agreement >= 0.5) score += 0.05
   return Number(Math.min(1, score).toFixed(3))
+}
+
+const NOISE = /^(pok[eé]mon|rule|when|your|knocked|opponent|takes|prize|cards?|illus|nintendo|creatures|game|freak|weakness|resistance|retreat|ability|damage|attack|this|that|energy|card|turn)$/i
+
+/** All plausible name tokens in a line, longest first (for fallbacks). */
+export function nameTokens(text: string): string[] {
+  return Array.from(
+    new Set(
+      text
+        .replace(/[^A-Za-z'.\-é ]/g, ' ')
+        .split(/\s+/)
+        .map((w) => w.replace(/^[^A-Za-z]+|[^A-Za-z]+$/g, ''))
+        .filter((w) => w.length >= 4 && !STOP.test(w) && !NOISE.test(w))
+    )
+  ).sort((a, b) => b.length - a.length)
+}
+
+/** Lenient number scan of raw text: any "a/b", subset, promo, else lone 1-3 digit groups. */
+export function parseRawText(lines: string[], totals?: Set<number>) {
+  const reads: NumberRead[] = []
+  const names: string[] = []
+  const loose: string[] = []
+  for (const line of lines) {
+    reads.push(...parseNumbers(line, totals))
+    names.push(...nameTokens(line))
+    for (const m of Array.from(line.matchAll(/(?<![\d/])(\d{2,3})(?![\d/])/g))) loose.push(String(Number(m[1])))
+  }
+  return { reads, names: Array.from(new Set(names)), loose: Array.from(new Set(loose)).slice(0, 4) }
+}
+
+/** Best fuzzy matches of an OCR token against a list of real names. */
+export function fuzzyNames(token: string, names: Iterable<string>, limit = 5, min = 0.55) {
+  const out: { name: string; sim: number }[] = []
+  for (const name of Array.from(names)) {
+    const sim = nameSim(token, name)
+    if (sim >= min) out.push({ name, sim })
+  }
+  return out.sort((a, b) => b.sim - a.sim).slice(0, limit)
 }

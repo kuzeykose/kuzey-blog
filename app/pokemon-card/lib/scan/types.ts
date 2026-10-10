@@ -29,6 +29,8 @@ export type ScanResult = {
   confidence: number
   ocr: { name?: string; number?: string; total?: string }
   query?: string
+  /** Which stage produced candidates: 'exact' | 'set-total' | 'fuzzy-name' | 'number-only' | 'raw-text' | 'none' */
+  stage?: string
 }
 
 export type RecognizeOptions = {
@@ -43,6 +45,8 @@ export type ScanQuery = {
   kind?: NumberRead['kind']
   alts?: NumberRead[]
   agreement?: number
+  /** Raw OCR lines (name band + number strips), used only for server fallbacks. Text only, never pixels. Max 24 x 200 chars. */
+  rawText?: string[]
 }
 
 export type NumberRead = {

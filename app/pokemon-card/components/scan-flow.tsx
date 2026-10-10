@@ -198,7 +198,7 @@ export function ScanFlow({
       })
       setOcrPreview({ name: query.name, number: query.number, total: query.total })
       setChecks({ name: true, number: true, matching: true })
-      if (!query.name && !query.number) {
+      if (!query.name && !query.number && !query.rawText?.length) {
         throw new Error('Could not read a name or set number from that photo')
       }
       const next = await postScan(query, abort.signal)
