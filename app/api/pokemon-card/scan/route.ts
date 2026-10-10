@@ -3,7 +3,7 @@ import { recognizeCard } from 'app/pokemon-card/lib/scan/recognize'
 import { tcgApiKey } from 'app/pokemon-card/lib/tcg-key'
 
 export const runtime = 'nodejs'
-export const maxDuration = 60
+export const maxDuration = 120
 export const dynamic = 'force-dynamic'
 
 const MAX_BYTES = 4 * 1024 * 1024

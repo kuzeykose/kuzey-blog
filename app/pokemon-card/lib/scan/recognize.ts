@@ -13,6 +13,7 @@ export const BEST_THRESHOLD = 0.9
 export { nameSim, parseNumbers, voteNumber } from './parse'
 
 const TESSDATA_DIR = path.join(process.cwd(), 'data/tessdata')
+const VENDOR_TESS = path.join(process.cwd(), 'vendor/tesseract-node/node_modules/tesseract.js')
 const CACHE_TTL = 24 * 3600 * 1000
 const queryCache = new Map<string, { t: number; data: TcgCard[] }>()
 
@@ -20,12 +21,15 @@ let workerPromise: Promise<Worker> | null = null
 let totalsPromise: Promise<Set<number> | undefined> | null = null
 
 function tessOptions() {
-  const local = existsSync(path.join(TESSDATA_DIR, 'eng.traineddata'))
+  const localLang = existsSync(path.join(TESSDATA_DIR, 'eng.traineddata'))
+  const localWorker = path.join(VENDOR_TESS, 'src/worker-script/node/index.js')
   return {
-    langPath: local ? TESSDATA_DIR : undefined,
+    langPath: localLang ? TESSDATA_DIR : undefined,
     cachePath: '/tmp',
-    cacheMethod: local ? ('readOnly' as const) : ('write' as const),
-    gzip: !local,
+    cacheMethod: localLang ? ('readOnly' as const) : ('write' as const),
+    gzip: !localLang,
+    workerBlobURL: false,
+    ...(existsSync(localWorker) ? { workerPath: localWorker } : {}),
   }
 }
 
