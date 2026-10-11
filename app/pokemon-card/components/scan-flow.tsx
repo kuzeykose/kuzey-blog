@@ -365,7 +365,7 @@ export function ScanFlow({
       {!writable ? (
         <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-6">
           Scan, match and confirm work here. Saving only writes the local JSON in development (`pnpm
-          dev`).
+          dev`), or to Notion when it is configured.
         </p>
       ) : null}
 
@@ -964,7 +964,8 @@ function ConfirmStage({
         </PrimaryButton>
         {!writable ? (
           <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-3">
-            Saving only writes the local JSON in development (`pnpm dev`).
+            Saving only writes the local JSON in development (`pnpm dev`), or to Notion when it is
+            configured.
           </p>
         ) : null}
       </div>
