@@ -1,5 +1,6 @@
 import { ScanClient } from '../components/scan-client'
 import { isWritable } from '../lib/collection'
+import { gateOwnerPage } from '../lib/owner'
 
 export const metadata = {
   title: 'Scan a Pokémon card',
@@ -12,5 +13,6 @@ export default async function Page({
   searchParams: Promise<{ mode?: string }>
 }) {
   const { mode } = await searchParams
+  await gateOwnerPage(mode ? `/pokemon-card/scan?mode=${encodeURIComponent(mode)}` : '/pokemon-card/scan')
   return <ScanClient writable={isWritable()} mode={mode} />
 }

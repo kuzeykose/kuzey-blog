@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { cleanRawText, matchScan } from 'app/pokemon-card/lib/scan/match'
 import type { NumberRead, ScanQuery } from 'app/pokemon-card/lib/scan/types'
 import { tcgApiKey } from 'app/pokemon-card/lib/tcg-key'
+import { gateOwnerApi } from 'app/pokemon-card/lib/owner'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -43,6 +44,9 @@ function parseQuery(body: unknown): ScanQuery | null {
 }
 
 export async function POST(request: Request) {
+  const denied = await gateOwnerApi()
+  if (denied) return denied
+
   let body: unknown
   try {
     body = await request.json()

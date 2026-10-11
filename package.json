@@ -6,7 +6,7 @@
         "start": "next start",
         "lint": "eslint app/pokemon-card app/api/pokemon-card app/components/nav.tsx next.config.ts",
         "test": "pnpm test:scan",
-        "test:scan": "node --experimental-strip-types --test app/pokemon-card/lib/scan/*.test.mjs"
+        "test:scan": "node --experimental-strip-types --test app/pokemon-card/lib/**/*.test.mjs"
     },
     "dependencies": {
         "@phosphor-icons/react": "^2.1.10",

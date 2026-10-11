@@ -9,7 +9,8 @@ import {
   TypeDot,
   tileFromEntry,
 } from './components/ui'
-import { collectionTotals, getEnrichedCollection, isWritable } from './lib/collection'
+import { collectionTotals, getEnrichedCollection } from './lib/collection'
+import { canShowOwnerTools } from './lib/owner'
 import { formatCopyCount, formatCount, formatShortDate, formatUsd } from './lib/format'
 import { TYPE_COLORS } from './lib/constants'
 import type { EnrichedCard } from './lib/types'
@@ -24,7 +25,7 @@ export const metadata = {
 export default async function Page() {
   const cards = await getEnrichedCollection()
   const totals = collectionTotals(cards)
-  const writable = isWritable()
+  const owner = await canShowOwnerTools()
 
   const bySet = aggregate(
     cards,
@@ -55,7 +56,7 @@ export default async function Page() {
           A small record of what&apos;s in my binders. Prices are estimates.
         </p>
       </PageIntro>
-      <SectionTabs active="overview" writable={writable} />
+      <SectionTabs active="overview" owner={owner} />
 
       <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-4">
         <div className="grid grid-cols-3 gap-4">

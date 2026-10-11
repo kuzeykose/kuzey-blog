@@ -22,10 +22,10 @@ export function PageIntro({
 
 export function SectionTabs({
   active,
-  writable = false,
+  owner = false,
 }: {
   active: 'overview' | 'collection'
-  writable?: boolean
+  owner?: boolean
 }) {
   const tabs = [
     { href: '/pokemon-card', id: 'overview', label: 'overview' },
@@ -53,7 +53,7 @@ export function SectionTabs({
           )
         })}
       </div>
-      <OwnerActions writable={writable} />
+      <OwnerActions owner={owner} />
     </div>
   )
 }
