@@ -10,6 +10,7 @@ import {
 } from '../components/ui'
 import { OwnerActions } from '../components/owner-actions'
 import { getEnrichedCard, isWritable, readCollection } from '../lib/collection'
+import { canShowOwnerTools } from '../lib/owner'
 import { CONDITION_LABELS } from '../lib/constants'
 import { formatLongDate, formatUpdated, formatUsd, printingLabel } from '../lib/format'
 
@@ -37,6 +38,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   if (!card) notFound()
 
   const writable = isWritable()
+  const owner = await canShowOwnerTools()
   const name = card.tcg?.name ?? card.id
   const setName = card.tcg?.set.name ?? 'Unknown set'
   const number = card.tcg?.number ?? '—'
@@ -50,7 +52,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     <section>
       <div className="flex items-center justify-between gap-3">
         <BackLink />
-        <OwnerActions writable={writable} />
+        <OwnerActions owner={owner} />
       </div>
       <div className="mt-4">
         <PageIntro title={name}>

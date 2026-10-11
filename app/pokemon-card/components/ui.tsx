@@ -22,10 +22,10 @@ export function PageIntro({
 
 export function SectionTabs({
   active,
-  writable = false,
+  owner = false,
 }: {
   active: 'overview' | 'collection'
-  writable?: boolean
+  owner?: boolean
 }) {
   const tabs = [
     { href: '/pokemon-card', id: 'overview', label: 'overview' },
@@ -53,18 +53,24 @@ export function SectionTabs({
           )
         })}
       </div>
-      <OwnerActions writable={writable} />
+      <OwnerActions owner={owner} />
     </div>
   )
 }
 
-export function BackLink({ href = '/pokemon-card/collection' }: { href?: string }) {
+export function BackLink({
+  href = '/pokemon-card/collection',
+  children = '← collection',
+}: {
+  href?: string
+  children?: ReactNode
+}) {
   return (
     <Link
       href={href}
       className="text-sm text-neutral-600 dark:text-neutral-400 underline decoration-neutral-400 dark:decoration-neutral-600 underline-offset-2"
     >
-      ← collection
+      {children}
     </Link>
   )
 }
